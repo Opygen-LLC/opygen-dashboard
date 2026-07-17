@@ -1,0 +1,108 @@
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { subDays, format } from 'date-fns';
+import { authOptions } from '@/lib/auth';
+import dbConnect from '@/lib/db';
+import Project from '@/models/Project';
+import User from '@/models/User';
+
+export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    await dbConnect();
+
+    const projects = await Project.find({});
+    const users = await User.find({}, 'name avatarUrl');
+
+    const totalProjects = projects.length;
+    const inProgress = projects.filter((p) => p.status === 'in_progress').length;
+    const completed = projects.filter((p) => p.status === 'completed').length;
+    const now = new Date();
+    const overdue = projects.filter((p) => p.status !== 'completed' && p.dueDate && new Date(p.dueDate) < now).length;
+
+    // Status breakdown (Pie Chart data)
+    const statusLabels: Record<string, string> = {
+      todo: 'To Do',
+      in_progress: 'In Progress',
+      in_review: 'In Review',
+      completed: 'Completed',
+      on_hold: 'On Hold',
+    };
+
+    const statusCounts: Record<string, number> = {
+      todo: 0,
+      in_progress: 0,
+      in_review: 0,
+      completed: 0,
+      on_hold: 0,
+    };
+
+    projects.forEach((p) => {
+      if (statusCounts[p.status] !== undefined) {
+        statusCounts[p.status]++;
+      }
+    });
+
+    const statusBreakdown = Object.keys(statusCounts).map((key) => ({
+      name: statusLabels[key],
+      value: statusCounts[key],
+      key,
+    }));
+
+    // Workload per co-founder (Bar Chart data)
+    const workload = users.map((user) => {
+      const count = projects.filter((p) =>
+        p.assignees.some((id) => id.toString() === user._id.toString())
+      ).length;
+      return {
+        name: user.name,
+        projects: count,
+        avatarUrl: user.avatarUrl,
+      };
+    });
+
+    // Completion Trend over last 30 days (Line Chart data)
+    const completionTrend: Record<string, number> = {};
+    for (let i = 29; i >= 0; i--) {
+      const dateStr = format(subDays(now, i), 'MMM dd');
+      completionTrend[dateStr] = 0;
+    }
+
+    projects.forEach((p) => {
+      if (p.status === 'completed') {
+        const completedDate = new Date(p.updatedAt);
+        const diffInDays = Math.floor((now.getTime() - completedDate.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffInDays >= 0 && diffInDays < 30) {
+          const dateStr = format(completedDate, 'MMM dd');
+          if (completionTrend[dateStr] !== undefined) {
+            completionTrend[dateStr]++;
+          }
+        }
+      }
+    });
+
+    // Convert trend to ordered array
+    const trendData = Object.keys(completionTrend).map((date) => ({
+      date,
+      completed: completionTrend[date],
+    }));
+
+    return NextResponse.json({
+      summary: {
+        totalProjects,
+        inProgress,
+        completed,
+        overdue,
+      },
+      statusBreakdown,
+      workload,
+      completionTrend: trendData,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Server Error' }, { status: 500 });
+  }
+}
