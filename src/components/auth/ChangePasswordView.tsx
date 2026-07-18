@@ -9,7 +9,8 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Lock, Loader2, CheckCircle2, ShieldAlert } from "lucide-react";
+import { Lock, CheckCircle2, ShieldAlert } from "lucide-react";
+import { Loading } from "@/components/ui/Loading";
 import {
     Card,
     CardContent,
@@ -72,10 +73,11 @@ export default function ForcedChangePasswordPage() {
             setIsSuccess(true);
             toast.success("Your password has been securely updated!");
 
-            // Update client session token to mark needPasswordChange as false
+            // Update client session token to mark needPasswordChange as false and status as active
             await update({
                 ...session,
                 needPasswordChange: false,
+                status: 'active',
             });
 
             // Redirect based on role
@@ -212,10 +214,7 @@ export default function ForcedChangePasswordPage() {
                                     className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-md shadow-indigo-600/20"
                                 >
                                     {isLoading ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Saving Password...
-                                        </>
+                                        <Loading variant="mini" text="Saving Password..." />
                                     ) : (
                                         "Complete Setup"
                                     )}

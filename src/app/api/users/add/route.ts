@@ -5,7 +5,8 @@ import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import { authOptions } from '@/lib/auth';
 import { addUserSchema } from '@/lib/validations';
-import { UserRole } from '@/types';
+import { UserRole, UserStatus } from '@/types';
+import { sendEmail } from '@/lib/email';
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,16 +44,34 @@ export async function POST(req: NextRequest) {
     const salt = await bcrypt.genSalt(12);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Create user with force-change-password requirement
+    // Create user with force-change-password requirement and pending status
     const newUser = await User.create({
       name,
       email: email.toLowerCase().trim(),
       passwordHash,
       role,
       mobileNumber,
-      status,
+      status: UserStatus.PENDING,
       needPasswordChange: true, // admin created, so force change password is true!
     });
+
+    // Send welcome email with one-time credentials
+    const loginUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/login`;
+    try {
+      await sendEmail({
+        to: newUser.email,
+        subject: 'Welcome to Opygen - Co-founder Account Created',
+        templateName: 'welcome',
+        templateData: {
+          name: newUser.name,
+          email: newUser.email,
+          password, // raw password passed by administrator
+          loginUrl,
+        },
+      });
+    } catch (emailErr) {
+      console.error('Failed to send welcome email to new user:', emailErr);
+    }
 
     return NextResponse.json({
       message: 'Co-founder account created successfully.',

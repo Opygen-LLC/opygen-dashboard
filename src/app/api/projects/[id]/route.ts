@@ -6,7 +6,10 @@ import dbConnect from '@/lib/db';
 import Project from '@/models/Project';
 import ActivityLog from '@/models/ActivityLog';
 import User from '@/models/User';
-import { projectSchema } from '@/lib/validations';
+import { projectSchema, baseProjectSchema } from '@/lib/validations';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -25,7 +28,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    return NextResponse.json(project);
+    return NextResponse.json(project, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0, must-revalidate',
+      },
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Server Error' }, { status: 500 });
   }
@@ -42,7 +49,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     await dbConnect();
     const body = await req.json();
 
-    const parseResult = projectSchema.partial().safeParse(body);
+    const parseResult = baseProjectSchema.partial().safeParse(body);
 
     if (!parseResult.success) {
       return NextResponse.json({ error: parseResult.error.flatten() }, { status: 400 });
@@ -57,11 +64,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const updatedBudget = updates.budget !== undefined ? updates.budget : project.budget;
     const updatedPayments = updates.payments !== undefined ? updates.payments : project.payments;
-    if (updatedPayments) {
+    if (updatedPayments && updatedBudget !== undefined && updatedBudget > 0) {
       const totalPayments = updatedPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
-      if (totalPayments > (updatedBudget || 0)) {
+      if (totalPayments > updatedBudget) {
         return NextResponse.json(
-          { error: `Total payment milestones ($${totalPayments.toLocaleString()}) cannot exceed the project budget ($${(updatedBudget || 0).toLocaleString()})` },
+          { error: `Total payment milestones ($${totalPayments.toLocaleString()}) cannot exceed the project budget ($${updatedBudget.toLocaleString()})` },
           { status: 400 }
         );
       }

@@ -9,10 +9,10 @@ import {
     Clock,
     CheckCircle2,
     AlertTriangle,
-    Loader2,
     TrendingUp,
     RefreshCw,
 } from "lucide-react";
+import { Loading } from "@/components/ui/Loading";
 import {
     PieChart,
     Pie,
@@ -73,7 +73,7 @@ export default function DashboardPage() {
     } = useQuery<any>({
         queryKey: ["stats"],
         queryFn: async () => {
-            const res = await fetch("/api/dashboard/stats");
+            const res = await fetch("/api/dashboard/stats", { cache: "no-store" });
             if (!res.ok) throw new Error("Failed to fetch stats");
             return res.json();
         },
@@ -82,7 +82,7 @@ export default function DashboardPage() {
     if (isLoading) {
         return (
             <div className="flex h-96 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                <Loading />
             </div>
         );
     }

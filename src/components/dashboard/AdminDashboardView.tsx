@@ -9,10 +9,15 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
-  Loader2,
   TrendingUp,
-  RefreshCw
+  RefreshCw,
+  Sparkles,
+  Wallet,
+  CreditCard,
+  DollarSign,
+  Activity
 } from 'lucide-react';
+import { Loading } from '@/components/ui/Loading';
 import {
   PieChart,
   Pie,
@@ -57,7 +62,7 @@ export default function AdminDashboardPage() {
   const { data: stats, isLoading, error, refetch, isRefetching } = useQuery<any>({
     queryKey: ['stats'],
     queryFn: async () => {
-      const res = await fetch('/api/dashboard/stats');
+      const res = await fetch('/api/dashboard/stats', { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to fetch stats');
       return res.json();
     },
@@ -66,7 +71,7 @@ export default function AdminDashboardPage() {
   if (isLoading) {
     return (
       <div className="flex h-96 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+        <Loading />
       </div>
     );
   }
@@ -84,35 +89,62 @@ export default function AdminDashboardPage() {
 
   const { summary, statusBreakdown, workload, completionTrend } = stats;
 
-  const cards = [
+  const projectCards = [
     {
       title: 'Total Projects',
       value: summary.totalProjects,
-      description: 'Active + completed projects',
+      description: 'Active + pipeline database projects',
       icon: FolderKanban,
       color: 'from-indigo-500/5 to-purple-500/5 dark:from-indigo-500/10 dark:to-purple-500/20 text-indigo-600 dark:text-indigo-400 border-indigo-500/20 dark:border-indigo-500/30',
     },
     {
-      title: 'In Progress',
+      title: 'Active Building',
       value: summary.inProgress,
-      description: 'Projects currently being built',
+      description: 'Projects currently in development',
       icon: Clock,
-      color: 'from-sky-500/5 to-indigo-500/5 dark:from-sky-500/10 dark:to-indigo-500/20 text-sky-650 dark:text-sky-400 border-sky-500/20 dark:border-sky-500/30',
+      color: 'from-sky-500/5 to-indigo-500/5 dark:from-sky-500/10 dark:to-indigo-500/20 text-sky-600 dark:text-sky-400 border-sky-500/20 dark:border-sky-500/30',
     },
     {
       title: 'Completed',
       value: summary.completed,
-      description: 'Projects finished successfully',
+      description: 'Marked finished successfully',
       icon: CheckCircle2,
-      color: 'from-emerald-500/5 to-teal-500/5 dark:from-emerald-500/10 dark:to-teal-500/20 text-emerald-650 dark:text-emerald-400 border-emerald-500/20 dark:border-emerald-500/30',
+      color: 'from-emerald-500/5 to-teal-500/5 dark:from-emerald-500/10 dark:to-teal-500/20 text-emerald-600 dark:text-emerald-450 border-emerald-500/20 dark:border-emerald-500/30',
     },
     {
-      title: 'Overdue',
+      title: 'Overdue Projects',
       value: summary.overdue,
-      description: 'Uncompleted past due date',
+      description: 'Active tasks past their due dates',
       icon: AlertTriangle,
-      color: 'from-rose-500/5 to-red-500/5 dark:from-rose-500/10 dark:to-red-500/20 text-rose-650 dark:text-rose-400 border-rose-500/20 dark:border-rose-500/30',
+      color: 'from-rose-500/5 to-red-500/5 dark:from-rose-500/10 dark:to-red-500/20 text-rose-600 dark:text-rose-400 border-rose-500/20 dark:border-rose-500/30',
       badge: summary.overdue > 0,
+    },
+  ];
+
+  const financialCards = [
+    {
+      title: 'Active Pipeline Budget',
+      value: summary.totalBudget || 0,
+      description: 'Total billing budget of active projects',
+      icon: Wallet,
+      color: 'from-indigo-500/5 to-indigo-500/5 dark:from-indigo-500/10 dark:to-indigo-500/20 text-indigo-650 dark:text-indigo-400 border-indigo-500/20 dark:border-indigo-500/30',
+      isCurrency: true,
+    },
+    {
+      title: 'Payments Collected',
+      value: summary.totalRevenueReceived || 0,
+      description: 'Milestone payments paid to date',
+      icon: CheckCircle2,
+      color: 'from-emerald-500/5 to-emerald-500/5 dark:from-emerald-500/10 dark:to-emerald-500/20 text-emerald-650 dark:text-emerald-450 border-emerald-500/20 dark:border-emerald-500/30',
+      isCurrency: true,
+    },
+    {
+      title: 'Outstanding Milestones',
+      value: summary.totalRevenuePending || 0,
+      description: 'Billing awaiting completion approval',
+      icon: CreditCard,
+      color: 'from-amber-500/5 to-amber-500/5 dark:from-amber-500/10 dark:to-amber-500/20 text-amber-650 dark:text-amber-450 border-amber-500/20 dark:border-amber-500/30',
+      isCurrency: true,
     },
   ];
 
@@ -126,7 +158,6 @@ export default function AdminDashboardPage() {
     on_hold: '#ef4444',
   };
 
-  // Dynamic colors for charting
   const isDark = resolvedTheme === 'dark';
   const axisColor = isDark ? '#94a3b8' : '#475569';
   const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
@@ -137,62 +168,114 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header Title Section */}
-      <div className="flex justify-between items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-foreground to-foreground/75 bg-clip-text text-transparent">
-            Admin Dashboard
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Opygen project status and co-founder metrics dashboard.
-          </p>
+      {/* Greetings Banner Header */}
+      <div className="relative overflow-hidden rounded-2xl border border-indigo-500/10 bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent p-6 sm:p-8">
+        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute -right-20 -bottom-20 h-40 w-40 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 select-none">
+              <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+              Co-Founder Workspace
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground mt-3">
+              Admin & Analytics Dashboard
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1 max-w-xl">
+              Track Opygen's ongoing software developments, team task allocation workload, and financial payment collections in real-time.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isRefetching}
+              className="h-10 px-4 text-xs font-bold text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-2 bg-card border-border shadow-xs hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin text-indigo-500' : ''}`} />
+              {isRefetching ? 'Refreshing...' : 'Refresh Stats'}
+            </Button>
+          </div>
         </div>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => refetch()}
-          disabled={isRefetching}
-          className="h-10 w-10 text-muted-foreground hover:text-foreground cursor-pointer hover:scale-[1.05] active:scale-[0.95] transition-all bg-card/60 border-border"
-          title="Refresh statistics"
-        >
-          <RefreshCw className={`h-4.5 w-4.5 ${isRefetching ? 'animate-spin text-indigo-550' : ''}`} />
-        </Button>
       </div>
 
-      {/* Summary Cards */}
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-      >
-        {cards.map((card) => {
-          const CardIcon = card.icon;
-          return (
-            <motion.div key={card.title} variants={itemVariants}>
-              <Card className={`bg-gradient-to-br ${card.color} border bg-card text-card-foreground shadow-md backdrop-blur-xs relative overflow-hidden group`}>
-                <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 p-6">
-                  <CardTitle className="text-sm font-semibold tracking-wide text-muted-foreground">{card.title}</CardTitle>
-                  <CardIcon className="h-5 w-5 shrink-0" />
-                </CardHeader>
-                <CardContent className="p-6 pt-0">
-                  <div className="text-3xl font-bold tracking-tight">
-                    <AnimatedCounter value={card.value} />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{card.description}</p>
-                </CardContent>
-                {card.badge && (
-                  <span className="absolute top-3 right-3 flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-455 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-                  </span>
-                )}
-              </Card>
-            </motion.div>
-          );
-        })}
-      </motion.div>
+      {/* Financials & Billing Section */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 px-1">
+          <Activity className="h-4.5 w-4.5 text-indigo-500" />
+          <h2 className="text-lg font-bold text-foreground">Financial & Billing Overview</h2>
+        </div>
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 gap-4 sm:grid-cols-3"
+        >
+          {financialCards.map((card) => {
+            const CardIcon = card.icon;
+            return (
+              <motion.div key={card.title} variants={itemVariants}>
+                <Card className={`bg-gradient-to-br ${card.color} border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group rounded-xl`}>
+                  <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 p-5">
+                    <CardTitle className="text-xs font-bold tracking-wider text-muted-foreground/80 uppercase">{card.title}</CardTitle>
+                    <CardIcon className="h-4.5 w-4.5 shrink-0 text-muted-foreground/70 group-hover:text-indigo-550 transition-colors" />
+                  </CardHeader>
+                  <CardContent className="p-5 pt-0">
+                    <div className="text-2xl font-extrabold tracking-tight text-foreground">
+                      ${card.isCurrency && <AnimatedCounter value={card.value} />}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground/90 mt-1 uppercase font-semibold tracking-wide leading-relaxed">{card.description}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      </div>
+
+      {/* Project Status Section */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 px-1">
+          <FolderKanban className="h-4.5 w-4.5 text-indigo-500" />
+          <h2 className="text-lg font-bold text-foreground">Project Delivery Statistics</h2>
+        </div>
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          {projectCards.map((card) => {
+            const CardIcon = card.icon;
+            return (
+              <motion.div key={card.title} variants={itemVariants}>
+                <Card className={`bg-gradient-to-br ${card.color} border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group rounded-xl`}>
+                  <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                  <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 p-5">
+                    <CardTitle className="text-xs font-bold tracking-wider text-muted-foreground/80 uppercase">{card.title}</CardTitle>
+                    <CardIcon className="h-4.5 w-4.5 shrink-0 text-muted-foreground/70 group-hover:text-indigo-550 transition-colors" />
+                  </CardHeader>
+                  <CardContent className="p-5 pt-0">
+                    <div className="text-2xl font-extrabold tracking-tight text-foreground">
+                      <AnimatedCounter value={card.value} />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground/90 mt-1 uppercase font-semibold tracking-wide leading-relaxed">{card.description}</p>
+                  </CardContent>
+                  {card.badge && (
+                    <span className="absolute top-3 right-3 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                    </span>
+                  )}
+                </Card>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      </div>
 
       {/* Charts Section */}
       {mounted && (
@@ -203,12 +286,12 @@ export default function AdminDashboardPage() {
           className="grid grid-cols-1 lg:grid-cols-2 gap-6"
         >
           {/* Status Breakdown Donut Chart */}
-          <Card className="border-border bg-card shadow-md text-card-foreground">
-            <CardHeader className="border-b border-border pb-4">
-              <CardTitle className="text-base font-bold">Projects by Status</CardTitle>
-              <CardDescription className="text-muted-foreground">Breakdown of current task distributions</CardDescription>
+          <Card className="border-border bg-card shadow-sm text-card-foreground rounded-xl">
+            <CardHeader className="border-b border-border pb-4 p-5">
+              <CardTitle className="text-sm font-bold">Projects by Status</CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">Breakdown of current task distributions</CardDescription>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-5">
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -235,7 +318,7 @@ export default function AdminDashboardPage() {
                       iconType="circle"
                       formatter={(value, entry: any) => {
                         const count = entry?.payload?.value || 0;
-                        return <span className="text-xs text-muted-foreground font-semibold px-1">{value} ({count})</span>;
+                        return <span className="text-[11px] text-muted-foreground font-semibold px-1">{value} ({count})</span>;
                       }}
                     />
                   </PieChart>
@@ -245,12 +328,12 @@ export default function AdminDashboardPage() {
           </Card>
 
           {/* Workload per Founder Bar Chart */}
-          <Card className="border-border bg-card shadow-md text-card-foreground">
-            <CardHeader className="border-b border-border pb-4">
-              <CardTitle className="text-base font-bold">Founder Workloads</CardTitle>
-              <CardDescription className="text-muted-foreground">Number of active projects assigned to each co-founder</CardDescription>
+          <Card className="border-border bg-card shadow-sm text-card-foreground rounded-xl">
+            <CardHeader className="border-b border-border pb-4 p-5">
+              <CardTitle className="text-sm font-bold">Founder Workloads</CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">Number of active projects assigned to each co-founder</CardDescription>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-5">
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={workload} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -273,15 +356,15 @@ export default function AdminDashboardPage() {
           </Card>
 
           {/* Completion Trend Area Chart */}
-          <Card className="border-border bg-card shadow-md text-card-foreground lg:col-span-2">
-            <CardHeader className="border-b border-border pb-4">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-emerald-500" />
+          <Card className="border-border bg-card shadow-sm text-card-foreground lg:col-span-2 rounded-xl">
+            <CardHeader className="border-b border-border pb-4 p-5">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
+                <TrendingUp className="h-4.5 w-4.5 text-emerald-500" />
                 Completion Trend
               </CardTitle>
-              <CardDescription className="text-muted-foreground">Total projects marked completed day-by-day (last 30 days)</CardDescription>
+              <CardDescription className="text-xs text-muted-foreground">Total projects marked completed day-by-day (last 30 days)</CardDescription>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-5">
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={completionTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>

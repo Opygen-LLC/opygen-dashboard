@@ -15,12 +15,12 @@ import {
     Shield,
     Eye,
     EyeOff,
-    Loader2,
     Sparkles,
     AlertTriangle,
     Activity,
     Phone,
 } from "lucide-react";
+import { Loading } from "@/components/ui/Loading";
 import { useForm, Controller } from "react-hook-form";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -87,7 +87,7 @@ export default function UsersManagementPage() {
             role: UserRole.MEMBER,
             password: "",
             mobileNumber: "",
-            status: UserStatus.ACTIVE,
+            status: UserStatus.PENDING,
         },
     });
 
@@ -266,7 +266,7 @@ export default function UsersManagementPage() {
                 <CardContent className="p-0">
                     {isLoading ? (
                         <div className="flex h-48 items-center justify-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                            <Loading />
                         </div>
                     ) : users.length === 0 ? (
                         <div className="text-center py-12 text-sm text-muted-foreground italic">
@@ -573,11 +573,11 @@ export default function UsersManagementPage() {
                                 <Label htmlFor="status">User Status</Label>
                                 <div className="relative">
                                     <Activity className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
-                                    <Select value={UserStatus.ACTIVE} disabled>
+                                    <Select value={UserStatus.PENDING} disabled>
                                         <SelectTrigger className="pl-10 bg-background/50 border-border text-foreground/75 h-10 cursor-not-allowed opacity-80">
                                             <div className="flex items-center gap-2">
-                                                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                                                <span>Active</span>
+                                                <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                                                <span>Pending</span>
                                             </div>
                                         </SelectTrigger>
                                         <SelectContent className="bg-card border-border text-foreground">
@@ -659,10 +659,7 @@ export default function UsersManagementPage() {
                                 className="bg-indigo-600 hover:bg-indigo-700 text-white h-10 cursor-pointer"
                             >
                                 {createUserMutation.isPending ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Saving...
-                                    </>
+                                    <Loading variant="mini" text="Saving..." />
                                 ) : (
                                     "Create User"
                                 )}
@@ -829,7 +826,7 @@ export default function UsersManagementPage() {
                                     className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-medium shadow-md shadow-destructive/10 h-10 cursor-pointer hover:scale-[1.03] active:scale-[0.97]"
                                 >
                                     {deleteUserMutation.isPending ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        <Loading variant="mini" />
                                     ) : (
                                         "Delete User"
                                     )}

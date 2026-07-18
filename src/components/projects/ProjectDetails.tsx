@@ -5,15 +5,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { X, Calendar, AlertTriangle, MessageSquare, Send, Trash2, Edit2, Loader2, ArrowRight, DollarSign, Smartphone, Globe, Plus, Check, CreditCard, FileImage } from 'lucide-react';
+import { X, Calendar, AlertTriangle, MessageSquare, Send, Trash2, Edit2, ArrowRight, DollarSign, Smartphone, Globe, Plus, Check, CreditCard, FileImage, CheckCircle2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ProjectForm from './ProjectForm';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Loading } from '@/components/ui/Loading';
 import Image from 'next/image';
+import { useAppDispatch } from '@/store';
+import { fetchProjectsThunk } from '@/store/projectsSlice';
 
 interface ProjectDetailsProps {
   projectId: string;
@@ -22,6 +25,7 @@ interface ProjectDetailsProps {
 
 export default function ProjectDetails({ projectId, onClose }: ProjectDetailsProps) {
   const queryClient = useQueryClient();
+  const dispatch = useAppDispatch();
   const [isEditing, setIsEditing] = useState(false);
   const [commentText, setCommentText] = useState('');
 
@@ -31,6 +35,7 @@ export default function ProjectDetails({ projectId, onClose }: ProjectDetailsPro
   const [payLabel, setPayLabel] = useState('');
   const [payAmount, setPayAmount] = useState('');
   const [payStatus, setPayStatus] = useState<'pending' | 'paid'>('pending');
+  const [deletePaymentIndex, setDeletePaymentIndex] = useState<number | null>(null);
 
   // Receipt upload states
   const [receiptFile, setReceiptFile] = useState<string | null>(null);
@@ -75,6 +80,7 @@ export default function ProjectDetails({ projectId, onClose }: ProjectDetailsPro
       queryClient.invalidateQueries({ queryKey: ['activities', projectId] });
       toast.success('Project updated successfully');
       setIsEditing(false);
+      dispatch(fetchProjectsThunk());
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to update project');
@@ -94,6 +100,7 @@ export default function ProjectDetails({ projectId, onClose }: ProjectDetailsPro
       queryClient.invalidateQueries({ queryKey: ['stats'] });
       toast.success('Project deleted successfully');
       onClose();
+      dispatch(fetchProjectsThunk());
     },
     onError: () => {
       toast.error('Failed to delete project');
@@ -123,7 +130,7 @@ export default function ProjectDetails({ projectId, onClose }: ProjectDetailsPro
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center p-8 bg-card border-l border-border">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+        <Loading />
       </div>
     );
   }
@@ -410,27 +417,85 @@ export default function ProjectDetails({ projectId, onClose }: ProjectDetailsPro
                 </Button>
               </div>
 
-              {/* Progress Bar */}
+              {/* Interactive Stats Grid */}
               {(() => {
                 const list = project.payments || [];
                 const totalPaid = list.reduce((sum: number, p: any) => p.status === 'paid' ? sum + Number(p.amount) : sum, 0);
                 const totalContract = list.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
                 const percent = totalContract > 0 ? Math.min(100, Math.round((totalPaid / totalContract) * 100)) : 0;
+                const pendingAmount = totalContract - totalPaid;
+                const unallocatedBudget = Math.max(0, (project.budget || 0) - totalContract);
 
                 return (
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Received: <strong className="text-emerald-650 dark:text-emerald-450">${totalPaid.toLocaleString()}</strong></span>
-                      <span>Total Milestones: <strong>${totalContract.toLocaleString()}</strong></span>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {/* Received Card */}
+                      <div className="p-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-500/10 flex flex-col justify-between transition-all hover:scale-[1.02]">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                          <span>Received</span>
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="mt-2 text-base font-extrabold text-emerald-700 dark:text-emerald-400">
+                          ${totalPaid.toLocaleString()}
+                        </div>
+                        <div className="text-[9px] text-emerald-600/80 dark:text-emerald-400/80 mt-0.5">
+                          {percent}% of milestones
+                        </div>
+                      </div>
+
+                      {/* Pending Card */}
+                      <div className="p-3 rounded-lg border border-amber-500/20 bg-amber-500/5 dark:bg-amber-500/10 flex flex-col justify-between transition-all hover:scale-[1.02]">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-amber-600 dark:text-amber-450 uppercase tracking-wider">
+                          <span>Pending</span>
+                          <Clock className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="mt-2 text-base font-extrabold text-amber-700 dark:text-amber-450">
+                          ${pendingAmount.toLocaleString()}
+                        </div>
+                        <div className="text-[9px] text-amber-600/80 dark:text-amber-450/80 mt-0.5">
+                          {list.filter((p: any) => p.status === 'pending').length} milestone(s)
+                        </div>
+                      </div>
+
+                      {/* Milestone Total Card */}
+                      <div className="p-3 rounded-lg border border-indigo-500/20 bg-indigo-500/5 dark:bg-indigo-500/10 flex flex-col justify-between transition-all hover:scale-[1.02]">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-indigo-600 dark:text-indigo-405 uppercase tracking-wider">
+                          <span>Milestones Total</span>
+                          <CreditCard className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="mt-2 text-base font-extrabold text-indigo-700 dark:text-indigo-405">
+                          ${totalContract.toLocaleString()}
+                        </div>
+                        <div className="text-[9px] text-indigo-600/80 dark:text-indigo-400/80 mt-0.5">
+                          {list.length} total milestone(s)
+                        </div>
+                      </div>
+
+                      {/* Unallocated Budget Card */}
+                      <div className="p-3 rounded-lg border border-border bg-accent/5 dark:bg-accent/10 flex flex-col justify-between transition-all hover:scale-[1.02]">
+                        <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          <span>Unallocated</span>
+                          <DollarSign className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="mt-2 text-base font-extrabold text-foreground">
+                          ${unallocatedBudget.toLocaleString()}
+                        </div>
+                        <div className="text-[9px] text-muted-foreground/80 mt-0.5">
+                          Budget: ${(project.budget || 0).toLocaleString()}
+                        </div>
+                      </div>
                     </div>
-                    <div className="w-full bg-accent dark:bg-accent/40 rounded-full h-2 overflow-hidden border border-border/40">
-                      <div
-                        className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
-                    <div className="text-right text-[10px] text-muted-foreground/80 font-bold">
-                      {percent}% Paid
+
+                    <div className="space-y-1">
+                      <div className="w-full bg-accent dark:bg-accent/40 rounded-full h-1.5 overflow-hidden border border-border/40">
+                        <div
+                          className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                      <div className="text-right text-[9px] text-muted-foreground/80 font-bold uppercase tracking-wider">
+                        {percent}% Paid
+                      </div>
                     </div>
                   </div>
                 );
@@ -467,56 +532,64 @@ export default function ProjectDetails({ projectId, onClose }: ProjectDetailsPro
                     setReceiptFile(null);
                     setShowAddPayment(false);
                   }}
-                  className="bg-background dark:bg-accent/10 border border-border/80 rounded-lg p-3 space-y-3"
+                  className="bg-accent/10 border border-border/80 rounded-xl p-4 space-y-3.5 shadow-xs"
                 >
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Milestone Type</label>
+                  <div className="flex items-center gap-1.5 border-b border-border/60 pb-2 mb-1">
+                    <CreditCard className="h-3.5 w-3.5 text-indigo-500" />
+                    <h4 className="text-[10px] font-bold text-foreground uppercase tracking-wider">New Milestone Specifications</h4>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Milestone Type</label>
                       <select
                         value={payType}
                         onChange={(e) => setPayType(e.target.value as any)}
-                        className="w-full h-8 px-2 rounded border border-border bg-background text-xs text-foreground focus:outline-none"
+                        className="w-full h-9 px-3 rounded-lg border border-border bg-background hover:bg-background/80 focus:bg-background focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs text-foreground transition-all focus:outline-none cursor-pointer"
                       >
                         <option value="advance">Advance</option>
                         <option value="frontend">Frontend</option>
                         <option value="backend">Backend</option>
                         <option value="ui">UI/UX Design</option>
                         <option value="custom">Custom</option>
+                        <option value="other">Other</option>
                       </select>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Amount ($)</label>
-                      <input
-                        type="number"
-                        step="any"
-                        placeholder="0.00"
-                        value={payAmount}
-                        onChange={(e) => setPayAmount(e.target.value)}
-                        className="w-full h-8 px-2 rounded border border-border bg-background text-xs text-foreground focus:outline-none"
-                        required
-                      />
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Amount ($)</label>
+                      <div className="relative">
+                        <DollarSign className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/75" />
+                        <input
+                          type="number"
+                          step="any"
+                          placeholder="0.00"
+                          value={payAmount}
+                          onChange={(e) => setPayAmount(e.target.value)}
+                          className="w-full h-9 pl-8 pr-3 rounded-lg border border-border bg-background hover:bg-background/80 focus:bg-background focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs text-foreground transition-all focus:outline-none"
+                          required
+                        />
+                      </div>
                     </div>
                   </div>
 
                   {payType === 'custom' && (
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-muted-foreground uppercase">Custom Label</label>
+                    <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Custom Label</label>
                       <input
                         type="text"
-                        placeholder="e.g. Deployment bonus"
+                        placeholder="e.g. Design Phase"
                         value={payLabel}
                         onChange={(e) => setPayLabel(e.target.value)}
-                        className="w-full h-8 px-2 rounded border border-border bg-background text-xs text-foreground focus:outline-none"
+                        className="w-full h-9 px-3 rounded-lg border border-border bg-background hover:bg-background/80 focus:bg-background focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs text-foreground transition-all focus:outline-none"
                         required
                       />
                     </div>
                   )}
 
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1.5">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1.5 tracking-wider">
                       Receipt Image (Optional)
-                      {uploadingReceipt && <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />}
+                      {uploadingReceipt && <Loading variant="mini" />}
                     </label>
                     <input
                       type="file"
@@ -547,7 +620,7 @@ export default function ProjectDetails({ projectId, onClose }: ProjectDetailsPro
                         };
                         reader.readAsDataURL(file);
                       }}
-                      className="w-full text-xs text-muted-foreground file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-indigo-500/15 file:text-indigo-600 dark:file:text-indigo-400 file:cursor-pointer bg-background dark:bg-card border border-border h-8 flex items-center px-1"
+                      className="w-full text-xs text-muted-foreground file:mr-2.5 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-bold file:bg-indigo-550/10 file:hover:bg-indigo-550/20 file:text-indigo-600 dark:file:text-indigo-400 file:cursor-pointer bg-background dark:bg-card border border-border rounded-lg h-9.5 flex items-center px-1.5 transition-all hover:border-indigo-500/30"
                     />
                     {receiptFile && (
                       <div className="flex items-center gap-2 mt-1.5 p-1 rounded bg-accent/40 border border-border/50 w-fit">
@@ -565,20 +638,20 @@ export default function ProjectDetails({ projectId, onClose }: ProjectDetailsPro
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="flex items-center gap-1.5">
+                  <div className="flex items-center justify-between pt-2 border-t border-border/60 mt-3">
+                    <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         id="payStatusCheck"
                         checked={payStatus === 'paid'}
                         onChange={(e) => setPayStatus(e.target.checked ? 'paid' : 'pending')}
-                        className="rounded border-border text-indigo-600 h-3.5 w-3.5"
+                        className="rounded border-border text-indigo-600 focus:ring-indigo-550/30 focus:ring-1 h-4 w-4 bg-background cursor-pointer"
                       />
-                      <label htmlFor="payStatusCheck" className="text-xs text-muted-foreground select-none cursor-pointer">
+                      <label htmlFor="payStatusCheck" className="text-xs text-muted-foreground select-none cursor-pointer font-medium hover:text-foreground transition-colors">
                         Mark as Paid immediately
                       </label>
                     </div>
-                    <Button type="submit" disabled={uploadingReceipt} size="sm" className="h-7 text-xs bg-indigo-600 hover:bg-indigo-600 text-white px-3 cursor-pointer">
+                    <Button type="submit" disabled={uploadingReceipt} size="sm" className="h-8 text-xs bg-indigo-650 hover:bg-indigo-750 text-white px-4 cursor-pointer shadow-sm shadow-indigo-600/10 transition-all hover:scale-[1.02] active:scale-[0.98] rounded-md font-medium">
                       Save Milestone
                     </Button>
                   </div>
@@ -644,12 +717,7 @@ export default function ProjectDetails({ projectId, onClose }: ProjectDetailsPro
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => {
-                            if (confirm('Delete this payment milestone?')) {
-                              const updated = (project.payments || []).filter((_: any, idx: number) => idx !== index);
-                              updateMutation.mutate({ payments: updated });
-                            }
-                          }}
+                          onClick={() => setDeletePaymentIndex(index)}
                           className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -695,9 +763,9 @@ export default function ProjectDetails({ projectId, onClose }: ProjectDetailsPro
 
               {/* Log List */}
               {isLoadingActivities ? (
-                <div className="flex justify-center p-4">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
+                 <div className="flex justify-center p-4">
+                   <Loading size="sm" />
+                 </div>
               ) : (
                 <div className="space-y-4">
                   <AnimatePresence initial={false}>
@@ -769,6 +837,42 @@ export default function ProjectDetails({ projectId, onClose }: ProjectDetailsPro
           {previewReceiptUrl && (
             <Image src={previewReceiptUrl} className="max-h-[75vh] w-auto max-w-full object-contain rounded-lg border border-border shadow-md" alt="Receipt Full View" width={800} height={600} />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Payment Milestone Confirmation Dialog */}
+      <Dialog open={deletePaymentIndex !== null} onOpenChange={(open) => !open && setDeletePaymentIndex(null)}>
+        <DialogContent className="bg-card border-border text-foreground max-w-sm p-5 flex flex-col gap-4">
+          <DialogHeader className="border-none p-0 flex flex-col gap-1">
+            <DialogTitle className="text-lg font-bold flex items-center gap-1.5 text-foreground">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              Delete Milestone
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground leading-relaxed mt-1">
+              Are you sure you want to delete this payment milestone? This action is permanent and cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-2">
+            <Button
+              variant="outline"
+              onClick={() => setDeletePaymentIndex(null)}
+              className="h-9 cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (deletePaymentIndex !== null) {
+                  const updated = (project.payments || []).filter((_: any, idx: number) => idx !== deletePaymentIndex);
+                  updateMutation.mutate({ payments: updated });
+                  setDeletePaymentIndex(null);
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white h-9 cursor-pointer"
+            >
+              Delete
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

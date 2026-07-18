@@ -33,5 +33,5 @@ export default function AnimatedCounter({ value, duration = 800 }: { value: numb
     return () => clearInterval(timer);
   }, [value, duration]);
 
-  return <span>{count}</span>;
+  return <span>{count.toLocaleString()}</span>;
 }

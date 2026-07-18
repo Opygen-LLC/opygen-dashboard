@@ -11,7 +11,6 @@ export async function POST(req: NextRequest) {
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
-    const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET;
 
     if (!cloudName) {
       console.warn("Cloudinary configuration missing. Falling back to local data URI.");
@@ -25,7 +24,7 @@ export async function POST(req: NextRequest) {
     if (apiSecret && apiKey) {
       // Signed Upload
       const timestamp = Math.round(new Date().getTime() / 1000).toString();
-      const folder = 'opydash_avatars';
+      const folder = 'opydash';
       
       const signString = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
       // Cloudinary expects sha1 or sha256. SHA-1 is standard for standard upload endpoints.
@@ -43,20 +42,9 @@ export async function POST(req: NextRequest) {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formData,
       });
-    } else if (uploadPreset) {
-      // Unsigned Upload
-      const formData = new URLSearchParams();
-      formData.append('file', image);
-      formData.append('upload_preset', uploadPreset);
-
-      response = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData,
-      });
     } else {
       return NextResponse.json({ 
-        error: 'Cloudinary credentials missing. Please set CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET or CLOUDINARY_API_KEY + CLOUDINARY_API_SECRET in your .env file.' 
+        error: 'Cloudinary credentials missing. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in your .env file.' 
       }, { status: 400 });
     }
 

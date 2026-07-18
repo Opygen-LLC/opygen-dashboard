@@ -5,7 +5,16 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
-import { Briefcase, Calendar, Loader2, UserCheck, Users } from "lucide-react";
+import {
+    Briefcase,
+    Calendar,
+    DollarSign,
+    Search,
+    UserCheck,
+    Users,
+    X,
+} from "lucide-react";
+import { Loading } from "@/components/ui/Loading";
 import { z } from "zod";
 import { projectSchema, ProjectInput } from "@/lib/validations";
 import { ProjectPriority, ProjectStatus } from "@/types";
@@ -52,7 +61,7 @@ interface ProjectFormProps {
 const fieldClass =
     "bg-background text-foreground shadow-xs focus-visible:border-indigo-600 focus-visible:ring-indigo-600/20 dark:bg-input/30 focus-visible:outline-none";
 const sectionClass =
-    "rounded-lg border border-border bg-card p-4 text-card-foreground shadow-xs";
+    "rounded-xl border border-border bg-card p-4 text-card-foreground shadow-xs transition-shadow duration-200 hover:shadow-sm sm:p-5";
 const sectionTitleClass =
     "flex items-center gap-2 border-b border-border pb-3 text-xs font-bold uppercase tracking-wide text-indigo-600";
 
@@ -99,18 +108,23 @@ export default function ProjectForm({
     });
 
     const assigneeStats = React.useMemo(() => {
-        const statsMap: Record<string, { todo: number; inProgress: number }> = {};
-        
+        const statsMap: Record<string, { todo: number; inProgress: number }> =
+            {};
+
         users.forEach((u) => {
             statsMap[u._id] = { todo: 0, inProgress: 0 };
         });
 
         allProjects.forEach((proj: any) => {
             const status = proj.status;
-            if (status === ProjectStatus.TODO || status === ProjectStatus.IN_PROGRESS) {
+            if (
+                status === ProjectStatus.TODO ||
+                status === ProjectStatus.IN_PROGRESS
+            ) {
                 const assigneesList = proj.assignees || [];
                 assigneesList.forEach((ass: any) => {
-                    const userId = typeof ass === "object" && ass !== null ? ass._id : ass;
+                    const userId =
+                        typeof ass === "object" && ass !== null ? ass._id : ass;
                     if (userId && statsMap[userId]) {
                         if (status === ProjectStatus.TODO) {
                             statsMap[userId].todo += 1;
@@ -164,8 +178,17 @@ export default function ProjectForm({
     const selectedAssignees = useWatch({ control, name: "assignees" }) ?? [];
     const selectedStatus =
         useWatch({ control, name: "status" }) ?? ProjectStatus.TODO;
-    const isPipelineProject = [ProjectStatus.POTENTIAL, ProjectStatus.FUTURE]
-        .includes(selectedStatus as ProjectStatus);
+    const isPipelineProject = [
+        ProjectStatus.POTENTIAL,
+        ProjectStatus.FUTURE,
+    ].includes(selectedStatus as ProjectStatus);
+
+    const [assigneeQuery, setAssigneeQuery] = React.useState("");
+    const filteredUsers = React.useMemo(() => {
+        const q = assigneeQuery.trim().toLowerCase();
+        if (!q) return users;
+        return users.filter((u) => u.name.toLowerCase().includes(q));
+    }, [users, assigneeQuery]);
 
     const handleAssigneeToggle = (userId: string) => {
         const nextAssignees = selectedAssignees.includes(userId)
@@ -182,395 +205,596 @@ export default function ProjectForm({
         onSubmit({
             ...data,
             budget: isPipelineProject ? 0 : Number(data.budget ?? 0),
-            budgetMin: isPipelineProject ? data.budgetMin ?? null : null,
-            budgetMax: isPipelineProject ? data.budgetMax ?? null : null,
+            budgetMin: isPipelineProject ? (data.budgetMin ?? null) : null,
+            budgetMax: isPipelineProject ? (data.budgetMax ?? null) : null,
         });
     };
 
     return (
-        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-5">
-            <div
-                className={
-                    isDrawer
-                        ? "space-y-5"
-                        : "grid grid-cols-1 gap-5"
-                }
-            >
-                <section className={cn(sectionClass, "space-y-4")}>
-                    <h3 className={sectionTitleClass}>
-                        <Briefcase className="size-4" />
-                        Project Details
-                    </h3>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="title" className="font-semibold">
-                            Project Title
-                        </Label>
-                        <Input
-                            id="title"
-                            placeholder="e.g. Implement OpyDash Auth"
-                            aria-invalid={!!errors.title}
-                            {...register("title")}
-                            className={fieldClass}
-                        />
-                        {getMessage(errors.title) && (
-                            <p className="text-xs text-destructive">
-                                {getMessage(errors.title)}
-                            </p>
-                        )}
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="description" className="font-semibold">
-                            Description
-                        </Label>
-                        <Textarea
-                            id="description"
-                            placeholder="Describe the goals and scope of this project..."
-                            rows={4}
-                            aria-invalid={!!errors.description}
-                            {...register("description")}
-                            className={cn(fieldClass, "resize-none leading-relaxed")}
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <Controller
-                            name="status"
-                            control={control}
-                            render={({ field }) => (
-                                <div className="space-y-2">
-                                    <Label className="font-semibold">Status</Label>
-                                    <Select
-                                        value={field.value}
-                                        onValueChange={field.onChange}
-                                    >
-                                        <SelectTrigger
-                                            aria-invalid={!!errors.status}
-                                            className={cn(fieldClass, "h-10 w-full")}
-                                        >
-                                            <SelectValue placeholder="Select status" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value={ProjectStatus.POTENTIAL}>
-                                                Potential
-                                            </SelectItem>
-                                            <SelectItem value={ProjectStatus.FUTURE}>
-                                                Future
-                                            </SelectItem>
-                                            <SelectItem value={ProjectStatus.TODO}>
-                                                To Do
-                                            </SelectItem>
-                                            <SelectItem value={ProjectStatus.IN_PROGRESS}>
-                                                In Progress
-                                            </SelectItem>
-                                            <SelectItem value={ProjectStatus.IN_REVIEW}>
-                                                In Review
-                                            </SelectItem>
-                                            <SelectItem value={ProjectStatus.COMPLETED}>
-                                                Completed
-                                            </SelectItem>
-                                            <SelectItem value={ProjectStatus.ON_HOLD}>
-                                                On Hold
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
-                        />
-
-                        <Controller
-                            name="priority"
-                            control={control}
-                            render={({ field }) => (
-                                <div className="space-y-2">
-                                    <Label className="font-semibold">Priority</Label>
-                                    <Select
-                                        value={field.value}
-                                        onValueChange={field.onChange}
-                                    >
-                                        <SelectTrigger
-                                            aria-invalid={!!errors.priority}
-                                            className={cn(fieldClass, "h-10 w-full")}
-                                        >
-                                            <SelectValue placeholder="Select priority" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value={ProjectPriority.LOW}>
-                                                Low
-                                            </SelectItem>
-                                            <SelectItem value={ProjectPriority.MEDIUM}>
-                                                Medium
-                                            </SelectItem>
-                                            <SelectItem value={ProjectPriority.HIGH}>
-                                                High
-                                            </SelectItem>
-                                            <SelectItem value={ProjectPriority.URGENT}>
-                                                Urgent
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
-                        />
-                    </div>
-                </section>
-
-                <div className="space-y-5">
-                    <section className={cn(sectionClass, "space-y-4")}>
-                        <h3 className={sectionTitleClass}>
-                            <Calendar className="size-4" />
-                            Schedule & Budget
-                        </h3>
-
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <div className="space-y-2">
-                                <Label htmlFor="startDate" className="font-semibold">
-                                    Start Date
-                                </Label>
-                                <Input
-                                    id="startDate"
-                                    type="date"
-                                    aria-invalid={!!errors.startDate}
-                                    {...register("startDate")}
-                                    className={fieldClass}
-                                />
-                            </div>
+        <form
+            onSubmit={handleSubmit(onFormSubmit)}
+            className="flex h-[100dvh] max-h-[100dvh] min-h-0 w-full flex-col sm:h-auto sm:max-h-[85vh] lg:max-h-[80vh]"
+        >
+            {/* Scrollable body */}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4 sm:px-6 sm:pt-6">
+                <div
+                    className={cn(
+                        "grid grid-cols-1 gap-5",
+                        !isDrawer && "md:grid-cols-2 lg:gap-6 xl:gap-8",
+                    )}
+                >
+                    {/* Left Column */}
+                    <div className="space-y-5">
+                        <section className={cn(sectionClass, "space-y-4")}>
+                            <h3 className={sectionTitleClass}>
+                                <Briefcase className="size-4" />
+                                Project Details
+                            </h3>
 
                             <div className="space-y-2">
-                                <Label htmlFor="dueDate" className="font-semibold">
-                                    Due Date
+                                <Label
+                                    htmlFor="title"
+                                    className="font-semibold"
+                                >
+                                    Project Title
                                 </Label>
                                 <Input
-                                    id="dueDate"
-                                    type="date"
-                                    aria-invalid={!!errors.dueDate}
-                                    {...register("dueDate")}
-                                    className={fieldClass}
+                                    id="title"
+                                    placeholder="e.g. Implement OpyDash Auth"
+                                    aria-invalid={!!errors.title}
+                                    {...register("title")}
+                                    className={cn(fieldClass, "h-10 sm:h-11")}
                                 />
-                            </div>
-                        </div>
-
-                        {isPipelineProject ? (
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="budgetMin" className="font-semibold">
-                                        Min Budget ($)
-                                    </Label>
-                                    <Input
-                                        id="budgetMin"
-                                        type="number"
-                                        min="0"
-                                        step="any"
-                                        placeholder="1000"
-                                        aria-invalid={!!errors.budgetMin}
-                                        {...register("budgetMin")}
-                                        className={fieldClass}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="budgetMax" className="font-semibold">
-                                        Max Budget ($)
-                                    </Label>
-                                    <Input
-                                        id="budgetMax"
-                                        type="number"
-                                        min="0"
-                                        step="any"
-                                        placeholder="5000"
-                                        aria-invalid={!!errors.budgetMax}
-                                        {...register("budgetMax")}
-                                        className={fieldClass}
-                                    />
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                <Label htmlFor="budget" className="font-semibold">
-                                    Budget ($)
-                                </Label>
-                                <Input
-                                    id="budget"
-                                    type="number"
-                                    min="0"
-                                    step="any"
-                                    placeholder="0"
-                                    aria-invalid={!!errors.budget}
-                                    {...register("budget")}
-                                    className={fieldClass}
-                                />
-                                {getMessage(errors.budget) && (
+                                {getMessage(errors.title) && (
                                     <p className="text-xs text-destructive">
-                                        {getMessage(errors.budget)}
-                                    </p>
-                                )}
-                            </div>
-                        )}
-                    </section>
-
-                    <section className={cn(sectionClass, "space-y-4")}>
-                        <h3 className={sectionTitleClass}>
-                            <UserCheck className="size-4" />
-                            Client Details
-                        </h3>
-
-                        <div className="space-y-2">
-                            <Label htmlFor="clientName" className="font-semibold">
-                                Client Name
-                            </Label>
-                            <Input
-                                id="clientName"
-                                placeholder="e.g. Acme Corp"
-                                {...register("clientName")}
-                                className={fieldClass}
-                            />
-                            {getMessage(errors.clientName) && (
-                                <p className="text-xs text-destructive">
-                                    {getMessage(errors.clientName)}
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-3">
-                            <div className="space-y-2">
-                                <Label htmlFor="clientMobile" className="font-semibold">
-                                    Mobile
-                                </Label>
-                                <Controller
-                                    name="clientMobile"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <PhoneInput
-                                            value={field.value}
-                                            onChange={field.onChange}
-                                            id="clientMobile"
-                                        />
-                                    )}
-                                />
-                                {getMessage(errors.clientMobile) && (
-                                    <p className="text-xs text-destructive">
-                                        {getMessage(errors.clientMobile)}
+                                        {getMessage(errors.title)}
                                     </p>
                                 )}
                             </div>
 
                             <div className="space-y-2">
                                 <Label
-                                    htmlFor="clientSocialLink"
+                                    htmlFor="description"
                                     className="font-semibold"
                                 >
-                                    Social Link
+                                    Description
+                                </Label>
+                                <Textarea
+                                    id="description"
+                                    placeholder="Describe the goals and scope of this project..."
+                                    rows={4}
+                                    aria-invalid={!!errors.description}
+                                    {...register("description")}
+                                    className={cn(
+                                        fieldClass,
+                                        "resize-none leading-relaxed",
+                                    )}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <Controller
+                                    name="status"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <div className="space-y-2">
+                                            <Label className="font-semibold">
+                                                Status
+                                            </Label>
+                                            <Select
+                                                value={field.value}
+                                                onValueChange={field.onChange}
+                                            >
+                                                <SelectTrigger
+                                                    aria-invalid={
+                                                        !!errors.status
+                                                    }
+                                                    className={cn(
+                                                        fieldClass,
+                                                        "h-10 w-full sm:h-11",
+                                                    )}
+                                                >
+                                                    <SelectValue placeholder="Select status" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem
+                                                        value={
+                                                            ProjectStatus.POTENTIAL
+                                                        }
+                                                    >
+                                                        Potential
+                                                    </SelectItem>
+                                                    <SelectItem
+                                                        value={
+                                                            ProjectStatus.FUTURE
+                                                        }
+                                                    >
+                                                        Future
+                                                    </SelectItem>
+                                                    <SelectItem
+                                                        value={
+                                                            ProjectStatus.TODO
+                                                        }
+                                                    >
+                                                        To Do
+                                                    </SelectItem>
+                                                    <SelectItem
+                                                        value={
+                                                            ProjectStatus.IN_PROGRESS
+                                                        }
+                                                    >
+                                                        In Progress
+                                                    </SelectItem>
+                                                    <SelectItem
+                                                        value={
+                                                            ProjectStatus.IN_REVIEW
+                                                        }
+                                                    >
+                                                        In Review
+                                                    </SelectItem>
+                                                    <SelectItem
+                                                        value={
+                                                            ProjectStatus.COMPLETED
+                                                        }
+                                                    >
+                                                        Completed
+                                                    </SelectItem>
+                                                    <SelectItem
+                                                        value={
+                                                            ProjectStatus.ON_HOLD
+                                                        }
+                                                    >
+                                                        On Hold
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
+                                />
+
+                                <Controller
+                                    name="priority"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <div className="space-y-2">
+                                            <Label className="font-semibold">
+                                                Priority
+                                            </Label>
+                                            <Select
+                                                value={field.value}
+                                                onValueChange={field.onChange}
+                                            >
+                                                <SelectTrigger
+                                                    aria-invalid={
+                                                        !!errors.priority
+                                                    }
+                                                    className={cn(
+                                                        fieldClass,
+                                                        "h-10 w-full sm:h-11",
+                                                    )}
+                                                >
+                                                    <SelectValue placeholder="Select priority" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem
+                                                        value={
+                                                            ProjectPriority.LOW
+                                                        }
+                                                    >
+                                                        Low
+                                                    </SelectItem>
+                                                    <SelectItem
+                                                        value={
+                                                            ProjectPriority.MEDIUM
+                                                        }
+                                                    >
+                                                        Medium
+                                                    </SelectItem>
+                                                    <SelectItem
+                                                        value={
+                                                            ProjectPriority.HIGH
+                                                        }
+                                                    >
+                                                        High
+                                                    </SelectItem>
+                                                    <SelectItem
+                                                        value={
+                                                            ProjectPriority.URGENT
+                                                        }
+                                                    >
+                                                        Urgent
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
+                                />
+                            </div>
+                        </section>
+
+                        <section className={cn(sectionClass, "space-y-4")}>
+                            <h3 className={sectionTitleClass}>
+                                <Calendar className="size-4" />
+                                Schedule &amp; Budget
+                            </h3>
+
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div className="space-y-2">
+                                    <Label
+                                        htmlFor="startDate"
+                                        className="font-semibold"
+                                    >
+                                        Start Date
+                                    </Label>
+                                    <Input
+                                        id="startDate"
+                                        type="date"
+                                        aria-invalid={!!errors.startDate}
+                                        {...register("startDate")}
+                                        className={cn(
+                                            fieldClass,
+                                            "h-10 sm:h-11",
+                                        )}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label
+                                        htmlFor="dueDate"
+                                        className="font-semibold"
+                                    >
+                                        Due Date
+                                    </Label>
+                                    <Input
+                                        id="dueDate"
+                                        type="date"
+                                        aria-invalid={!!errors.dueDate}
+                                        {...register("dueDate")}
+                                        className={cn(
+                                            fieldClass,
+                                            "h-10 sm:h-11",
+                                        )}
+                                    />
+                                </div>
+                            </div>
+
+                            {isPipelineProject ? (
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label
+                                            htmlFor="budgetMin"
+                                            className="font-semibold"
+                                        >
+                                            Min Budget
+                                        </Label>
+                                        <div className="relative">
+                                            <DollarSign className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                                            <Input
+                                                id="budgetMin"
+                                                type="number"
+                                                min="0"
+                                                step="any"
+                                                placeholder="1,000"
+                                                aria-invalid={
+                                                    !!errors.budgetMin
+                                                }
+                                                {...register("budgetMin")}
+                                                className={cn(
+                                                    fieldClass,
+                                                    "h-10 pl-9 sm:h-11",
+                                                )}
+                                            />
+                                        </div>
+                                        {getMessage(errors.budgetMin) && (
+                                            <p className="text-xs text-destructive mt-1">
+                                                {getMessage(errors.budgetMin)}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label
+                                            htmlFor="budgetMax"
+                                            className="font-semibold"
+                                        >
+                                            Max Budget
+                                        </Label>
+                                        <div className="relative">
+                                            <DollarSign className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                                            <Input
+                                                id="budgetMax"
+                                                type="number"
+                                                min="0"
+                                                step="any"
+                                                placeholder="5,000"
+                                                aria-invalid={
+                                                    !!errors.budgetMax
+                                                }
+                                                {...register("budgetMax")}
+                                                className={cn(
+                                                    fieldClass,
+                                                    "h-10 pl-9 sm:h-11",
+                                                )}
+                                            />
+                                        </div>
+                                        {getMessage(errors.budgetMax) && (
+                                            <p className="text-xs text-destructive mt-1">
+                                                {getMessage(errors.budgetMax)}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <Label
+                                        htmlFor="budget"
+                                        className="font-semibold"
+                                    >
+                                        Budget
+                                    </Label>
+                                    <div className="relative">
+                                        <DollarSign className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                                        <Input
+                                            id="budget"
+                                            type="number"
+                                            min="0"
+                                            step="any"
+                                            placeholder="0"
+                                            aria-invalid={!!errors.budget}
+                                            {...register("budget")}
+                                            className={cn(
+                                                fieldClass,
+                                                "h-10 pl-9 sm:h-11",
+                                            )}
+                                        />
+                                    </div>
+                                    {getMessage(errors.budget) && (
+                                        <p className="text-xs text-destructive">
+                                            {getMessage(errors.budget)}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                        </section>
+                    </div>
+
+                    {/* Right Column */}
+                    <div className="space-y-5">
+                        <section className={cn(sectionClass, "space-y-4")}>
+                            <h3 className={sectionTitleClass}>
+                                <UserCheck className="size-4" />
+                                Client Details
+                            </h3>
+
+                            <div className="space-y-2">
+                                <Label
+                                    htmlFor="clientName"
+                                    className="font-semibold"
+                                >
+                                    Client Name
                                 </Label>
                                 <Input
-                                    id="clientSocialLink"
-                                    placeholder="e.g. linkedin.com/company/acme"
-                                    {...register("clientSocialLink")}
-                                    className={fieldClass}
+                                    id="clientName"
+                                    placeholder="e.g. Acme Corp"
+                                    {...register("clientName")}
+                                    className={cn(fieldClass, "h-10 sm:h-11")}
                                 />
-                                {getMessage(errors.clientSocialLink) && (
+                                {getMessage(errors.clientName) && (
                                     <p className="text-xs text-destructive">
-                                        {getMessage(errors.clientSocialLink)}
+                                        {getMessage(errors.clientName)}
                                     </p>
                                 )}
                             </div>
-                        </div>
-                    </section>
+
+                            <div className="grid grid-cols-1 gap-3">
+                                <div className="space-y-2">
+                                    <Label
+                                        htmlFor="clientMobile"
+                                        className="font-semibold"
+                                    >
+                                        Mobile
+                                    </Label>
+                                    <Controller
+                                        name="clientMobile"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <PhoneInput
+                                                value={field.value}
+                                                onChange={field.onChange}
+                                                id="clientMobile"
+                                            />
+                                        )}
+                                    />
+                                    {getMessage(errors.clientMobile) && (
+                                        <p className="text-xs text-destructive">
+                                            {getMessage(errors.clientMobile)}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label
+                                        htmlFor="clientSocialLink"
+                                        className="font-semibold"
+                                    >
+                                        Social Link
+                                    </Label>
+                                    <Input
+                                        id="clientSocialLink"
+                                        placeholder="e.g. linkedin.com/company/acme"
+                                        {...register("clientSocialLink")}
+                                        className={cn(
+                                            fieldClass,
+                                            "h-10 sm:h-11",
+                                        )}
+                                    />
+                                    {getMessage(errors.clientSocialLink) && (
+                                        <p className="text-xs text-destructive">
+                                            {getMessage(
+                                                errors.clientSocialLink,
+                                            )}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className={cn(sectionClass, "space-y-3")}>
+                            <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
+                                <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-indigo-600">
+                                    <Users className="size-4" />
+                                    Assignees
+                                </h3>
+                                {selectedAssignees.length > 0 && (
+                                    <span className="shrink-0 rounded-full bg-indigo-600/10 px-2 py-0.5 text-[10px] font-extrabold text-indigo-600">
+                                        {selectedAssignees.length} selected
+                                    </span>
+                                )}
+                            </div>
+
+                            {users.length > 6 && (
+                                <div className="relative">
+                                    <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                                    <Input
+                                        value={assigneeQuery}
+                                        onChange={(e) =>
+                                            setAssigneeQuery(e.target.value)
+                                        }
+                                        placeholder="Search team members..."
+                                        className={cn(
+                                            fieldClass,
+                                            "h-9 pl-8 pr-8 text-sm",
+                                        )}
+                                    />
+                                    {assigneeQuery && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setAssigneeQuery("")}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                            aria-label="Clear search"
+                                        >
+                                            <X className="size-3.5" />
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            {isLoadingUsers ? (
+                                <div className="flex h-16 items-center justify-center rounded-lg border border-dashed border-border bg-muted/30">
+                                    <Loading size="sm" />
+                                </div>
+                            ) : users.length === 0 ? (
+                                <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-center text-sm text-muted-foreground">
+                                    No users are available to assign.
+                                </div>
+                            ) : filteredUsers.length === 0 ? (
+                                <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-center text-sm text-muted-foreground">
+                                    No team members match &ldquo;
+                                    {assigneeQuery}&rdquo;.
+                                </div>
+                            ) : (
+                                <div className="grid max-h-64 grid-cols-1 gap-2 overflow-y-auto pr-1 sm:max-h-72">
+                                    {filteredUsers.map((user) => {
+                                        const isSelected =
+                                            selectedAssignees.includes(
+                                                user._id,
+                                            );
+
+                                        return (
+                                            <button
+                                                key={user._id}
+                                                type="button"
+                                                onClick={() =>
+                                                    handleAssigneeToggle(
+                                                        user._id,
+                                                    )
+                                                }
+                                                className={cn(
+                                                    "flex h-11 items-center gap-2 rounded-lg border px-2 text-left transition-colors",
+                                                    "hover:border-indigo-600/40 hover:bg-accent/70 focus-visible:border-indigo-600 focus-visible:ring-3 focus-visible:ring-indigo-600/20 focus-visible:outline-none",
+                                                    isSelected
+                                                        ? "border-indigo-600/50 bg-indigo-600/10 text-foreground"
+                                                        : "border-border bg-background text-muted-foreground dark:bg-input/20",
+                                                )}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    readOnly
+                                                    tabIndex={-1}
+                                                    className="size-4 shrink-0 rounded border-border text-indigo-600 accent-indigo-600"
+                                                />
+                                                <Avatar className="size-7 shrink-0">
+                                                    <AvatarImage
+                                                        src={user.avatarUrl}
+                                                        alt={user.name}
+                                                    />
+                                                    <AvatarFallback className="bg-muted text-[10px] font-bold text-muted-foreground">
+                                                        {user.name
+                                                            .substring(0, 2)
+                                                            .toUpperCase()}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                                                    {user.name}
+                                                </span>
+                                                {(() => {
+                                                    const stats = assigneeStats[
+                                                        user._id
+                                                    ] || {
+                                                        todo: 0,
+                                                        inProgress: 0,
+                                                    };
+                                                    return (
+                                                        <div className="ml-auto flex shrink-0 select-none items-center gap-1">
+                                                            {stats.todo > 0 && (
+                                                                <span
+                                                                    title="To Do"
+                                                                    className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full border border-slate-200/50 bg-slate-100 px-1 text-[9px] font-extrabold text-slate-600 transition-transform hover:scale-105 dark:border-slate-700/50 dark:bg-slate-800 dark:text-slate-400"
+                                                                >
+                                                                    {stats.todo}
+                                                                </span>
+                                                            )}
+                                                            {stats.inProgress >
+                                                                0 && (
+                                                                <span
+                                                                    title="In Progress"
+                                                                    className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full border border-indigo-200/50 bg-indigo-50 px-1 text-[9px] font-extrabold text-indigo-600 transition-transform hover:scale-105 dark:border-indigo-800/30 dark:bg-indigo-950/40 dark:text-indigo-400"
+                                                                >
+                                                                    {
+                                                                        stats.inProgress
+                                                                    }
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </section>
+                    </div>
                 </div>
             </div>
 
-            <section className={cn(sectionClass, "space-y-3")}>
-                <h3 className={sectionTitleClass}>
-                    <Users className="size-4" />
-                    Assignees
-                </h3>
-
-                {isLoadingUsers ? (
-                    <div className="flex h-16 items-center justify-center rounded-lg border border-dashed border-border bg-muted/30">
-                        <Loader2 className="size-4 animate-spin text-indigo-600" />
-                    </div>
-                ) : users.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-center text-sm text-muted-foreground">
-                        No users are available to assign.
-                    </div>
-                ) : (
-                    <div className="grid max-h-44 grid-cols-1 gap-2 overflow-y-auto pr-1">
-                        {users.map((user) => {
-                            const isSelected = selectedAssignees.includes(user._id);
- 
-                            return (
-                                <button
-                                    key={user._id}
-                                    type="button"
-                                    onClick={() => handleAssigneeToggle(user._id)}
-                                    className={cn(
-                                        "flex h-11 items-center gap-2 rounded-lg border px-2 text-left transition-colors",
-                                        "hover:border-indigo-600/40 hover:bg-accent/70 focus-visible:border-indigo-600 focus-visible:ring-3 focus-visible:ring-indigo-600/20 focus-visible:outline-none",
-                                        isSelected
-                                            ? "border-indigo-600/50 bg-indigo-600/10 text-foreground"
-                                            : "border-border bg-background text-muted-foreground dark:bg-input/20",
-                                    )}
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={isSelected}
-                                        readOnly
-                                        tabIndex={-1}
-                                        className="size-4 rounded border-border text-indigo-600 accent-indigo-600"
-                                    />
-                                    <Avatar className="size-7">
-                                        <AvatarImage src={user.avatarUrl} alt={user.name} />
-                                        <AvatarFallback className="bg-muted text-[10px] font-bold text-muted-foreground">
-                                            {user.name.substring(0, 2).toUpperCase()}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                                        {user.name}
-                                    </span>
-                                    {(() => {
-                                        const stats = assigneeStats[user._id] || { todo: 0, inProgress: 0 };
-                                        return (
-                                            <div className="flex items-center gap-1 shrink-0 ml-auto select-none">
-                                                {stats.todo > 0 && (
-                                                    <span 
-                                                        title="To Do"
-                                                        className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-[9px] font-extrabold text-slate-600 dark:text-slate-400 px-1 border border-slate-200/50 dark:border-slate-700/50 hover:scale-105 transition-transform"
-                                                    >
-                                                        {stats.todo}
-                                                    </span>
-                                                )}
-                                                {stats.inProgress > 0 && (
-                                                    <span 
-                                                        title="In Progress"
-                                                        className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-[9px] font-extrabold text-indigo-600 dark:text-indigo-400 px-1 border border-indigo-200/50 dark:border-indigo-800/30 hover:scale-105 transition-transform"
-                                                    >
-                                                        {stats.inProgress}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        );
-                                    })()}
-                                </button>
-                            );
-                        })}
-                    </div>
-                )}
-            </section>
-
-            <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
+            {/* Sticky footer */}
+            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border bg-background/95 px-4 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:flex-row sm:justify-end sm:gap-3 sm:px-6">
                 <Button
                     type="button"
                     variant="outline"
                     onClick={onCancel}
-                    className="h-10"
+                    className="h-10 sm:h-11"
                 >
                     Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading} className="h-10 px-5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/10 hover:scale-[1.02] active:scale-[0.98] transition-all">
+                <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="h-10 bg-indigo-600 px-5 text-white shadow-md shadow-indigo-600/10 transition-all hover:scale-[1.02] hover:bg-indigo-700 active:scale-[0.98] sm:h-11"
+                >
                     {isLoading ? (
-                        <>
-                            <Loader2 className="mr-2 size-4 animate-spin text-white" />
-                            Saving...
-                        </>
+                        <Loading variant="mini" text="Saving..." />
                     ) : (
                         "Save Project"
                     )}

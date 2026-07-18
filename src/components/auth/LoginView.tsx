@@ -9,7 +9,8 @@ import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Lock, Mail, Loader2 } from "lucide-react";
+import { Lock, Mail } from "lucide-react";
+import { Loading } from "@/components/ui/Loading";
 import {
     Card,
     CardContent,
@@ -177,10 +178,7 @@ export default function LoginPage() {
                                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-md shadow-indigo-600/20 cursor-pointer"
                             >
                                 {isLoading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Signing In...
-                                    </>
+                                    <Loading variant="mini" text="Signing In..." />
                                 ) : (
                                     "Sign In"
                                 )}

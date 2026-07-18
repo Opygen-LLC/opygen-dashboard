@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ProjectStatus, ProjectPriority, UserRole, UserStatus } from '@/types';
 
-export const projectSchema = z.object({
+export const baseProjectSchema = z.object({
   title: z.string().min(1, 'Title is required').max(100, 'Title cannot exceed 100 characters'),
   description: z.string().optional().default(''),
   status: z.nativeEnum(ProjectStatus).default(ProjectStatus.TODO),
@@ -24,20 +24,83 @@ export const projectSchema = z.object({
     paymentDate: z.string().optional().nullable().transform(val => val ? new Date(val) : undefined),
     receiptUrl: z.string().optional().nullable(),
   })).optional().default([]),
-}).refine(
-  (data) => {
-    if (data.clientMobile === undefined && data.clientSocialLink === undefined) {
-      return true;
+});
+
+export const projectSchema = baseProjectSchema
+  .refine(
+    (data) => {
+      if (data.clientMobile === undefined && data.clientSocialLink === undefined) {
+        return true;
+      }
+      const hasMobile = !!data.clientMobile?.trim();
+      const hasSocial = !!data.clientSocialLink?.trim();
+      return hasMobile || hasSocial;
+    },
+    {
+      message: "Either client mobile number or client social link must be provided",
+      path: ["clientMobile"],
     }
-    const hasMobile = !!data.clientMobile?.trim();
-    const hasSocial = !!data.clientSocialLink?.trim();
-    return hasMobile || hasSocial;
-  },
-  {
-    message: "Either client mobile number or client social link must be provided",
-    path: ["clientMobile"],
-  }
-);
+  )
+  .refine(
+    (data) => {
+      const activeStatuses = [
+        ProjectStatus.TODO,
+        ProjectStatus.IN_PROGRESS,
+        ProjectStatus.IN_REVIEW,
+        ProjectStatus.COMPLETED,
+        ProjectStatus.ON_HOLD
+      ];
+      if (activeStatuses.includes(data.status as ProjectStatus)) {
+        return data.budget !== undefined && Number(data.budget) > 0;
+      }
+      return true;
+    },
+    {
+      message: "Budget must be greater than 0 for active projects",
+      path: ["budget"],
+    }
+  )
+  .refine(
+    (data) => {
+      const pipelineStatuses = [ProjectStatus.POTENTIAL, ProjectStatus.FUTURE];
+      if (pipelineStatuses.includes(data.status as ProjectStatus)) {
+        return data.budgetMin !== null && data.budgetMin !== undefined && Number(data.budgetMin) > 0;
+      }
+      return true;
+    },
+    {
+      message: "Minimum budget must be greater than 0",
+      path: ["budgetMin"],
+    }
+  )
+  .refine(
+    (data) => {
+      const pipelineStatuses = [ProjectStatus.POTENTIAL, ProjectStatus.FUTURE];
+      if (pipelineStatuses.includes(data.status as ProjectStatus)) {
+        return data.budgetMax !== null && data.budgetMax !== undefined && Number(data.budgetMax) > 0;
+      }
+      return true;
+    },
+    {
+      message: "Maximum budget must be greater than 0",
+      path: ["budgetMax"],
+    }
+  )
+  .refine(
+    (data) => {
+      const pipelineStatuses = [ProjectStatus.POTENTIAL, ProjectStatus.FUTURE];
+      if (pipelineStatuses.includes(data.status as ProjectStatus)) {
+        if (data.budgetMin !== null && data.budgetMin !== undefined && data.budgetMax !== null && data.budgetMax !== undefined) {
+          return Number(data.budgetMax) >= Number(data.budgetMin);
+        }
+      }
+      return true;
+    },
+    {
+      message: "Maximum budget cannot be less than minimum budget",
+      path: ["budgetMax"],
+    }
+  );
 
 export type ProjectInput = z.infer<typeof projectSchema>;
 

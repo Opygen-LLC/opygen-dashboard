@@ -6,6 +6,9 @@ import ActivityLog from '@/models/ActivityLog';
 import Project from '@/models/Project';
 import { commentSchema } from '@/lib/validations';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session) {
@@ -25,7 +28,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .populate('user', 'name email avatarUrl')
       .sort({ createdAt: -1 });
 
-    return NextResponse.json(logs);
+    return NextResponse.json(logs, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0, must-revalidate',
+      },
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Server Error' }, { status: 500 });
   }

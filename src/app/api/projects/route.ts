@@ -6,6 +6,9 @@ import Project from '@/models/Project';
 import ActivityLog from '@/models/ActivityLog';
 import { projectSchema } from '@/lib/validations';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session) {
@@ -52,7 +55,11 @@ export async function GET(req: NextRequest) {
       .populate('createdBy', 'name email avatarUrl')
       .sort(sort);
 
-    return NextResponse.json(projects);
+    return NextResponse.json(projects, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0, must-revalidate',
+      },
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Server Error' }, { status: 500 });
   }
@@ -76,7 +83,7 @@ export async function POST(req: NextRequest) {
     const projectData = parseResult.data;
 
     const totalPayments = (projectData.payments || []).reduce((sum: number, p: any) => sum + Number(p.amount), 0);
-    if (totalPayments > (projectData.budget || 0)) {
+    if (projectData.budget && projectData.budget > 0 && totalPayments > projectData.budget) {
       return NextResponse.json(
         { error: `Total payment milestones ($${totalPayments.toLocaleString()}) cannot exceed the project budget ($${(projectData.budget || 0).toLocaleString()})` },
         { status: 400 }

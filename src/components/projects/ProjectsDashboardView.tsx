@@ -10,15 +10,30 @@ import {
     LayoutGrid,
     List as ListIcon,
     ArrowUpDown,
-    Loader2,
     FolderOpen,
     ChevronLeft,
     ChevronRight,
 } from "lucide-react";
+import { Loading } from "@/components/ui/Loading";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useRouter } from "next/navigation";
+import { useAppDispatch, useAppSelector } from "@/store";
+import {
+    fetchProjectsThunk,
+    setSearchFilter,
+    setStatusFilter,
+    setPriorityFilter,
+    setAssigneeFilter,
+    setSortByFilter,
+    toggleSortOrder,
+    setCurrentPage,
+    addProjectLocally,
+    deleteProjectLocally,
+    resetFilters,
+} from "@/store/projectsSlice";
 import {
     Select,
     SelectContent,
@@ -42,8 +57,9 @@ import { ProjectStatus, ProjectStatusType } from "@/types";
 import { DashboardProject, ProjectUser } from "@/types/project";
 
 export default function ProjectsDashboardView() {
+    const router = useRouter();
+    const dispatch = useAppDispatch();
     const queryClient = useQueryClient();
-    const [currentPage, setCurrentPage] = useState(1);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [defaultCreateStatus, setDefaultCreateStatus] =
         useState<ProjectStatus>(ProjectStatus.TODO);
@@ -51,19 +67,14 @@ export default function ProjectsDashboardView() {
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
         null,
     );
-    const [deleteProjectTarget, setDeleteProjectTarget] = useState<{ id: string; name: string } | null>(null);
+    const [deleteProjectTarget, setDeleteProjectTarget] = useState<{
+        id: string;
+        name: string;
+    } | null>(null);
     const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
-    const [search, setSearch] = useState("");
-    const [status, setStatus] = useState("all");
-    const [priority, setPriority] = useState("all");
-    const [assignee, setAssignee] = useState("all");
-    const [sortBy, setSortBy] = useState("updatedAt");
-    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [search, status, priority, assignee, sortBy, sortOrder]);
+    const { projects, isLoading, filters } = useAppSelector((state) => state.projects);
+    const { search, status, priority, assignee, sortBy, sortOrder, currentPage } = filters;
 
     const { data: users } = useQuery<ProjectUser[]>({
         queryKey: ["users"],
@@ -85,23 +96,10 @@ export default function ProjectsDashboardView() {
         return params.toString();
     };
 
-    const { data: projects = [], isLoading } = useQuery<DashboardProject[]>({
-        queryKey: [
-            "projects",
-            search,
-            status,
-            priority,
-            assignee,
-            sortBy,
-            sortOrder,
-        ],
-        queryFn: async () => {
-            const params = getFilterParams();
-            const res = await fetch(`/api/projects?${params}`);
-            if (!res.ok) throw new Error("Failed to fetch projects");
-            return res.json();
-        },
-    });
+    useEffect(() => {
+        const params = getFilterParams();
+        dispatch(fetchProjectsThunk(params));
+    }, [dispatch, search, status, priority, assignee, sortBy, sortOrder]);
 
     const createMutation = useMutation({
         mutationFn: async (newProject: ProjectInput) => {
@@ -113,11 +111,13 @@ export default function ProjectsDashboardView() {
             if (!res.ok) throw new Error("Failed to create project");
             return res.json();
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["projects"] });
+        onSuccess: (data) => {
+            dispatch(resetFilters());
             queryClient.invalidateQueries({ queryKey: ["stats"] });
             setIsCreateOpen(false);
             toast.success("Project created successfully");
+            router.refresh();
+            dispatch(fetchProjectsThunk());
         },
         onError: () => {
             toast.error("Failed to create project");
@@ -130,14 +130,16 @@ export default function ProjectsDashboardView() {
                 method: "DELETE",
             });
             if (!res.ok) throw new Error("Failed to delete project");
-            return res.json();
+            return id;
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["projects"] });
+        onSuccess: (deletedId) => {
+            dispatch(deleteProjectLocally(deletedId));
             queryClient.invalidateQueries({ queryKey: ["stats"] });
             setDeleteProjectTarget(null);
             setDeleteConfirmText("");
             toast.success("Project deleted successfully");
+            router.refresh();
+            dispatch(fetchProjectsThunk(getFilterParams()));
         },
         onError: () => {
             toast.error("Failed to delete project");
@@ -187,7 +189,7 @@ export default function ProjectsDashboardView() {
                     <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        onChange={(e) => dispatch(setSearchFilter(e.target.value))}
                         placeholder="Search by title or description..."
                         className="pl-9 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 text-foreground h-10 transition-all"
                     />
@@ -196,7 +198,7 @@ export default function ProjectsDashboardView() {
                 <div>
                     <Select
                         value={status}
-                        onValueChange={(val) => setStatus(val || "all")}
+                        onValueChange={(val) => dispatch(setStatusFilter(val || "all"))}
                     >
                         <SelectTrigger className="bg-background/50 border-border text-foreground h-10 cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                             <SelectValue placeholder="Status" />
@@ -219,7 +221,7 @@ export default function ProjectsDashboardView() {
                 <div>
                     <Select
                         value={priority}
-                        onValueChange={(val) => setPriority(val || "all")}
+                        onValueChange={(val) => dispatch(setPriorityFilter(val || "all"))}
                     >
                         <SelectTrigger className="bg-background/50 border-border text-foreground h-10 cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                             <SelectValue placeholder="Priority" />
@@ -237,7 +239,7 @@ export default function ProjectsDashboardView() {
                 <div>
                     <Select
                         value={assignee}
-                        onValueChange={(val) => setAssignee(val || "all")}
+                        onValueChange={(val) => dispatch(setAssigneeFilter(val || "all"))}
                     >
                         <SelectTrigger className="bg-background/50 border-border text-foreground h-10 cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                             <SelectValue placeholder="Assignee" />
@@ -256,26 +258,26 @@ export default function ProjectsDashboardView() {
                 <div className="flex gap-2">
                     <Select
                         value={sortBy}
-                        onValueChange={(val) => setSortBy(val || "updatedAt")}
+                        onValueChange={(val) => dispatch(setSortByFilter(val || "updatedAt"))}
                     >
                         <SelectTrigger className="bg-background/50 border-border text-foreground h-10 flex-1 cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                             <SelectValue placeholder="Sort by" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border text-foreground">
-                            <SelectItem value="updatedAt">Recently Updated</SelectItem>
+                            <SelectItem value="updatedAt">
+                                Recently Updated
+                            </SelectItem>
                             <SelectItem value="dueDate">Due Date</SelectItem>
-                            <SelectItem value="createdAt">Date Created</SelectItem>
+                            <SelectItem value="createdAt">
+                                Date Created
+                            </SelectItem>
                             <SelectItem value="title">Alphabetical</SelectItem>
                         </SelectContent>
                     </Select>
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() =>
-                            setSortOrder((prev) =>
-                                prev === "asc" ? "desc" : "asc",
-                            )
-                        }
+                        onClick={() => dispatch(toggleSortOrder())}
                         className="h-10 w-10 border border-border bg-background/50 text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer hover:scale-[1.05] active:scale-[0.95] transition-all shrink-0"
                     >
                         <ArrowUpDown className="h-4.5 w-4.5" />
@@ -287,7 +289,7 @@ export default function ProjectsDashboardView() {
             <div className="flex-1 overflow-y-auto">
                 {isLoading ? (
                     <div className="flex h-64 items-center justify-center">
-                        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                        <Loading />
                     </div>
                 ) : projects.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 border border-dashed border-border rounded-xl bg-accent/5">
@@ -302,10 +304,7 @@ export default function ProjectsDashboardView() {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                                setSearch("");
-                                setStatus("all");
-                                setPriority("all");
-                                setAssignee("all");
+                                dispatch(resetFilters());
                             }}
                             className="mt-4 border-border text-muted-foreground hover:text-foreground hover:bg-accent h-10 cursor-pointer"
                         >
@@ -317,42 +316,91 @@ export default function ProjectsDashboardView() {
                         <ProjectList
                             projects={projects.slice(
                                 (currentPage - 1) * 10,
-                                currentPage * 10
+                                currentPage * 10,
                             )}
                             onProjectClick={setSelectedProjectId}
                             onEditClick={handleEditClick}
-                            onDeleteClick={(id, name) => setDeleteProjectTarget({ id, name })}
+                            onDeleteClick={(id, name) =>
+                                setDeleteProjectTarget({ id, name })
+                            }
                         />
 
                         {projects.length > 10 && (
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border/60 pt-4 mt-2">
                                 <p className="text-xs text-muted-foreground text-center sm:text-left">
-                                    Showing <span className="font-semibold text-foreground">{(currentPage - 1) * 10 + 1}</span> to{" "}
-                                    <span className="font-semibold text-foreground">{Math.min(currentPage * 10, projects.length)}</span> of{" "}
-                                    <span className="font-semibold text-foreground">{projects.length}</span> projects
+                                    Showing{" "}
+                                    <span className="font-semibold text-foreground">
+                                        {(currentPage - 1) * 10 + 1}
+                                    </span>{" "}
+                                    to{" "}
+                                    <span className="font-semibold text-foreground">
+                                        {Math.min(
+                                            currentPage * 10,
+                                            projects.length,
+                                        )}
+                                    </span>{" "}
+                                    of{" "}
+                                    <span className="font-semibold text-foreground">
+                                        {projects.length}
+                                    </span>{" "}
+                                    projects
                                 </p>
                                 <div className="flex items-center gap-1.5">
                                     <Button
                                         variant="outline"
                                         size="icon"
                                         disabled={currentPage === 1}
-                                        onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                                        onClick={() => dispatch(setCurrentPage(Math.max(currentPage - 1, 1)))}
                                         className="h-8 w-8 cursor-pointer disabled:opacity-50"
                                         title="Previous Page"
                                     >
                                         <ChevronLeft className="h-4 w-4" />
                                     </Button>
-                                    
+
                                     <div className="flex items-center gap-1">
-                                        {Array.from({ length: Math.ceil(projects.length / 10) }).map((_, i) => {
+                                        {Array.from({
+                                            length: Math.ceil(
+                                                projects.length / 10,
+                                            ),
+                                        }).map((_, i) => {
                                             const pageNum = i + 1;
-                                            const totalPages = Math.ceil(projects.length / 10);
-                                            if (totalPages > 5 && pageNum !== 1 && pageNum !== totalPages && Math.abs(currentPage - pageNum) > 1) {
-                                                if (pageNum === 2 && currentPage > 3) {
-                                                    return <span key="ellipsis-start" className="text-xs text-muted-foreground px-1">...</span>;
+                                            const totalPages = Math.ceil(
+                                                projects.length / 10,
+                                            );
+                                            if (
+                                                totalPages > 5 &&
+                                                pageNum !== 1 &&
+                                                pageNum !== totalPages &&
+                                                Math.abs(
+                                                    currentPage - pageNum,
+                                                ) > 1
+                                            ) {
+                                                if (
+                                                    pageNum === 2 &&
+                                                    currentPage > 3
+                                                ) {
+                                                    return (
+                                                        <span
+                                                            key="ellipsis-start"
+                                                            className="text-xs text-muted-foreground px-1"
+                                                        >
+                                                            ...
+                                                        </span>
+                                                    );
                                                 }
-                                                if (pageNum === totalPages - 1 && currentPage < totalPages - 2) {
-                                                    return <span key="ellipsis-end" className="text-xs text-muted-foreground px-1">...</span>;
+                                                if (
+                                                    pageNum ===
+                                                        totalPages - 1 &&
+                                                    currentPage < totalPages - 2
+                                                ) {
+                                                    return (
+                                                        <span
+                                                            key="ellipsis-end"
+                                                            className="text-xs text-muted-foreground px-1"
+                                                        >
+                                                            ...
+                                                        </span>
+                                                    );
                                                 }
                                                 return null;
                                             }
@@ -360,12 +408,20 @@ export default function ProjectsDashboardView() {
                                             return (
                                                 <Button
                                                     key={pageNum}
-                                                    variant={currentPage === pageNum ? "default" : "outline"}
+                                                    variant={
+                                                        currentPage === pageNum
+                                                            ? "default"
+                                                            : "outline"
+                                                    }
                                                     size="sm"
-                                                    onClick={() => setCurrentPage(pageNum)}
+                                                    onClick={() =>
+                                                        dispatch(setCurrentPage(pageNum))
+                                                    }
                                                     className={cn(
                                                         "h-8 w-8 text-xs cursor-pointer p-0 transition-all font-semibold",
-                                                        currentPage === pageNum ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs" : "hover:bg-accent"
+                                                        currentPage === pageNum
+                                                            ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+                                                            : "hover:bg-accent",
                                                     )}
                                                 >
                                                     {pageNum}
@@ -377,8 +433,22 @@ export default function ProjectsDashboardView() {
                                     <Button
                                         variant="outline"
                                         size="icon"
-                                        disabled={currentPage === Math.ceil(projects.length / 10)}
-                                        onClick={() => setCurrentPage((p) => Math.min(p + 1, Math.ceil(projects.length / 10)))}
+                                        disabled={
+                                            currentPage ===
+                                            Math.ceil(projects.length / 10)
+                                        }
+                                        onClick={() =>
+                                            dispatch(
+                                                setCurrentPage(
+                                                    Math.min(
+                                                        currentPage + 1,
+                                                        Math.ceil(
+                                                            projects.length / 10,
+                                                        ),
+                                                    ),
+                                                ),
+                                            )
+                                        }
                                         className="h-8 w-8 cursor-pointer disabled:opacity-50"
                                         title="Next Page"
                                     >
@@ -392,9 +462,30 @@ export default function ProjectsDashboardView() {
             </div>
 
             {/* Project Creation Modal */}
-            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                <DialogContent className="bg-card border-border text-foreground max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto">
+            {/* <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                <DialogContent className="bg-card border-border text-foreground max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
+                        <DialogTitle>Create New Project</DialogTitle>
+                        <DialogDescription className="text-muted-foreground">
+                            Scaffold a new project card for Opygen. Fill in the
+                            fields below.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ProjectForm
+                        initialData={{ status: defaultCreateStatus }}
+                        onSubmit={(data) => createMutation.mutate(data)}
+                        isLoading={createMutation.isPending}
+                        onCancel={() => setIsCreateOpen(false)}
+                    />
+                </DialogContent>
+            </Dialog> */}
+            {/* Project Creation Modal */}
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                <DialogContent
+                    className="bg-card border-border text-foreground flex w-[95vw] max-w-4xl lg:max-w-5xl xl:max-w-6xl
+                   max-h-[90vh] flex-col gap-0 overflow-hidden p-0"
+                >
+                    <DialogHeader className="shrink-0 border-b border-border px-6 py-5">
                         <DialogTitle>Create New Project</DialogTitle>
                         <DialogDescription className="text-muted-foreground">
                             Scaffold a new project card for Opygen. Fill in the
@@ -450,7 +541,10 @@ export default function ProjectsDashboardView() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 0.6 }}
                             exit={{ opacity: 0 }}
-                            onClick={() => { setDeleteProjectTarget(null); setDeleteConfirmText(""); }}
+                            onClick={() => {
+                                setDeleteProjectTarget(null);
+                                setDeleteConfirmText("");
+                            }}
                             className="absolute inset-0 bg-background/80 backdrop-blur-xs"
                         />
                         {/* Modal */}
@@ -469,17 +563,31 @@ export default function ProjectsDashboardView() {
                                 Delete Project
                             </h3>
                             <p className="text-sm text-muted-foreground mt-2 leading-relaxed font-normal">
-                                Are you sure you want to permanently delete the project <strong className="text-foreground">"{deleteProjectTarget.name}"</strong>? This action is irreversible.
+                                Are you sure you want to permanently delete the
+                                project{" "}
+                                <strong className="text-foreground">
+                                    "{deleteProjectTarget.name}"
+                                </strong>
+                                ? This action is irreversible.
                             </p>
-                            
+
                             <div className="mt-4 space-y-2">
-                                <Label htmlFor="confirmDeleteInput" className="text-xs font-semibold text-muted-foreground">
-                                    Type <span className="font-bold text-foreground select-all">DELETE</span> to confirm:
+                                <Label
+                                    htmlFor="confirmDeleteInput"
+                                    className="text-xs font-semibold text-muted-foreground"
+                                >
+                                    Type{" "}
+                                    <span className="font-bold text-foreground select-all">
+                                        DELETE
+                                    </span>{" "}
+                                    to confirm:
                                 </Label>
                                 <Input
                                     id="confirmDeleteInput"
                                     value={deleteConfirmText}
-                                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                    onChange={(e) =>
+                                        setDeleteConfirmText(e.target.value)
+                                    }
                                     placeholder="DELETE"
                                     className="bg-background border-border text-foreground focus-visible:ring-1 focus-visible:ring-red-500 focus-visible:border-red-500 h-9 text-sm"
                                     autoComplete="off"
@@ -489,18 +597,31 @@ export default function ProjectsDashboardView() {
                             <div className="flex justify-end gap-3 mt-6">
                                 <Button
                                     variant="ghost"
-                                    onClick={() => { setDeleteProjectTarget(null); setDeleteConfirmText(""); }}
+                                    onClick={() => {
+                                        setDeleteProjectTarget(null);
+                                        setDeleteConfirmText("");
+                                    }}
                                     className="border-border text-muted-foreground hover:bg-accent hover:text-foreground h-10 cursor-pointer"
                                 >
                                     Cancel
                                 </Button>
                                 <Button
-                                    onClick={() => deleteMutation.mutate(deleteProjectTarget.id)}
-                                    disabled={deleteMutation.isPending || deleteConfirmText !== "DELETE"}
+                                    onClick={() =>
+                                        deleteMutation.mutate(
+                                            deleteProjectTarget.id,
+                                        )
+                                    }
+                                    disabled={
+                                        deleteMutation.isPending ||
+                                        deleteConfirmText !== "DELETE"
+                                    }
                                     className="bg-red-700 hover:bg-red-800 text-white dark:text-destructive-foreground font-medium shadow-md shadow-destructive/10 h-10 cursor-pointer flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {deleteMutation.isPending && <Loader2 className="h-4.5 w-4.5 animate-spin" />}
-                                    Delete
+                                    {deleteMutation.isPending ? (
+                                        <Loading variant="mini" />
+                                    ) : (
+                                        "Delete"
+                                    )}
                                 </Button>
                             </div>
                         </motion.div>

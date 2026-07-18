@@ -6,6 +6,9 @@ import dbConnect from '@/lib/db';
 import Project from '@/models/Project';
 import User from '@/models/User';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session) {
@@ -23,6 +26,27 @@ export async function GET() {
     const completed = projects.filter((p) => p.status === 'completed').length;
     const now = new Date();
     const overdue = projects.filter((p) => p.status !== 'completed' && p.dueDate && new Date(p.dueDate) < now).length;
+
+    let totalBudget = 0;
+    let totalRevenueReceived = 0;
+    let totalRevenuePending = 0;
+
+    projects.forEach((p) => {
+      const activeStatuses = ['todo', 'in_progress', 'in_review', 'completed', 'on_hold'];
+      if (activeStatuses.includes(p.status)) {
+        totalBudget += Number(p.budget || 0);
+      }
+      
+      if (p.payments) {
+        p.payments.forEach((pay: any) => {
+          if (pay.status === 'paid') {
+            totalRevenueReceived += Number(pay.amount || 0);
+          } else if (pay.status === 'pending') {
+            totalRevenuePending += Number(pay.amount || 0);
+          }
+        });
+      }
+    });
 
     // Status breakdown (Pie Chart data)
     const statusLabels: Record<string, string> = {
@@ -101,10 +125,17 @@ export async function GET() {
         inProgress,
         completed,
         overdue,
+        totalBudget,
+        totalRevenueReceived,
+        totalRevenuePending,
       },
       statusBreakdown,
       workload,
       completionTrend: trendData,
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0, must-revalidate',
+      },
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Server Error' }, { status: 500 });

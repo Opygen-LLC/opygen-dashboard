@@ -4,6 +4,9 @@ import dbConnect from '@/lib/db';
 import Session from '@/models/Session';
 import { authOptions } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -14,7 +17,11 @@ export async function GET(req: NextRequest) {
     await dbConnect();
     const sessions = await Session.find({ userId: session.user.id }).sort({ createdAt: -1 });
 
-    return NextResponse.json(sessions);
+    return NextResponse.json(sessions, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0, must-revalidate',
+      },
+    });
   } catch (error: any) {
     console.error('GET sessions API error:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });

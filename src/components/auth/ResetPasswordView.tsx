@@ -8,7 +8,8 @@ import * as z from "zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Lock, ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
+import { Lock, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Loading } from "@/components/ui/Loading";
 import {
     Card,
     CardContent,
@@ -204,10 +205,7 @@ function ResetPasswordForm() {
                             className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-md shadow-indigo-600/20"
                         >
                             {isLoading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Saving Changes...
-                                </>
+                                <Loading variant="mini" text="Saving Changes..." />
                             ) : (
                                 "Save Password"
                             )}
@@ -267,7 +265,7 @@ export default function ResetPasswordPage() {
                     fallback={
                         <Card className="border-border bg-card/60 backdrop-blur-md text-card-foreground shadow-xl">
                             <CardContent className="flex justify-center items-center py-20">
-                                <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                                <Loading />
                             </CardContent>
                         </Card>
                     }

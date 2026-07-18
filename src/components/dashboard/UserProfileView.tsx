@@ -14,7 +14,6 @@ import {
     Lock,
     Eye,
     EyeOff,
-    Loader2,
     CheckCircle,
     Phone,
     Laptop,
@@ -25,6 +24,7 @@ import {
     Smartphone,
     ChevronRight,
 } from "lucide-react";
+import { Loading } from "@/components/ui/Loading";
 import { useForm, Controller } from "react-hook-form";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -286,7 +286,7 @@ export default function UserProfileView() {
                             </Avatar>
                             <div className="absolute inset-0 flex items-center justify-center bg-black/45 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                 {isUploading ? (
-                                    <Loader2 className="h-6 w-6 text-white animate-spin" />
+                                    <Loading variant="mini" />
                                 ) : (
                                     <Upload className="h-6 w-6 text-white" />
                                 )}
@@ -472,10 +472,7 @@ export default function UserProfileView() {
                                             className="bg-indigo-600 text-white font-medium h-10 px-5 cursor-pointer shadow-md shadow-indigo-600/10 hover:scale-[1.02] active:scale-[0.98] transition-all"
                                         >
                                             {isSaving ? (
-                                                <>
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    Saving changes...
-                                                </>
+                                                <Loading variant="mini" text="Saving changes..." />
                                             ) : (
                                                 "Save Profile Details"
                                             )}
@@ -693,10 +690,7 @@ export default function UserProfileView() {
                                             className="bg-indigo-600 text-white font-medium h-10 px-5 cursor-pointer shadow-md shadow-indigo-600/10 hover:scale-[1.02] active:scale-[0.98] transition-all"
                                         >
                                             {passwordLoading ? (
-                                                <>
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                    Updating credentials...
-                                                </>
+                                                <Loading variant="mini" text="Updating credentials..." />
                                             ) : (
                                                 "Update Password"
                                             )}

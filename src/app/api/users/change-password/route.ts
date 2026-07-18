@@ -29,10 +29,11 @@ export async function PATCH(req: NextRequest) {
     const salt = await bcrypt.genSalt(12);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Update password and clear the change password flag
+    // Update password, clear the change password flag, and set status to active
     await User.findByIdAndUpdate(session.user.id, {
       passwordHash,
       needPasswordChange: false,
+      status: 'active',
     });
 
     return NextResponse.json({ message: 'Password updated successfully' });
