@@ -9,57 +9,36 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { DashboardProject, ProjectUser } from '@/types/project';
 
 interface ProjectListProps {
-  projects: any[];
+  projects: DashboardProject[];
   onProjectClick: (id: string) => void;
-  onEditClick: (project: any, e: React.MouseEvent) => void;
+  onEditClick: (project: DashboardProject, e: React.MouseEvent) => void;
+  onDeleteClick: (id: string, name: string) => void;
 }
 
-export default function ProjectList({ projects, onProjectClick, onEditClick }: ProjectListProps) {
-  const queryClient = useQueryClient();
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/projects/${id}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) throw new Error('Failed to delete project');
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
-      toast.success('Project deleted successfully');
-    },
-    onError: () => {
-      toast.error('Failed to delete project');
-    },
-  });
-
-  const handleDelete = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirm('Are you sure you want to delete this project?')) {
-      deleteMutation.mutate(id);
-    }
-  };
-
+export default function ProjectList({ projects, onProjectClick, onEditClick, onDeleteClick }: ProjectListProps) {
   const priorityColors: Record<string, string> = {
-    low: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-450 dark:border-emerald-500/20',
-    medium: 'bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-500/10 dark:text-yellow-450 dark:border-yellow-500/20',
-    high: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-500/10 dark:text-orange-450 dark:border-orange-500/20',
-    urgent: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:text-rose-455 dark:border-rose-500/20 animate-pulse',
+    low: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-450 dark:border-emerald-500/20',
+    medium: 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-450 dark:border-amber-500/20',
+    high: 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-450 dark:border-orange-500/20',
+    urgent: 'bg-rose-500/10 text-rose-600 border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-455 dark:border-rose-500/20 animate-pulse',
   };
 
   const statusColors: Record<string, string> = {
-    todo: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20',
-    in_progress: 'bg-indigo-50 text-indigo-750 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20',
-    in_review: 'bg-purple-50 text-purple-750 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20',
-    completed: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20',
-    on_hold: 'bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-500/10 dark:text-yellow-450 dark:border-yellow-500/20',
+    potential: 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20',
+    future: 'bg-sky-500/10 text-sky-600 border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-405 dark:border-sky-500/20',
+    todo: 'bg-slate-500/10 text-muted-foreground border-slate-500/25 dark:bg-slate-500/10 dark:text-slate-400 dark:border-slate-500/20',
+    in_progress: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20',
+    in_review: 'bg-purple-500/10 text-purple-600 border-purple-500/20 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20',
+    completed: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20',
+    on_hold: 'bg-rose-500/10 text-rose-600 border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20',
   };
 
   const statusLabels: Record<string, string> = {
+    potential: 'Potential',
+    future: 'Future',
     todo: 'To Do',
     in_progress: 'In Progress',
     in_review: 'In Review',
@@ -76,13 +55,14 @@ export default function ProjectList({ projects, onProjectClick, onEditClick }: P
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card/30 dark:bg-slate-900/10 overflow-hidden shadow-xs">
+    <div className="rounded-xl border border-border bg-card/50 overflow-hidden shadow-xs">
       <Table>
-        <TableHeader className="bg-accent/40 border-b border-border">
+        <TableHeader className="bg-accent/30 border-b border-border">
           <TableRow className="hover:bg-transparent border-b border-border">
             <TableHead className="text-muted-foreground font-bold">Title</TableHead>
             <TableHead className="text-muted-foreground font-bold w-24">Priority</TableHead>
             <TableHead className="text-muted-foreground font-bold w-32">Status</TableHead>
+            <TableHead className="text-muted-foreground font-bold w-28">Budget</TableHead>
             <TableHead className="text-muted-foreground font-bold w-40">Assignees</TableHead>
             <TableHead className="text-muted-foreground font-bold w-36">Due Date</TableHead>
             <TableHead className="text-muted-foreground font-bold w-24 text-right">Actions</TableHead>
@@ -96,7 +76,7 @@ export default function ProjectList({ projects, onProjectClick, onEditClick }: P
               <TableRow
                 key={project._id}
                 onClick={() => onProjectClick(project._id)}
-                className="cursor-pointer border-b border-border/60 hover:bg-accent/30 transition-colors"
+                className="cursor-pointer border-b border-border/60 hover:bg-accent/20 transition-colors"
               >
                 <TableCell className="font-bold text-foreground">
                   <div className="truncate max-w-[300px] md:max-w-[400px]">
@@ -118,9 +98,20 @@ export default function ProjectList({ projects, onProjectClick, onEditClick }: P
                     {statusLabels[project.status]}
                   </Badge>
                 </TableCell>
+                <TableCell className="font-semibold text-emerald-650 dark:text-emerald-450 text-xs">
+                  {['potential', 'future'].includes(project.status) ? (
+                    project.budgetMin !== undefined && project.budgetMin !== null ? (
+                      `$${Number(project.budgetMin).toLocaleString()} - $${Number(project.budgetMax || 0).toLocaleString()}`
+                    ) : '—'
+                  ) : (
+                    project.budget !== undefined && project.budget !== null
+                      ? `$${Number(project.budget).toLocaleString()}`
+                      : '—'
+                  )}
+                </TableCell>
                 <TableCell>
                   <div className="flex -space-x-1.5 overflow-hidden">
-                    {project.assignees.slice(0, 4).map((user: any, i: number) => (
+                    {project.assignees.slice(0, 4).map((user: ProjectUser, i: number) => (
                       <Avatar
                         key={user._id}
                         className="h-6 w-6 border-2 border-background ring-0 shrink-0 transition-transform duration-200 hover:translate-y-[-2px]"
@@ -143,13 +134,20 @@ export default function ProjectList({ projects, onProjectClick, onEditClick }: P
                   </div>
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className={`h-3.5 w-3.5 ${isOverdue ? 'text-destructive' : 'text-muted-foreground'}`} />
-                    <span className={isOverdue ? 'text-destructive font-bold' : ''}>
-                      {project.dueDate ? format(new Date(project.dueDate), 'MMM dd, yyyy') : 'No due date'}
-                    </span>
-                    {isOverdue && (
-                      <AlertCircle className="h-3 w-3 text-destructive shrink-0 animate-pulse" />
+                  <div className="flex items-start flex-col gap-1">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className={`h-3.5 w-3.5 ${isOverdue ? 'text-rose-500' : 'text-muted-foreground'}`} />
+                      <span className={isOverdue ? 'text-rose-500 font-bold' : ''}>
+                        {project.dueDate ? format(new Date(project.dueDate), 'MMM dd, yyyy') : 'No due date'}
+                      </span>
+                      {isOverdue && (
+                        <AlertCircle className="h-3 w-3 text-rose-500 shrink-0 animate-pulse" />
+                      )}
+                    </div>
+                    {project.startDate && (
+                      <span className="text-[10px] text-muted-foreground pl-5">
+                        Start: {format(new Date(project.startDate), 'MMM dd, yyyy')}
+                      </span>
                     )}
                   </div>
                 </TableCell>
@@ -159,20 +157,19 @@ export default function ProjectList({ projects, onProjectClick, onEditClick }: P
                       variant="ghost"
                       size="icon"
                       onClick={(e) => onEditClick(project, e)}
-                      className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
+                      className="h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md cursor-pointer hover:scale-[1.05] active:scale-[0.95] transition-all"
                       title="Edit project"
                     >
-                      <Edit2 className="h-3.5 w-3.5" />
+                      <Edit2 className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={(e) => handleDelete(project._id, e)}
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      disabled={deleteMutation.isPending}
+                      onClick={(e) => onDeleteClick(project._id, project.title)}
+                      className="h-10 w-10 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md cursor-pointer hover:scale-[1.05] active:scale-[0.95] transition-all"
                       title="Delete project"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </TableCell>

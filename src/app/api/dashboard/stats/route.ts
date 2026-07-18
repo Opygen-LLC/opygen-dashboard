@@ -26,6 +26,8 @@ export async function GET() {
 
     // Status breakdown (Pie Chart data)
     const statusLabels: Record<string, string> = {
+      potential: 'Potential',
+      future: 'Future',
       todo: 'To Do',
       in_progress: 'In Progress',
       in_review: 'In Review',
@@ -34,6 +36,8 @@ export async function GET() {
     };
 
     const statusCounts: Record<string, number> = {
+      potential: 0,
+      future: 0,
       todo: 0,
       in_progress: 0,
       in_review: 0,

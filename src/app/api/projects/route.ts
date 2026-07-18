@@ -75,6 +75,14 @@ export async function POST(req: NextRequest) {
 
     const projectData = parseResult.data;
 
+    const totalPayments = (projectData.payments || []).reduce((sum: number, p: any) => sum + Number(p.amount), 0);
+    if (totalPayments > (projectData.budget || 0)) {
+      return NextResponse.json(
+        { error: `Total payment milestones ($${totalPayments.toLocaleString()}) cannot exceed the project budget ($${(projectData.budget || 0).toLocaleString()})` },
+        { status: 400 }
+      );
+    }
+
     const project = await Project.create({
       ...projectData,
       createdBy: session.user.id,

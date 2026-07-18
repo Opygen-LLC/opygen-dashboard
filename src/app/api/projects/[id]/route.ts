@@ -55,6 +55,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
+    const updatedBudget = updates.budget !== undefined ? updates.budget : project.budget;
+    const updatedPayments = updates.payments !== undefined ? updates.payments : project.payments;
+    if (updatedPayments) {
+      const totalPayments = updatedPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
+      if (totalPayments > (updatedBudget || 0)) {
+        return NextResponse.json(
+          { error: `Total payment milestones ($${totalPayments.toLocaleString()}) cannot exceed the project budget ($${(updatedBudget || 0).toLocaleString()})` },
+          { status: 400 }
+        );
+      }
+    }
+
     const logs: any[] = [];
 
     if (updates.status && updates.status !== project.status) {
@@ -136,6 +148,54 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         });
         project.dueDate = updates.dueDate || undefined;
       }
+    }
+
+    if (updates.startDate !== undefined) {
+      const oldTime = project.startDate ? new Date(project.startDate).getTime() : 0;
+      const newTime = updates.startDate ? new Date(updates.startDate).getTime() : 0;
+      if (oldTime !== newTime) {
+        logs.push({
+          project: project._id,
+          user: session.user.id,
+          type: 'details_change',
+          message: updates.startDate ? `set start date to ${new Date(updates.startDate).toLocaleDateString()}` : 'removed start date',
+        });
+        project.startDate = updates.startDate || undefined;
+      }
+    }
+
+    if (updates.budget !== undefined && updates.budget !== project.budget) {
+      logs.push({
+        project: project._id,
+        user: session.user.id,
+        type: 'details_change',
+        message: `updated budget to $${Number(updates.budget).toLocaleString()}`,
+      });
+      project.budget = updates.budget;
+    }
+
+    if (updates.budgetMin !== undefined && updates.budgetMin !== project.budgetMin) {
+      project.budgetMin = updates.budgetMin ?? undefined;
+    }
+
+    if (updates.budgetMax !== undefined && updates.budgetMax !== project.budgetMax) {
+      project.budgetMax = updates.budgetMax ?? undefined;
+    }
+
+    if (updates.clientName !== undefined && updates.clientName !== project.clientName) {
+      project.clientName = updates.clientName;
+    }
+
+    if (updates.clientMobile !== undefined && updates.clientMobile !== project.clientMobile) {
+      project.clientMobile = updates.clientMobile;
+    }
+
+    if (updates.clientSocialLink !== undefined && updates.clientSocialLink !== project.clientSocialLink) {
+      project.clientSocialLink = updates.clientSocialLink;
+    }
+
+    if (updates.payments !== undefined) {
+      project.payments = updates.payments as any;
     }
 
     await project.save();

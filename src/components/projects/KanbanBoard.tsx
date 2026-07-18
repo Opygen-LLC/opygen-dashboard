@@ -5,14 +5,18 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
 import ProjectCard from './ProjectCard';
+import { DashboardProject } from '@/types/project';
+import { ProjectStatusType } from '@/types';
 
 interface KanbanBoardProps {
-  projects: any[];
+  projects: DashboardProject[];
   onProjectClick: (id: string) => void;
-  onAddProject: (status: string) => void;
+  onAddProject: (status: ProjectStatusType) => void;
 }
 
-const COLUMNS = [
+const COLUMNS: { id: ProjectStatusType; title: string }[] = [
+  { id: 'potential', title: 'Potential' },
+  { id: 'future', title: 'Future' },
   { id: 'todo', title: 'To Do' },
   { id: 'in_progress', title: 'In Progress' },
   { id: 'in_review', title: 'In Review' },
@@ -25,7 +29,7 @@ export default function KanbanBoard({ projects, onProjectClick, onAddProject }: 
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status }: { id: string; status: ProjectStatusType }) => {
       const res = await fetch(`/api/projects/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -51,7 +55,7 @@ export default function KanbanBoard({ projects, onProjectClick, onAddProject }: 
     e.dataTransfer.effectAllowed = 'move';
   };
 
-  const handleDragOver = (e: React.DragEvent, columnId: string) => {
+  const handleDragOver = (e: React.DragEvent, columnId: ProjectStatusType) => {
     e.preventDefault();
     if (dragOverCol !== columnId) {
       setDragOverCol(columnId);
@@ -62,7 +66,7 @@ export default function KanbanBoard({ projects, onProjectClick, onAddProject }: 
     setDragOverCol(null);
   };
 
-  const handleDrop = (e: React.DragEvent, columnId: string) => {
+  const handleDrop = (e: React.DragEvent, columnId: ProjectStatusType) => {
     e.preventDefault();
     setDragOverCol(null);
     const projectId = e.dataTransfer.getData('text/plain');
@@ -75,7 +79,7 @@ export default function KanbanBoard({ projects, onProjectClick, onAddProject }: 
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 h-full items-start overflow-x-auto min-w-[1000px] md:min-w-0 pb-4">
+    <div className="flex gap-4 h-full items-start overflow-x-auto pb-6 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
       {COLUMNS.map((column) => {
         const columnProjects = projects.filter((p) => p.status === column.id);
         const isOver = dragOverCol === column.id;
@@ -86,8 +90,8 @@ export default function KanbanBoard({ projects, onProjectClick, onAddProject }: 
             onDragOver={(e) => handleDragOver(e, column.id)}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, column.id)}
-            className={`flex flex-col rounded-xl bg-accent/20 dark:bg-slate-900/20 border border-border/80 p-4 min-h-[550px] transition-colors duration-200 ${
-              isOver ? 'bg-indigo-500/5 dark:bg-indigo-950/10 border-indigo-500/30 dark:border-indigo-500/20 ring-1 ring-indigo-500/20 shadow-xs' : ''
+            className={`flex flex-col rounded-xl bg-accent/25 border border-border/80 p-4 min-h-[550px] w-[280px] shrink-0 transition-all duration-200 ${
+              isOver ? 'bg-indigo-500/5 border-indigo-500/30 ring-1 ring-indigo-500/20 shadow-xs' : ''
             }`}
           >
             {/* Column Header */}
@@ -95,7 +99,11 @@ export default function KanbanBoard({ projects, onProjectClick, onAddProject }: 
               <div className="flex items-center gap-2">
                 <span
                   className={`h-2.5 w-2.5 rounded-full ${
-                    column.id === 'todo'
+                    column.id === 'potential'
+                      ? 'bg-amber-500 dark:bg-amber-400'
+                      : column.id === 'future'
+                      ? 'bg-sky-500 dark:bg-sky-400'
+                      : column.id === 'todo'
                       ? 'bg-slate-400 dark:bg-slate-500'
                       : column.id === 'in_progress'
                       ? 'bg-indigo-500 dark:bg-indigo-400'
@@ -103,7 +111,7 @@ export default function KanbanBoard({ projects, onProjectClick, onAddProject }: 
                       ? 'bg-purple-500 dark:bg-purple-400'
                       : column.id === 'completed'
                       ? 'bg-emerald-500 dark:bg-emerald-400'
-                      : 'bg-yellow-600 dark:bg-yellow-500'
+                      : 'bg-rose-500 dark:bg-rose-450'
                   }`}
                 />
                 <h3 className="text-sm font-bold text-foreground">{column.title}</h3>
@@ -113,7 +121,7 @@ export default function KanbanBoard({ projects, onProjectClick, onAddProject }: 
               </div>
               <button
                 onClick={() => onAddProject(column.id)}
-                className="text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400 p-1 hover:bg-accent rounded-md transition-colors"
+                className="text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400 p-1 hover:bg-accent rounded-md cursor-pointer hover:scale-[1.05] active:scale-[0.95] transition-all"
                 title={`Add project to ${column.title}`}
               >
                 <Plus className="h-4 w-4" />
@@ -133,7 +141,7 @@ export default function KanbanBoard({ projects, onProjectClick, onAddProject }: 
               ))}
 
               {columnProjects.length === 0 && (
-                <div className="border border-dashed border-border rounded-xl py-12 text-center text-xs text-muted-foreground/60">
+                <div className="border border-dashed border-border rounded-xl py-12 text-center text-xs text-muted-foreground/60 bg-background/30">
                   Drop projects here
                 </div>
               )}

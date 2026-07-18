@@ -21,7 +21,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: parseResult.error.flatten() }, { status: 400 });
     }
 
-    const { name, avatarUrl, password } = parseResult.data;
+        const { name, avatarUrl, password, mobileNumber } = parseResult.data;
 
     const user = await User.findById(session.user.id);
     if (!user) {
@@ -30,8 +30,12 @@ export async function PATCH(req: NextRequest) {
 
     user.name = name;
     
-    if (avatarUrl) {
+    if (avatarUrl !== undefined) {
       user.avatarUrl = avatarUrl;
+    }
+
+    if (mobileNumber !== undefined) {
+      user.mobileNumber = mobileNumber;
     }
 
     if (password) {
@@ -47,6 +51,7 @@ export async function PATCH(req: NextRequest) {
         name: user.name,
         email: user.email,
         avatarUrl: user.avatarUrl,
+        mobileNumber: user.mobileNumber,
         role: user.role,
       },
     });

@@ -12,7 +12,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <QueryProvider>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
-          <Toaster position="top-right" richColors closeButton />
+          <Toaster position="bottom-right" richColors closeButton />
         </ThemeProvider>
       </QueryProvider>
     </SessionProvider>
