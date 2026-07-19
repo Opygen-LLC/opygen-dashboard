@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import { profileSchema } from '@/lib/validations';
+import { deleteFromCloudinary } from '@/lib/cloudinary';
 
 export async function PATCH(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -30,7 +31,12 @@ export async function PATCH(req: NextRequest) {
 
     user.name = name;
     
-    if (avatarUrl !== undefined) {
+    if (avatarUrl !== undefined && avatarUrl !== user.avatarUrl) {
+      if (user.avatarUrl) {
+        deleteFromCloudinary(user.avatarUrl).catch(err =>
+          console.error("Failed to delete old avatar from Cloudinary:", err)
+        );
+      }
       user.avatarUrl = avatarUrl;
     }
 

@@ -236,7 +236,7 @@ export default function ProjectForm({
                                     htmlFor="title"
                                     className="font-semibold"
                                 >
-                                    Project Title
+                                    Project Title <span className="text-destructive">*</span>
                                 </Label>
                                 <Input
                                     id="title"
@@ -279,7 +279,7 @@ export default function ProjectForm({
                                     render={({ field }) => (
                                         <div className="space-y-2">
                                             <Label className="font-semibold">
-                                                Status
+                                                Status <span className="text-destructive">*</span>
                                             </Label>
                                             <Select
                                                 value={field.value}
@@ -358,7 +358,7 @@ export default function ProjectForm({
                                     render={({ field }) => (
                                         <div className="space-y-2">
                                             <Label className="font-semibold">
-                                                Priority
+                                                Priority <span className="text-destructive">*</span>
                                             </Label>
                                             <Select
                                                 value={field.value}

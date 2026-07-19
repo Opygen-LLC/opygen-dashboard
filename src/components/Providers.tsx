@@ -13,10 +13,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <ReduxProvider store={store}>
       <SessionProvider>
         <QueryProvider>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             {children}
             <Toaster position="bottom-right" richColors closeButton />
-          </ThemeProvider>
         </QueryProvider>
       </SessionProvider>
     </ReduxProvider>

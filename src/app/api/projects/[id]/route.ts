@@ -7,6 +7,7 @@ import Project from '@/models/Project';
 import ActivityLog from '@/models/ActivityLog';
 import User from '@/models/User';
 import { projectSchema, baseProjectSchema } from '@/lib/validations';
+import { deleteFromCloudinary } from '@/lib/cloudinary';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -55,7 +56,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: parseResult.error.flatten() }, { status: 400 });
     }
 
-    const updates = parseResult.data;
+    const updates = { ...parseResult.data };
+    // Remove fields that Zod applied defaults to if they weren't in the actual request
+    for (const key in updates) {
+      if (!(key in body)) {
+        delete (updates as any)[key];
+      }
+    }
+
     const project = await Project.findById(id);
 
     if (!project) {
@@ -63,6 +71,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     const updatedBudget = updates.budget !== undefined ? updates.budget : project.budget;
+    
+    // If budget changed, clear all milestones (payments)
+    if (updates.budget !== undefined && updates.budget !== project.budget) {
+        updates.payments = [];
+    }
     const updatedPayments = updates.payments !== undefined ? updates.payments : project.payments;
     if (updatedPayments && updatedBudget !== undefined && updatedBudget > 0) {
       const totalPayments = updatedPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
@@ -202,6 +215,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     if (updates.payments !== undefined) {
+      // Find all old receipt URLs
+      const oldReceiptUrls = (project.payments || [])
+        .map((p: any) => p.receiptUrl)
+        .filter((url): url is string => !!url);
+
+      // Find all new receipt URLs
+      const newReceiptUrls = (updates.payments || [])
+        .map((p: any) => p.receiptUrl)
+        .filter((url): url is string => !!url);
+
+      // Identify URLs that were in old but are not in new
+      const deletedReceiptUrls = oldReceiptUrls.filter(url => !newReceiptUrls.includes(url));
+
+      // Trigger deletion for each removed receipt URL
+      for (const url of deletedReceiptUrls) {
+        deleteFromCloudinary(url).catch(err =>
+          console.error("Failed to delete removed receipt from Cloudinary:", err)
+        );
+      }
+
       project.payments = updates.payments as any;
     }
 
@@ -230,12 +263,24 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   try {
     const { id } = await params;
     await dbConnect();
-    const project = await Project.findByIdAndDelete(id);
+    const project = await Project.findById(id);
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
+    // Find all receipt URLs of the project to delete them from Cloudinary
+    const receiptUrls = (project.payments || [])
+      .map((p: any) => p.receiptUrl)
+      .filter((url): url is string => !!url);
+
+    for (const url of receiptUrls) {
+      deleteFromCloudinary(url).catch(err =>
+        console.error("Failed to delete project receipt from Cloudinary:", err)
+      );
+    }
+
+    await project.deleteOne();
     await ActivityLog.deleteMany({ project: id });
 
     return NextResponse.json({ message: 'Project and activity logs deleted successfully' });

@@ -37,3 +37,32 @@ export type ProjectStatusType =
     | "completed"
     | "on_hold";
 export type ProjectPriorityType = "low" | "medium" | "high" | "urgent";
+
+export enum TransactionType {
+    INCOME = "income",
+    EXPENSE = "expense",
+}
+
+export enum TransactionCategory {
+    SALARY = "salary",
+    LOAN_GIVEN = "loan_given",
+    LOAN_REPAYMENT = "loan_repayment",
+    LOAN_TAKEN = "loan_taken",
+    EQUIPMENT = "equipment",
+    SOFTWARE = "software",
+    OFFICE = "office",
+    PROJECT_REVENUE = "project_revenue",
+    OTHER = "other",
+}
+
+export type TransactionTypeUnion = "income" | "expense";
+export type TransactionCategoryUnion =
+    | "salary"
+    | "loan_given"
+    | "loan_repayment"
+    | "loan_taken"
+    | "equipment"
+    | "software"
+    | "office"
+    | "project_revenue"
+    | "other";

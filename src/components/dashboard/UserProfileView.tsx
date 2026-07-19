@@ -60,12 +60,13 @@ export default function UserProfileView() {
         register: registerProfile,
         handleSubmit: handleProfileSubmit,
         setValue: setProfileValue,
+        getValues: getProfileValues,
         watch: watchProfile,
         control: profileControl,
         formState: { errors: profileErrors },
     } = useForm<ProfileInput>({
         resolver: zodResolver(profileSchema),
-        defaultValues: {
+        values: {
             name: session?.user?.name || "",
             avatarUrl: session?.user?.avatarUrl || "",
             mobileNumber: session?.user?.mobileNumber || "",
@@ -155,6 +156,18 @@ export default function UserProfileView() {
                 }
 
                 const uploadData = await uploadRes.json();
+                
+                // If there's already an uploaded image that hasn't been saved to the user profile yet,
+                // delete it from Cloudinary to prevent abandoned images
+                const currentAvatar = getProfileValues("avatarUrl");
+                if (currentAvatar && currentAvatar !== session?.user?.avatarUrl) {
+                    await fetch("/api/upload", {
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ url: currentAvatar })
+                    }).catch(console.error);
+                }
+
                 setProfileValue("avatarUrl", uploadData.url, {
                     shouldValidate: true,
                 });
@@ -273,6 +286,13 @@ export default function UserProfileView() {
                             onClick={handleAvatarClick}
                             title="Click to upload avatar"
                         >
+                            <input 
+                                type="file" 
+                                accept="image/*" 
+                                className="hidden" 
+                                ref={fileInputRef} 
+                                onChange={handleFileChange} 
+                            />
                             <Avatar className="h-28 w-28 border-4 border-card ring-2 ring-indigo-500/20 shadow-xl transition-all duration-300 group-hover:scale-95">
                                 <AvatarImage
                                     src={currentAvatar}

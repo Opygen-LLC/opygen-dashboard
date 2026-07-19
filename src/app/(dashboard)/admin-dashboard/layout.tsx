@@ -18,62 +18,12 @@ import {
     Sun,
     Moon,
     Laptop,
+    Wallet,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
-function ThemeToggler() {
-    const { theme, setTheme } = useTheme();
 
-    return (
-        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-accent/10 border border-border/60">
-            <span className="text-xs font-semibold text-muted-foreground">
-                Theme
-            </span>
-            <div className="flex rounded-md bg-accent/30 p-0.5">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`h-6 w-6 rounded-sm p-0 ${
-                        theme === "light"
-                            ? "bg-background text-amber-500 shadow-xs"
-                            : "text-muted-foreground hover:text-foreground"
-                    }`}
-                    onClick={() => setTheme("light")}
-                    title="Light Mode"
-                >
-                    <Sun className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`h-6 w-6 rounded-sm p-0 ${
-                        theme === "dark"
-                            ? "bg-background text-indigo-400 shadow-xs"
-                            : "text-muted-foreground hover:text-foreground"
-                    }`}
-                    onClick={() => setTheme("dark")}
-                    title="Dark Mode"
-                >
-                    <Moon className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`h-6 w-6 rounded-sm p-0 ${
-                        theme === "system"
-                            ? "bg-background text-foreground shadow-xs"
-                            : "text-muted-foreground hover:text-foreground"
-                    }`}
-                    onClick={() => setTheme("system")}
-                    title="System Mode"
-                >
-                    <Laptop className="h-3.5 w-3.5" />
-                </Button>
-            </div>
-        </div>
-    );
-}
 
 export default function AdminDashboardLayout({
     children,
@@ -87,11 +37,8 @@ export default function AdminDashboardLayout({
 
     const navigation = [
         { name: "Dashboard", href: "/admin-dashboard", icon: LayoutDashboard },
-        {
-            name: "Projects",
-            href: "/admin-dashboard/projects",
-            icon: FolderKanban,
-        },
+        { name: "Finance", href: "/admin-dashboard/finance", icon: Wallet },
+        { name: "Projects", href: "/admin-dashboard/projects", icon: FolderKanban },
         { name: "Users", href: "/admin-dashboard/users", icon: Users },
         { name: "Profile", href: "/admin-dashboard/profile", icon: UserIcon },
     ];
@@ -145,7 +92,7 @@ export default function AdminDashboardLayout({
 
                 {/* Footer controls & Profile */}
                 <div className="border-t border-border/80 p-4 space-y-4 bg-accent/5">
-                    <ThemeToggler />
+                    {/* Removed ThemeToggler */}
 
                     <div className="flex items-center gap-3 pt-1">
                         <Avatar className="h-9 w-9 border border-indigo-500/30">
@@ -272,7 +219,7 @@ export default function AdminDashboardLayout({
                             </nav>
 
                             <div className="border-t border-border p-4 space-y-4 bg-accent/5">
-                                <ThemeToggler />
+    
 
                                 <div className="flex items-center gap-3 pt-1">
                                     <Avatar className="h-9 w-9">
@@ -327,14 +274,10 @@ export default function AdminDashboardLayout({
                         />
                         {/* Modal */}
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                            transition={{
-                                type: "spring",
-                                damping: 25,
-                                stiffness: 220,
-                            }}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.15, ease: "easeOut" }}
                             className="relative z-10 w-full max-w-sm border border-border bg-card p-6 shadow-xl rounded-xl text-card-foreground"
                         >
                             <h3 className="text-lg font-bold text-foreground">

@@ -39,8 +39,8 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
     const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
-    // Send the password reset email
-    await sendEmail({
+    // Send the password reset email in the background
+    sendEmail({
       to: user.email,
       subject: 'Reset Your Password | OpyDash',
       templateName: 'reset-password',
@@ -48,6 +48,8 @@ export async function POST(req: NextRequest) {
         name: user.name,
         resetUrl,
       },
+    }).catch((emailErr) => {
+      console.error('Failed to send forgot password email:', emailErr);
     });
 
     return successResponse;

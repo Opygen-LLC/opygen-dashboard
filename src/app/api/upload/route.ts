@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { deleteFromCloudinary } from '@/lib/cloudinary';
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
       // Cloudinary expects sha1 or sha256. SHA-1 is standard for standard upload endpoints.
       const signature = crypto.createHash('sha1').update(signString).digest('hex');
 
-      const formData = new URLSearchParams();
+      const formData = new FormData();
       formData.append('file', image);
       formData.append('api_key', apiKey);
       formData.append('timestamp', timestamp);
@@ -39,7 +40,6 @@ export async function POST(req: NextRequest) {
 
       response = await fetch(uploadUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formData,
       });
     } else {
@@ -59,5 +59,20 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("Upload API Error:", error);
     return NextResponse.json({ error: error.message || 'Server error during upload' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { url } = await req.json();
+    if (!url) {
+      return NextResponse.json({ error: 'URL is required' }, { status: 400 });
+    }
+    
+    await deleteFromCloudinary(url);
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Upload Deletion API Error:", error);
+    return NextResponse.json({ error: error.message || 'Server error during deletion' }, { status: 500 });
   }
 }

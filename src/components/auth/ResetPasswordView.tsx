@@ -8,7 +8,7 @@ import * as z from "zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Lock, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Lock, ArrowLeft, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { Loading } from "@/components/ui/Loading";
 import {
     Card,
@@ -45,6 +45,8 @@ function ResetPasswordForm() {
 
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const {
         register,
@@ -163,11 +165,24 @@ function ResetPasswordForm() {
                                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     id="password"
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     placeholder="At least 8 characters"
                                     {...register("password")}
-                                    className="pl-10 bg-background/50 border-border focus-visible:ring-indigo-500 text-foreground"
+                                    className="pl-10 pr-10 bg-background/50 border-border focus-visible:ring-indigo-500 text-foreground"
                                 />
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-0 top-0 h-10 w-10 text-muted-foreground hover:text-foreground cursor-pointer"
+                                >
+                                    {showPassword ? (
+                                        <EyeOff className="h-4 w-4" />
+                                    ) : (
+                                        <Eye className="h-4 w-4" />
+                                    )}
+                                </Button>
                             </div>
                             {errors.password && (
                                 <p className="text-xs text-destructive mt-1">
@@ -184,11 +199,24 @@ function ResetPasswordForm() {
                                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     id="confirmPassword"
-                                    type="password"
+                                    type={showConfirmPassword ? "text" : "password"}
                                     placeholder="Repeat your password"
                                     {...register("confirmPassword")}
-                                    className="pl-10 bg-background/50 border-border focus-visible:ring-indigo-500 text-foreground"
+                                    className="pl-10 pr-10 bg-background/50 border-border focus-visible:ring-indigo-500 text-foreground"
                                 />
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute right-0 top-0 h-10 w-10 text-muted-foreground hover:text-foreground cursor-pointer"
+                                >
+                                    {showConfirmPassword ? (
+                                        <EyeOff className="h-4 w-4" />
+                                    ) : (
+                                        <Eye className="h-4 w-4" />
+                                    )}
+                                </Button>
                             </div>
                             {errors.confirmPassword && (
                                 <p className="text-xs text-destructive mt-1">

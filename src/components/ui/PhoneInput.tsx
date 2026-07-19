@@ -2,21 +2,8 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-
-const COUNTRIES = [
-    { code: "+880", name: "BD" },
-    { code: "+1", name: "US" },
-    { code: "+91", name: "IN" },
-    { code: "+44", name: "UK" },
-    { code: "+61", name: "AU" },
-    { code: "+92", name: "PK" },
-    { code: "+971", name: "AE" },
-    { code: "+966", name: "SA" },
-    { code: "+49", name: "DE" },
-    { code: "+33", name: "FR" },
-    { code: "+65", name: "SG" },
-    { code: "+60", name: "MY" },
-];
+import ReactPhoneInput from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 
 interface PhoneInputProps {
     value?: string;
@@ -26,29 +13,6 @@ interface PhoneInputProps {
     disabled?: boolean;
 }
 
-function parsePhoneNumber(val: string) {
-    if (!val) return { countryCode: "+880", localNumber: "" };
-
-    const sortedCountries = [...COUNTRIES].sort(
-        (a, b) => b.code.length - a.code.length,
-    );
-
-    for (const country of sortedCountries) {
-        if (val.startsWith(country.code)) {
-            return {
-                countryCode: country.code,
-                localNumber: val.slice(country.code.length),
-            };
-        }
-    }
-
-    if (val.startsWith("+")) {
-        return { countryCode: "+1", localNumber: val.slice(1) };
-    }
-
-    return { countryCode: "+880", localNumber: val };
-}
-
 export function PhoneInput({
     value = "",
     onChange,
@@ -56,53 +20,46 @@ export function PhoneInput({
     className,
     disabled,
 }: PhoneInputProps) {
-    const { countryCode, localNumber } = parsePhoneNumber(value);
-
-    const handleCountryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const nextCountry = e.target.value;
-        onChange(localNumber ? `${nextCountry}${localNumber}` : "");
-    };
-
-    const handleLocalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const nextValue = e.target.value;
-
-        if (nextValue.startsWith("+")) {
-            const parsed = parsePhoneNumber(nextValue);
-            onChange(`${parsed.countryCode}${parsed.localNumber}`);
-            return;
-        }
-
-        const digits = nextValue.replace(/\D/g, "");
-        onChange(digits ? `${countryCode}${digits}` : "");
-    };
-
     return (
-        <div className={cn("flex w-full gap-2", className)}>
-            <select
-                value={countryCode}
-                onChange={handleCountryChange}
-                disabled={disabled}
-                className="h-10 w-[104px] rounded-lg border border-input bg-background px-2 text-sm text-foreground outline-none transition-colors focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
-            >
-                {COUNTRIES.map((country) => (
-                    <option
-                        key={country.code}
-                        value={country.code}
-                        className="bg-card text-foreground"
-                    >
-                        {country.name} {country.code}
-                    </option>
-                ))}
-            </select>
-            <input
+        <div className={cn("w-full relative", className)}>
+            <ReactPhoneInput
                 id={id}
-                type="tel"
-                placeholder="1712345678"
-                value={localNumber}
-                onChange={handleLocalChange}
+                international
+                defaultCountry="BD"
+                value={value}
+                onChange={onChange}
                 disabled={disabled}
-                className="h-10 min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-1 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+                className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             />
+            {/* Custom CSS to override the package's default styling so it matches Shadcn UI */}
+            <style jsx global>{`
+                .PhoneInput {
+                    display: flex;
+                    align-items: center;
+                    width: 100%;
+                }
+                .PhoneInputInput {
+                    flex: 1;
+                    min-width: 0;
+                    border: none;
+                    background: transparent;
+                    outline: none;
+                    font-size: 14px;
+                    color: inherit;
+                    margin-left: 8px;
+                }
+                .PhoneInputInput:focus {
+                    outline: none;
+                }
+                .PhoneInputCountry {
+                    margin-right: 8px;
+                    padding-right: 8px;
+                    border-right: 1px solid hsl(var(--border));
+                }
+                .PhoneInputCountrySelectArrow {
+                    margin-left: 6px;
+                }
+            `}</style>
         </div>
     );
 }

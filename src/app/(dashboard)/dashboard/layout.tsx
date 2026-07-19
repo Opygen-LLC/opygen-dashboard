@@ -313,14 +313,10 @@ export default function MemberDashboardLayout({
                         />
                         {/* Modal */}
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 15 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-                            transition={{
-                                type: "spring",
-                                damping: 25,
-                                stiffness: 220,
-                            }}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.15, ease: "easeOut" }}
                             className="relative z-10 w-full max-w-sm border border-border bg-card p-6 shadow-xl rounded-xl text-card-foreground"
                         >
                             <h3 className="text-lg font-bold text-foreground">

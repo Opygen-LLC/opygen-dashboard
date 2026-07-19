@@ -6,6 +6,15 @@ const authMiddleware = withAuth(
         const token = req.nextauth.token;
         const path = req.nextUrl.pathname;
 
+        // Redirect logged in users away from /login
+        if (path === "/login") {
+            if (token) {
+                const target = token.role === "admin" ? "/admin-dashboard" : "/dashboard";
+                return NextResponse.redirect(new URL(target, req.url));
+            }
+            return NextResponse.next();
+        }
+
         // 1. Force password change redirection
         if (token?.needPasswordChange) {
             if (path !== "/change-password" && !path.startsWith("/api/auth/")) {
@@ -69,6 +78,15 @@ const authMiddleware = withAuth(
         return NextResponse.next();
     },
     {
+        callbacks: {
+            authorized: ({ req, token }) => {
+                // Allow anyone to access the login page so middleware can handle redirect logic
+                if (req.nextUrl.pathname === "/login") {
+                    return true;
+                }
+                return !!token;
+            }
+        },
         pages: {
             signIn: "/login",
         },
@@ -81,6 +99,7 @@ export function proxy(req: NextRequest, event: any) {
 
 export const config = {
     matcher: [
+        "/login",
         "/dashboard/:path*",
         "/admin-dashboard/:path*",
         "/change-password",

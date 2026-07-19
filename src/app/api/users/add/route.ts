@@ -55,23 +55,21 @@ export async function POST(req: NextRequest) {
       needPasswordChange: true, // admin created, so force change password is true!
     });
 
-    // Send welcome email with one-time credentials
+    // Send welcome email with one-time credentials in the background
     const loginUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/login`;
-    try {
-      await sendEmail({
-        to: newUser.email,
-        subject: 'Welcome to Opygen - Co-founder Account Created',
-        templateName: 'welcome',
-        templateData: {
-          name: newUser.name,
-          email: newUser.email,
-          password, // raw password passed by administrator
-          loginUrl,
-        },
-      });
-    } catch (emailErr) {
+    sendEmail({
+      to: newUser.email,
+      subject: 'Welcome to Opygen - Co-founder Account Created',
+      templateName: 'welcome',
+      templateData: {
+        name: newUser.name,
+        email: newUser.email,
+        password, // raw password passed by administrator
+        loginUrl,
+      },
+    }).catch((emailErr) => {
       console.error('Failed to send welcome email to new user:', emailErr);
-    }
+    });
 
     return NextResponse.json({
       message: 'Co-founder account created successfully.',

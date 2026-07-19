@@ -125,7 +125,29 @@ export const addUserSchema = z.object({
   role: z.nativeEnum(UserRole),
   password: z.string().min(8, 'Password must be at least 8 characters long'),
   mobileNumber: z.string().regex(/^\+\d{4,15}$/, 'Must start with + and include country code (e.g. +1234567890)').optional().or(z.literal('')),
-  status: z.nativeEnum(UserStatus),
+  status: z.nativeEnum(UserStatus).optional(),
 });
 
 export type AddUserInput = z.infer<typeof addUserSchema>;
+
+export const transactionSchema = z.object({
+  amount: z.coerce.number().min(0, 'Amount must be a non-negative number'),
+  type: z.enum(['income', 'expense']),
+  category: z.enum([
+    'salary', 
+    'loan_given', 
+    'loan_repayment',
+    'loan_taken',
+    'equipment', 
+    'software', 
+    'office', 
+    'project_revenue', 
+    'other'
+  ]),
+  description: z.string().min(1, 'Description is required').max(500, 'Description cannot exceed 500 characters'),
+  date: z.string().optional().nullable().transform(val => val ? new Date(val) : new Date()),
+  user: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID').or(z.literal('other')).optional().nullable(),
+  externalEntity: z.string().optional(),
+});
+
+export type TransactionInput = z.infer<typeof transactionSchema>;

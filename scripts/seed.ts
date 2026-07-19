@@ -70,8 +70,8 @@ async function seed() {
         console.log("Admin user seeded successfully!");
     }
 
-    // await mongoose.disconnect();
-    // console.log("Database connection closed.");
+    await mongoose.disconnect();
+    console.log("Database connection closed.");
 }
 
 seed().catch((err) => {
