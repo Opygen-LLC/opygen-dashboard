@@ -21,7 +21,7 @@ import {
     ChevronLeft,
     ChevronRight,
 } from "lucide-react";
-import { Loading } from "@/components/ui/Loading";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
     Card,
     CardContent,
@@ -37,6 +37,21 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { transactionSchema, TransactionInput } from "@/lib/validations";
 import { TransactionType, TransactionCategory } from "@/types";
+
+const monthColors = [
+    "bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400",
+    "bg-orange-500/10 text-orange-600 dark:bg-orange-500/20 dark:text-orange-400",
+    "bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400",
+    "bg-green-500/10 text-green-600 dark:bg-green-500/20 dark:text-green-400",
+    "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400",
+    "bg-teal-500/10 text-teal-600 dark:bg-teal-500/20 dark:text-teal-400",
+    "bg-cyan-500/10 text-cyan-600 dark:bg-cyan-500/20 dark:text-cyan-400",
+    "bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400",
+    "bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-400",
+    "bg-violet-500/10 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400",
+    "bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400",
+    "bg-pink-500/10 text-pink-600 dark:bg-pink-500/20 dark:text-pink-400"
+];
 
 export default function FinanceDashboardView() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -216,8 +231,37 @@ export default function FinanceDashboardView() {
 
     if (isSummaryLoading || isTransactionsLoading) {
         return (
-            <div className="flex h-full w-full items-center justify-center">
-                <Loading variant="full" text="Loading financial data..." />
+            <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="flex justify-between items-center">
+                    <div className="space-y-2">
+                        <Skeleton className="h-10 w-48" />
+                        <Skeleton className="h-4 w-72" />
+                    </div>
+                    <Skeleton className="h-10 w-32" />
+                </div>
+                
+                {/* 4 Cards Skeleton */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4].map(i => (
+                        <Skeleton key={i} className="h-28 w-full rounded-xl" />
+                    ))}
+                </div>
+
+                {/* Table Skeleton */}
+                <div className="rounded-xl border border-border bg-card p-6 space-y-6">
+                    <div className="flex justify-between items-center border-b border-border/50 pb-4">
+                        <div className="space-y-2">
+                            <Skeleton className="h-6 w-40" />
+                            <Skeleton className="h-4 w-56" />
+                        </div>
+                        <Skeleton className="h-10 w-[150px]" />
+                    </div>
+                    <div className="space-y-4">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <Skeleton key={i} className="h-16 w-full" />
+                        ))}
+                    </div>
+                </div>
             </div>
         );
     }
@@ -408,12 +452,12 @@ export default function FinanceDashboardView() {
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-4 text-muted-foreground">
-                                                <div className="flex items-center gap-1.5">
+                                            <td className="px-6 py-4">
+                                                <div className={cn("flex items-center gap-1.5 px-2.5 py-1.5 rounded-md w-max font-semibold text-xs", monthColors[new Date(t.date).getMonth()])}>
                                                     <Calendar className="h-3.5 w-3.5" />
                                                     {new Date(
                                                         t.date,
-                                                    ).toLocaleDateString()}
+                                                    ).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
@@ -793,7 +837,7 @@ export default function FinanceDashboardView() {
                                                     isSubmitting ||
                                                     addMutation.isPending
                                                 }
-                                                className="min-w-[120px]"
+                                                className="min-w-[120px] bg-indigo-600 hover:bg-indigo-700 text-white"
                                             >
                                                 {isSubmitting ||
                                                 addMutation.isPending

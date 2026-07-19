@@ -11,6 +11,7 @@ import {
     LayoutDashboard,
     FolderKanban,
     Users,
+    Briefcase,
     User as UserIcon,
     LogOut,
     Menu,
@@ -39,6 +40,7 @@ export default function AdminDashboardLayout({
         { name: "Dashboard", href: "/admin-dashboard", icon: LayoutDashboard },
         { name: "Finance", href: "/admin-dashboard/finance", icon: Wallet },
         { name: "Projects", href: "/admin-dashboard/projects", icon: FolderKanban },
+        { name: "Clients", href: "/admin-dashboard/clients", icon: Briefcase },
         { name: "Users", href: "/admin-dashboard/users", icon: Users },
         { name: "Profile", href: "/admin-dashboard/profile", icon: UserIcon },
     ];

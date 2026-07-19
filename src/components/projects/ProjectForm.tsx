@@ -202,12 +202,13 @@ export default function ProjectForm({
     };
 
     const onFormSubmit = (data: ProjectInput) => {
+        const { payments, ...rest } = data;
         onSubmit({
-            ...data,
+            ...rest,
             budget: isPipelineProject ? 0 : Number(data.budget ?? 0),
             budgetMin: isPipelineProject ? (data.budgetMin ?? null) : null,
             budgetMax: isPipelineProject ? (data.budgetMax ?? null) : null,
-        });
+        } as ProjectInput);
     };
 
     return (

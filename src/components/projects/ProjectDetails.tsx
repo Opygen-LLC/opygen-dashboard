@@ -50,10 +50,11 @@ import {
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog";
-import { Loading } from "@/components/ui/Loading";
+import { Skeleton } from "@/components/ui/skeleton";
 import Image from "next/image";
 import { useAppDispatch } from "@/store";
 import { fetchProjectsThunk } from "@/store/projectsSlice";
+import { Loading } from "../ui/Loading";
 
 interface ProjectDetailsProps {
     projectId: string;
@@ -195,8 +196,47 @@ export default function ProjectDetails({
 
     if (isLoading) {
         return (
-            <div className="flex h-full items-center justify-center p-8 bg-card border-l border-border">
-                <Loading />
+            <div className="flex flex-col h-full bg-card border-l border-border text-foreground overflow-hidden shadow-2xl p-6 space-y-8">
+                <div className="flex items-center justify-between border-b border-border bg-accent/20 pb-6">
+                    <div className="flex items-center gap-3">
+                        <Skeleton className="h-6 w-20 rounded-full" />
+                        <Skeleton className="h-4 w-32" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Skeleton className="h-10 w-10 rounded-md" />
+                        <Skeleton className="h-10 w-10 rounded-md" />
+                        <Skeleton className="h-10 w-10 rounded-md" />
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    <Skeleton className="h-8 w-1/3" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-5/6" />
+                </div>
+                <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-accent/10 border border-border">
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                </div>
+                <div className="space-y-4 border-b border-border/60 pb-6">
+                    <div className="flex flex-col gap-3">
+                        <Skeleton className="h-5 w-48" />
+                        <Skeleton className="h-5 w-56" />
+                        <Skeleton className="h-5 w-40" />
+                    </div>
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-24" />
+                        <div className="flex gap-2">
+                            <Skeleton className="h-8 w-24 rounded-full" />
+                            <Skeleton className="h-8 w-24 rounded-full" />
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }
@@ -283,7 +323,7 @@ export default function ProjectDetails({
                     </Badge>
                     <span className="text-xs text-muted-foreground">
                         Updated{" "}
-                        {format(new Date(project.updatedAt), "MMM dd, HH:mm")}
+                        {project.updatedAt ? format(new Date(project.updatedAt), "MMM dd, HH:mm") : "N/A"}
                     </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -475,10 +515,10 @@ export default function ProjectDetails({
 
                             <div>
                                 <h4 className="text-sm font-semibold text-muted-foreground mb-2">
-                                    Assignees ({project.assignees.length})
+                                    Assignees ({project.assignees?.length || 0})
                                 </h4>
                                 <div className="flex flex-wrap gap-2">
-                                    {project.assignees.map((user: any) => (
+                                    {(project.assignees || []).map((user: any) => (
                                         <div
                                             key={user._id}
                                             className="flex items-center gap-2 bg-background border border-border rounded-full py-1 px-3 pr-4"
@@ -498,7 +538,7 @@ export default function ProjectDetails({
                                             </span>
                                         </div>
                                     ))}
-                                    {project.assignees.length === 0 && (
+                                    {(project.assignees || []).length === 0 && (
                                         <p className="text-xs italic text-muted-foreground/60">
                                             Unassigned
                                         </p>
@@ -534,7 +574,7 @@ export default function ProjectDetails({
                                         {project.clientSocialLink && (
                                             <a
                                                 href={
-                                                    project.clientSocialLink.startsWith(
+                                                    typeof project.clientSocialLink === 'string' && project.clientSocialLink.startsWith(
                                                         "http",
                                                     )
                                                         ? project.clientSocialLink
@@ -1246,12 +1286,12 @@ export default function ProjectDetails({
                                                                 {log.user?.name}
                                                             </span>
                                                             <span className="text-xs text-muted-foreground">
-                                                                {format(
-                                                                    new Date(
-                                                                        log.createdAt,
-                                                                    ),
-                                                                    "MMM dd, HH:mm",
-                                                                )}
+                                                                {log.createdAt
+                                                                    ? format(
+                                                                          new Date(log.createdAt),
+                                                                          "MMM dd, HH:mm",
+                                                                      )
+                                                                    : "N/A"}
                                                             </span>
                                                         </div>
                                                         {isComment ? (
@@ -1400,13 +1440,13 @@ export default function ProjectDetails({
                                             onClick={() =>
                                                 setShowDeleteModal(false)
                                             }
-                                            className="w-full"
+                                            className="flex-1"
                                         >
                                             Cancel
                                         </Button>
                                         <Button
                                             variant="destructive"
-                                            className="w-full bg-rose-600 hover:bg-rose-700 text-white"
+                                            className="flex-1 bg-rose-600 hover:bg-rose-700 text-white"
                                             onClick={() => {
                                                 deleteMutation.mutate();
                                                 setShowDeleteModal(false);

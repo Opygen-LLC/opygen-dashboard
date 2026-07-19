@@ -103,7 +103,6 @@ export default function ForcedChangePasswordPage() {
 
     return (
         <div className="relative flex min-h-screen items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8 overflow-hidden text-foreground transition-colors duration-200">
-            <AuthThemeToggler />
             {/* Background gradients */}
             <div className="absolute top-1/4 left-1/4 h-[500px] w-[500px] rounded-full bg-indigo-500/10 dark:bg-indigo-500/5 blur-[120px]" />
             <div className="absolute bottom-1/4 right-1/4 h-[500px] w-[500px] rounded-full bg-pink-500/10 dark:bg-pink-500/5 blur-[120px]" />

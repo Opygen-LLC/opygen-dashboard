@@ -72,10 +72,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const updatedBudget = updates.budget !== undefined ? updates.budget : project.budget;
     
-    // If budget changed, clear all milestones (payments)
-    if (updates.budget !== undefined && updates.budget !== project.budget) {
-        updates.payments = [];
-    }
+    // Removed the block that deletes payments if the budget changes
     const updatedPayments = updates.payments !== undefined ? updates.payments : project.payments;
     if (updatedPayments && updatedBudget !== undefined && updatedBudget > 0) {
       const totalPayments = updatedPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);

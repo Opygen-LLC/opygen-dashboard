@@ -12,7 +12,7 @@ import {
     TrendingUp,
     RefreshCw,
 } from "lucide-react";
-import { Loading } from "@/components/ui/Loading";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
     PieChart,
     Pie,
@@ -81,8 +81,20 @@ export default function DashboardPage() {
 
     if (isLoading) {
         return (
-            <div className="flex h-96 items-center justify-center">
-                <Loading />
+            <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="h-28 w-full rounded-xl bg-muted/30 p-6 flex flex-col justify-center gap-3">
+                    <Skeleton className="h-8 w-48" />
+                    <Skeleton className="h-4 w-64" />
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {[1, 2, 3, 4].map(i => (
+                        <Skeleton key={i} className="h-32 w-full rounded-xl" />
+                    ))}
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Skeleton className="h-80 w-full rounded-xl" />
+                    <Skeleton className="h-80 w-full rounded-xl" />
+                </div>
             </div>
         );
     }

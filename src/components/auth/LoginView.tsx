@@ -84,7 +84,6 @@ export default function LoginPage() {
 
     return (
         <div className="relative flex min-h-screen items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8 overflow-hidden text-foreground transition-colors duration-200">
-            <AuthThemeToggler />
 
             {/* Background gradients */}
             <div className="absolute top-1/4 left-1/4 h-[500px] w-[500px] rounded-full bg-indigo-500/10 dark:bg-indigo-500/5 blur-[120px]" />
@@ -159,7 +158,9 @@ export default function LoginPage() {
                                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         id="password"
-                                        type={showPassword ? "text" : "password"}
+                                        type={
+                                            showPassword ? "text" : "password"
+                                        }
                                         autoComplete="current-password"
                                         placeholder="••••••••"
                                         {...register("password")}
@@ -169,7 +170,9 @@ export default function LoginPage() {
                                         type="button"
                                         variant="ghost"
                                         size="icon"
-                                        onClick={() => setShowPassword(!showPassword)}
+                                        onClick={() =>
+                                            setShowPassword(!showPassword)
+                                        }
                                         className="absolute right-0 top-0 h-10 w-10 text-muted-foreground hover:text-foreground cursor-pointer"
                                     >
                                         {showPassword ? (
@@ -192,7 +195,10 @@ export default function LoginPage() {
                                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-md shadow-indigo-600/20 cursor-pointer"
                             >
                                 {isLoading ? (
-                                    <Loading variant="mini" text="Signing In..." />
+                                    <Loading
+                                        variant="mini"
+                                        text="Signing In..."
+                                    />
                                 ) : (
                                     "Sign In"
                                 )}

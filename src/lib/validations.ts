@@ -151,3 +151,37 @@ export const transactionSchema = z.object({
 });
 
 export type TransactionInput = z.infer<typeof transactionSchema>;
+
+export const clientSchema = z.object({
+    name: z.string().min(2, "Name is required"),
+    number: z.string().optional(),
+    socialMediaLink: z.string().url("Please enter a valid URL").optional().or(z.literal("")),
+    country: z.string().min(2, "Country is required"),
+    minAmount: z.coerce.number().min(0, "Min amount is required"),
+    maxAmount: z.coerce.number().min(0, "Max amount is required"),
+    notes: z.string().optional(),
+    source: z.string().min(1, "Source is required"),
+    otherSource: z.string().optional(),
+}).refine(data => {
+    if (data.source === "Other" && (!data.otherSource || data.otherSource.trim() === "")) {
+        return false;
+    }
+    return true;
+}, {
+    message: "Please specify the other source",
+    path: ["otherSource"],
+}).refine(data => {
+    return data.maxAmount >= data.minAmount;
+}, {
+    message: "Max amount cannot be less than min amount",
+    path: ["maxAmount"],
+}).refine(data => {
+    const hasNumber = !!data.number?.trim();
+    const hasSocial = !!data.socialMediaLink?.trim();
+    return hasNumber || hasSocial;
+}, {
+    message: "Either phone number or social media link must be provided",
+    path: ["number"], // attach error to number field
+});
+
+export type ClientInput = z.infer<typeof clientSchema>;

@@ -59,8 +59,27 @@ export async function PATCH(req: NextRequest) {
         avatarUrl: user.avatarUrl,
         mobileNumber: user.mobileNumber,
         role: user.role,
+        balance: user.balance,
       },
     });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Server Error' }, { status: 500 });
+  }
+}
+
+export async function GET(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    await dbConnect();
+    const user = await User.findById(session.user.id).select('-passwordHash -resetPasswordToken -resetPasswordExpires');
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    return NextResponse.json(user);
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Server Error' }, { status: 500 });
   }

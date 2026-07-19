@@ -14,7 +14,7 @@ import {
     ChevronLeft,
     ChevronRight,
 } from "lucide-react";
-import { Loading } from "@/components/ui/Loading";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -288,8 +288,10 @@ export default function ProjectsDashboardView() {
             {/* Projects Display Content */}
             <div className="flex-1 overflow-y-auto">
                 {isLoading ? (
-                    <div className="flex h-64 items-center justify-center">
-                        <Loading />
+                    <div className="space-y-4">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <Skeleton key={i} className="h-24 w-full rounded-xl" />
+                        ))}
                     </div>
                 ) : projects.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 border border-dashed border-border rounded-xl bg-accent/5">

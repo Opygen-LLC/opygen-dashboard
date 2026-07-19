@@ -77,7 +77,6 @@ export default function ForgotPasswordPage() {
 
     return (
         <div className="relative flex min-h-screen items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8 overflow-hidden text-foreground transition-colors duration-200">
-            <AuthThemeToggler />
             {/* Background gradients */}
             <div className="absolute top-1/4 left-1/4 h-[500px] w-[500px] rounded-full bg-indigo-500/10 dark:bg-indigo-500/5 blur-[120px]" />
             <div className="absolute bottom-1/4 right-1/4 h-[500px] w-[500px] rounded-full bg-pink-500/10 dark:bg-pink-500/5 blur-[120px]" />
@@ -124,8 +123,9 @@ export default function ForgotPasswordPage() {
                                 <CheckCircle2 className="h-16 w-16 text-emerald-500 dark:text-emerald-450 animate-bounce" />
                             </div>
                             <p className="text-sm text-foreground/80 leading-relaxed">
-                                If the email address matches a registered account, you will receive a secure
-                                password reset link shortly.
+                                If the email address matches a registered
+                                account, you will receive a secure password
+                                reset link shortly.
                             </p>
                             <p className="text-xs text-muted-foreground font-mono mt-4 leading-relaxed">
                                 Note: In local development, the reset link is
@@ -163,7 +163,10 @@ export default function ForgotPasswordPage() {
                                     className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium shadow-md shadow-indigo-600/20"
                                 >
                                     {isLoading ? (
-                                        <Loading variant="mini" text="Dispatching Link..." />
+                                        <Loading
+                                            variant="mini"
+                                            text="Dispatching Link..."
+                                        />
                                     ) : (
                                         "Send Reset Link"
                                     )}

@@ -12,6 +12,7 @@ export interface IUser extends Document {
     mobileNumber?: string;
     resetPasswordToken?: string;
     resetPasswordExpires?: Date;
+    balance: number;
     createdAt: Date;
 }
 
@@ -34,6 +35,7 @@ const UserSchema = new Schema<IUser>({
     mobileNumber: { type: String },
     resetPasswordToken: { type: String },
     resetPasswordExpires: { type: Date },
+    balance: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now },
 });
 

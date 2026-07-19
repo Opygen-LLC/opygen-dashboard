@@ -20,7 +20,7 @@ import {
     Activity,
     Phone,
 } from "lucide-react";
-import { Loading } from "@/components/ui/Loading";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useForm, Controller } from "react-hook-form";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -265,8 +265,10 @@ export default function UsersManagementPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                     {isLoading ? (
-                        <div className="flex h-48 items-center justify-center">
-                            <Loading />
+                        <div className="p-4 space-y-4">
+                            {[1, 2, 3, 4, 5].map((i) => (
+                                <Skeleton key={i} className="h-12 w-full" />
+                            ))}
                         </div>
                     ) : users.length === 0 ? (
                         <div className="text-center py-12 text-sm text-muted-foreground italic">
