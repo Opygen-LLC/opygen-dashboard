@@ -106,5 +106,6 @@ export const config = {
         "/api/projects/:path*",
         "/api/users/:path*",
         "/api/dashboard/:path*",
+        "/api/upload/:path*",
     ],
 };

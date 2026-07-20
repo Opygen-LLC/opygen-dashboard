@@ -46,6 +46,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "../../lib/utils";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { setUserProfile, updateAvatar } from "@/store/userSlice";
+import User from "../../models/User";
 
 /** Small pure helpers — no side effects, safe to keep outside the component */
 function formatRelativeTime(dateInput: string | Date) {

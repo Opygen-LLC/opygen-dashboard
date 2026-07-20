@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { deleteFromCloudinary } from '@/lib/cloudinary';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { image } = await req.json();
     if (!image) {
       return NextResponse.json({ error: 'Image data is required' }, { status: 400 });
+    }
+    
+    // Basic validation that image is a plausible base64 image data URI
+    if (!image.startsWith('data:image/')) {
+      return NextResponse.json({ error: 'Invalid image format' }, { status: 400 });
     }
 
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
@@ -64,6 +76,11 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { url } = await req.json();
     if (!url) {
       return NextResponse.json({ error: 'URL is required' }, { status: 400 });
