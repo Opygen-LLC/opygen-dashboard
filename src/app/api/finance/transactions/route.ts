@@ -110,8 +110,12 @@ export async function POST(req: NextRequest) {
                     description: transactionData.description,
                     date: transactionData.date || new Date(),
                 });
-                // ↑ Statement.create() triggers the post("save") hook in Statements.ts
-                //   which calls User.findByIdAndUpdate({ $inc: { balance: signedAmount } })
+                
+                // Explicitly update user balance
+                const balanceDelta = stmtType === '+' ? Number(transactionData.amount) : -Number(transactionData.amount);
+                await User.findByIdAndUpdate(userId, {
+                    $inc: { balance: balanceDelta }
+                });
             }
         }
 

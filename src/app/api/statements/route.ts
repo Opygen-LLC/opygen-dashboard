@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/db';
 import Statement from '@/models/Statements';
 import User from '@/models/User';
+import Transaction from '@/models/Transaction';
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -14,9 +15,9 @@ export async function GET(req: NextRequest) {
   try {
     await dbConnect();
     
-    // Check if User model is registered to ensure population works
-    if (!User) {
-      console.warn("User model not loaded");
+    // Check if User and Transaction models are registered to ensure population works
+    if (!User || !Transaction) {
+      console.warn("User or Transaction model not loaded");
     }
 
     const { searchParams } = new URL(req.url);

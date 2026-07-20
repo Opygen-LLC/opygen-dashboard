@@ -50,25 +50,40 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       : null;
 
     // ── STATEMENT SYNC ──────────────────────────────────────────────────────
-    // The Statement model's post-save hooks handle all balance updates automatically.
-    // We just need to upsert/delete the statement correctly.
-
     const existingStatement = await Statement.findOne({ transaction: id });
 
     if (newUserId && STATEMENT_CATEGORIES.includes(transaction.category)) {
       const stmtType = getStmtType(transaction.category);
 
       if (existingStatement) {
-        // Update existing statement — hook will diff the balance automatically
+        // Calculate old balance delta
+        const oldDelta = existingStatement.type === '+' ? Number(existingStatement.amount) : -Number(existingStatement.amount);
+        const oldUserId = existingStatement.user.toString();
+
+        // Update existing statement
         existingStatement.user = newUserId as any;
         existingStatement.amount = transaction.amount;
         existingStatement.type = stmtType;
         existingStatement.category = transaction.category;
         existingStatement.description = transaction.description;
         existingStatement.date = transaction.date || new Date();
-        await existingStatement.save(); // triggers pre/post save hooks → balance auto-updated
+        await existingStatement.save();
+        
+        // Calculate new balance delta
+        const newDelta = stmtType === '+' ? Number(transaction.amount) : -Number(transaction.amount);
+
+        // Apply diffs directly
+        if (oldUserId !== newUserId) {
+            await User.findByIdAndUpdate(oldUserId, { $inc: { balance: -oldDelta } });
+            await User.findByIdAndUpdate(newUserId, { $inc: { balance: newDelta } });
+        } else {
+            const diff = newDelta - oldDelta;
+            if (diff !== 0) {
+                await User.findByIdAndUpdate(newUserId, { $inc: { balance: diff } });
+            }
+        }
       } else {
-        // Create new statement — post-save hook will add to balance
+        // Create new statement
         await Statement.create({
           user: newUserId,
           transaction: transaction._id,
@@ -78,11 +93,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           description: transaction.description,
           date: transaction.date || new Date(),
         });
+        
+        const balanceDelta = stmtType === '+' ? Number(transaction.amount) : -Number(transaction.amount);
+        await User.findByIdAndUpdate(newUserId, { $inc: { balance: balanceDelta } });
       }
     } else if (existingStatement) {
       // Category changed away from statement type — delete statement
-      // post findOneAndDelete hook will revert the balance
-      await Statement.findOneAndDelete({ transaction: id });
+      const oldDelta = existingStatement.type === '+' ? Number(existingStatement.amount) : -Number(existingStatement.amount);
+      await Statement.findByIdAndDelete(existingStatement._id);
+      await User.findByIdAndUpdate(existingStatement.user, { $inc: { balance: -oldDelta } });
     }
 
     return NextResponse.json(transaction);
@@ -110,8 +129,13 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     // Delete the transaction
     await Transaction.findByIdAndDelete(id);
 
-    // Delete associated statement — findOneAndDelete hook auto-reverts the balance
-    await Statement.findOneAndDelete({ transaction: id });
+    // Delete associated statement and explicitly revert the balance
+    const existingStatement = await Statement.findOne({ transaction: id });
+    if (existingStatement) {
+      const oldDelta = existingStatement.type === '+' ? Number(existingStatement.amount) : -Number(existingStatement.amount);
+      await Statement.findByIdAndDelete(existingStatement._id);
+      await User.findByIdAndUpdate(existingStatement.user, { $inc: { balance: -oldDelta } });
+    }
 
     return NextResponse.json({ success: true, message: 'Transaction deleted successfully' });
   } catch (error: any) {

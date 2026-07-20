@@ -7,14 +7,17 @@ import { store } from '@/store';
 import QueryProvider from './QueryProvider';
 import { ThemeProvider } from './ThemeProvider';
 import { Toaster } from 'sonner';
+import UserInitializer from './UserInitializer';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ReduxProvider store={store}>
       <SessionProvider>
         <QueryProvider>
+          <UserInitializer>
             {children}
             <Toaster position="bottom-right" richColors closeButton />
+          </UserInitializer>
         </QueryProvider>
       </SessionProvider>
     </ReduxProvider>

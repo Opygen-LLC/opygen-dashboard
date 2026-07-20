@@ -15,7 +15,8 @@ import {
     ChevronLeft,
     ChevronRight,
     Globe,
-    ExternalLink
+    ExternalLink,
+    FolderPlus
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -37,10 +38,12 @@ import { clientSchema, ClientInput } from "@/lib/validations";
 import { Textarea } from "@/components/ui/textarea";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { COUNTRIES } from "@/lib/countries";
+import ClientToProjectModal from "./ClientToProjectModal";
 
 export default function ClientDashboardView() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClient, setEditingClient] = useState<any>(null);
+    const [convertingClient, setConvertingClient] = useState<any>(null);
     const [filterSource, setFilterSource] = useState<string>("All");
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [currentPage, setCurrentPage] = useState<number>(1);
@@ -345,6 +348,15 @@ export default function ClientDashboardView() {
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        title="Convert to Project"
+                                                        className="h-8 w-8 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10"
+                                                        onClick={() => setConvertingClient(client)}
+                                                    >
+                                                        <FolderPlus className="h-4 w-4" />
+                                                    </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
@@ -732,6 +744,12 @@ export default function ClientDashboardView() {
                     </div>
                 )}
             </AnimatePresence>
+
+            <ClientToProjectModal
+                client={convertingClient}
+                isOpen={!!convertingClient}
+                onClose={() => setConvertingClient(null)}
+            />
         </motion.div>
     );
 }

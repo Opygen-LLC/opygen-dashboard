@@ -464,31 +464,13 @@ export default function ProjectsDashboardView() {
             </div>
 
             {/* Project Creation Modal */}
-            {/* <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                <DialogContent className="bg-card border-border text-foreground max-w-4xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>Create New Project</DialogTitle>
-                        <DialogDescription className="text-muted-foreground">
-                            Scaffold a new project card for Opygen. Fill in the
-                            fields below.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <ProjectForm
-                        initialData={{ status: defaultCreateStatus }}
-                        onSubmit={(data) => createMutation.mutate(data)}
-                        isLoading={createMutation.isPending}
-                        onCancel={() => setIsCreateOpen(false)}
-                    />
-                </DialogContent>
-            </Dialog> */}
-            {/* Project Creation Modal */}
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                 <DialogContent
                     className="bg-card border-border text-foreground flex w-[95vw] max-w-4xl lg:max-w-5xl xl:max-w-6xl
                    max-h-[90vh] flex-col gap-0 overflow-hidden p-0"
                 >
                     <DialogHeader className="shrink-0 border-b border-border px-6 py-5">
-                        <DialogTitle>Create New Project</DialogTitle>
+                        <DialogTitle className="text-2xl font-bold bg-linear-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">Create New Project</DialogTitle>
                         <DialogDescription className="text-muted-foreground">
                             Scaffold a new project card for Opygen. Fill in the
                             fields below.
