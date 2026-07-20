@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IClient extends Document {
     name: string;
+    companyName?: string;
     number?: string;
     socialMediaLink?: string;
     country: string;
@@ -10,6 +11,8 @@ export interface IClient extends Document {
     notes?: string;
     source: string;
     otherSource?: string;
+    followupDate?: Date;
+    status: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -19,6 +22,10 @@ const ClientSchema = new Schema<IClient>(
         name: {
             type: String,
             required: [true, "Name is required"],
+            trim: true,
+        },
+        companyName: {
+            type: String,
             trim: true,
         },
         number: {
@@ -36,12 +43,10 @@ const ClientSchema = new Schema<IClient>(
         },
         minAmount: {
             type: Number,
-            required: [true, "Minimum amount is required"],
             min: 0,
         },
         maxAmount: {
             type: Number,
-            required: [true, "Maximum amount is required"],
             min: 0,
         },
         notes: {
@@ -55,10 +60,18 @@ const ClientSchema = new Schema<IClient>(
             type: String,
             trim: true,
         },
+        followupDate: {
+            type: Date,
+        },
+        status: {
+            type: String,
+            enum: ["Pending", "Confirmed", "Follow-up", "Blocked", "Declined"],
+            default: "Pending",
+        },
     },
     {
         timestamps: true,
-    }
+    },
 );
 
 export default mongoose.models.Client ||

@@ -14,8 +14,10 @@ import {
     Sparkles,
     Wallet,
     CreditCard,
-    DollarSign,
     Activity,
+    Users,
+    BarChart2,
+    ArrowUpRight,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -31,6 +33,7 @@ import {
     AreaChart,
     Area,
     Legend,
+    CartesianGrid,
 } from "recharts";
 import {
     Card,
@@ -41,277 +44,313 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import AnimatedCounter from "@/components/dashboard/AnimatedCounter";
+import MonthlyBudgetBar from "@/components/dashboard/MonthlyBudgetBar";
+
+/* ─── Animation Variants ─── */
+const fadeUp = {
+    hidden: { opacity: 0, y: 24 },
+    show: (i: number) => ({
+        opacity: 1,
+        y: 0,
+        transition: { delay: i * 0.08, duration: 0.45, ease: [0.22, 1, 0.36, 1] },
+    }),
+};
 
 const containerVariants = {
     hidden: { opacity: 0 },
     show: {
         opacity: 1,
-        transition: {
-            staggerChildren: 0.1,
-        },
+        transition: { staggerChildren: 0.09 },
     },
 } as const;
 
 const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0, y: 18 },
     show: {
         opacity: 1,
         y: 0,
-        transition: { type: "spring", stiffness: 100, damping: 15 },
+        transition: { type: "spring", stiffness: 120, damping: 18 },
     },
 } as const;
 
+/* ─── Custom Tooltip ─── */
+const CustomTooltip = ({ active, payload, label, isDark }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+        <div
+            className="rounded-xl border px-3 py-2 text-xs shadow-xl"
+            style={{
+                background: isDark ? "#0f172a" : "#ffffff",
+                borderColor: isDark ? "#1e293b" : "#e2e8f0",
+                color: isDark ? "#f8fafc" : "#0f172a",
+            }}
+        >
+            {label && <p className="mb-1 font-bold text-[11px] opacity-60">{label}</p>}
+            {payload.map((p: any, i: number) => (
+                <p key={i} className="font-semibold" style={{ color: p.color }}>
+                    {p.name}: <span className="text-foreground">{p.value}</span>
+                </p>
+            ))}
+        </div>
+    );
+};
+
+/* ─── Main Component ─── */
 export default function AdminDashboardPage() {
     const [mounted, setMounted] = useState(false);
     const { resolvedTheme } = useTheme();
+    const isDark = resolvedTheme === "dark";
 
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+    useEffect(() => { setMounted(true); }, []);
 
-    const {
-        data: stats,
-        isLoading,
-        error,
-        refetch,
-        isRefetching,
-    } = useQuery<any>({
+    const { data: stats, isLoading, error, refetch, isRefetching } = useQuery<any>({
         queryKey: ["stats"],
         queryFn: async () => {
-            const res = await fetch("/api/dashboard/stats", {
-                cache: "no-store",
-            });
+            const res = await fetch("/api/dashboard/stats", { cache: "no-store" });
             if (!res.ok) throw new Error("Failed to fetch stats");
             return res.json();
         },
     });
 
+    const { data: clientsData } = useQuery<any>({
+        queryKey: ["clients"],
+        queryFn: async () => {
+            const res = await fetch("/api/clients");
+            if (!res.ok) throw new Error("Failed to fetch clients");
+            return res.json();
+        },
+    });
+
+    const today = new Date().toISOString().split("T")[0];
+    const todayFollowUps = clientsData?.clients?.filter(
+        (c: any) =>
+            c.status === "Follow-up" &&
+            c.followupDate &&
+            new Date(c.followupDate).toISOString().split("T")[0] === today,
+    ) || [];
+
+    /* ─── Chart theme tokens ─── */
+    const axisColor   = isDark ? "#64748b" : "#94a3b8";
+    const gridColor   = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)";
+    const tooltipBg   = isDark ? "#0f172a" : "#ffffff";
+    const tooltipBorder = isDark ? "#1e293b" : "#e2e8f0";
+    const tooltipColor  = isDark ? "#f8fafc" : "#0f172a";
+    const cursorFill    = isDark ? "#1e293b" : "#f1f5f9";
+
+    /* ─── Loading skeleton ─── */
     if (isLoading) {
         return (
             <div className="space-y-8 animate-in fade-in duration-500">
-                {/* Header Skeleton */}
-                <div className="h-40 w-full rounded-2xl bg-muted/30 p-6 flex flex-col justify-center gap-4">
-                    <Skeleton className="h-6 w-32 rounded-full" />
-                    <Skeleton className="h-8 w-64" />
-                    <Skeleton className="h-4 w-96 max-w-full" />
+                <div className="h-44 w-full rounded-3xl bg-muted/30 animate-pulse" />
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-2xl" />)}
                 </div>
-
-                {/* Financial Cards Skeleton */}
-                <div className="space-y-4">
-                    <Skeleton className="h-6 w-48" />
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        {[1, 2, 3].map((i) => (
-                            <Skeleton
-                                key={i}
-                                className="h-32 w-full rounded-xl"
-                            />
-                        ))}
-                    </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32 w-full rounded-2xl" />)}
                 </div>
-
-                {/* Project Cards Skeleton */}
-                <div className="space-y-4">
-                    <Skeleton className="h-6 w-48" />
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        {[1, 2, 3, 4].map((i) => (
-                            <Skeleton
-                                key={i}
-                                className="h-32 w-full rounded-xl"
-                            />
-                        ))}
-                    </div>
-                </div>
-
-                {/* Charts Skeleton */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Skeleton className="h-80 w-full rounded-xl" />
-                    <Skeleton className="h-80 w-full rounded-xl" />
+                    {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-72 w-full rounded-2xl" />)}
                 </div>
             </div>
         );
     }
 
+    /* ─── Error state ─── */
     if (error || !stats) {
         return (
-            <div className="text-center py-20 bg-card rounded-xl border border-border">
-                <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-foreground">
-                    Error Loading Dashboard
-                </h3>
-                <p className="text-sm text-muted-foreground mt-2">
-                    Could not retrieve project management statistics.
-                </p>
-                <Button
-                    onClick={() => refetch()}
-                    className="mt-4 h-10 cursor-pointer"
-                >
-                    Retry
-                </Button>
+            <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
+                <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center">
+                    <AlertTriangle className="h-8 w-8 text-destructive" />
+                </div>
+                <div>
+                    <h3 className="text-lg font-bold text-foreground">Error Loading Dashboard</h3>
+                    <p className="text-sm text-muted-foreground mt-1">Could not retrieve project statistics.</p>
+                </div>
+                <Button onClick={() => refetch()} className="mt-2 cursor-pointer">Retry</Button>
             </div>
         );
     }
 
     const { summary, statusBreakdown, workload, completionTrend } = stats;
 
-    const projectCards = [
-        {
-            title: "Total Projects",
-            value: summary.totalProjects,
-            description: "Active + pipeline database projects",
-            icon: FolderKanban,
-            color: "from-indigo-500/5 to-purple-500/5 dark:from-indigo-500/10 dark:to-purple-500/20 text-indigo-600 dark:text-indigo-400 border-indigo-500/20 dark:border-indigo-500/30",
-        },
-        {
-            title: "Active Building",
-            value: summary.inProgress,
-            description: "Projects currently in development",
-            icon: Clock,
-            color: "from-sky-500/5 to-indigo-500/5 dark:from-sky-500/10 dark:to-indigo-500/20 text-sky-600 dark:text-sky-400 border-sky-500/20 dark:border-sky-500/30",
-        },
-        {
-            title: "Completed",
-            value: summary.completed,
-            description: "Marked finished successfully",
-            icon: CheckCircle2,
-            color: "from-emerald-500/5 to-teal-500/5 dark:from-emerald-500/10 dark:to-teal-500/20 text-emerald-600 dark:text-emerald-450 border-emerald-500/20 dark:border-emerald-500/30",
-        },
-        {
-            title: "Overdue Projects",
-            value: summary.overdue,
-            description: "Active tasks past their due dates",
-            icon: AlertTriangle,
-            color: "from-rose-500/5 to-red-500/5 dark:from-rose-500/10 dark:to-red-500/20 text-rose-600 dark:text-rose-400 border-rose-500/20 dark:border-rose-500/30",
-            badge: summary.overdue > 0,
-        },
-    ];
-
+    /* ─── Card data ─── */
     const financialCards = [
         {
-            title: "Active Pipeline Budget",
+            title: "Pipeline Budget",
             value: summary.totalBudget || 0,
             description: "Total billing budget of active projects",
             icon: Wallet,
-            color: "from-indigo-500/5 to-indigo-500/5 dark:from-indigo-500/10 dark:to-indigo-500/20 text-indigo-650 dark:text-indigo-400 border-indigo-500/20 dark:border-indigo-500/30",
-            isCurrency: true,
+            accent: "from-indigo-500/15 to-violet-500/10",
+            iconBg: "bg-indigo-500/10",
+            iconColor: "text-indigo-500",
+            trend: "+12%",
         },
         {
             title: "Payments Collected",
             value: summary.totalRevenueReceived || 0,
-            description: "Milestone payments paid to date",
+            description: "Milestone payments received to date",
             icon: CheckCircle2,
-            color: "from-emerald-500/5 to-emerald-500/5 dark:from-emerald-500/10 dark:to-emerald-500/20 text-emerald-650 dark:text-emerald-450 border-emerald-500/20 dark:border-emerald-500/30",
-            isCurrency: true,
+            accent: "from-emerald-500/15 to-teal-500/10",
+            iconBg: "bg-emerald-500/10",
+            iconColor: "text-emerald-500",
+            trend: "+8%",
         },
         {
-            title: "Outstanding Milestones",
+            title: "Outstanding",
             value: summary.totalRevenuePending || 0,
             description: "Billing awaiting completion approval",
             icon: CreditCard,
-            color: "from-amber-500/5 to-amber-500/5 dark:from-amber-500/10 dark:to-amber-500/20 text-amber-650 dark:text-amber-450 border-amber-500/20 dark:border-amber-500/30",
-            isCurrency: true,
+            accent: "from-amber-500/15 to-orange-500/10",
+            iconBg: "bg-amber-500/10",
+            iconColor: "text-amber-500",
+            trend: null,
+        },
+    ];
+
+    const projectCards = [
+        {
+            title: "Total Projects",
+            value: summary.totalProjects,
+            description: "All tracked projects",
+            icon: FolderKanban,
+            accent: "from-indigo-500/10 to-purple-500/10",
+            iconBg: "bg-indigo-500/10",
+            iconColor: "text-indigo-500",
+        },
+        {
+            title: "In Development",
+            value: summary.inProgress,
+            description: "Active builds in progress",
+            icon: Activity,
+            accent: "from-sky-500/10 to-blue-500/10",
+            iconBg: "bg-sky-500/10",
+            iconColor: "text-sky-500",
+        },
+        {
+            title: "Completed",
+            value: summary.completed,
+            description: "Successfully delivered",
+            icon: CheckCircle2,
+            accent: "from-emerald-500/10 to-teal-500/10",
+            iconBg: "bg-emerald-500/10",
+            iconColor: "text-emerald-500",
+        },
+        {
+            title: "Overdue",
+            value: summary.overdue,
+            description: "Past their due dates",
+            icon: AlertTriangle,
+            accent: "from-rose-500/10 to-red-500/10",
+            iconBg: "bg-rose-500/10",
+            iconColor: "text-rose-500",
+            badge: summary.overdue > 0,
         },
     ];
 
     const PIE_COLORS: Record<string, string> = {
-        potential: "#f59e0b",
-        future: "#0ea5e9",
-        todo: "#64748b",
+        potential:   "#f59e0b",
+        future:      "#0ea5e9",
+        todo:        "#64748b",
         in_progress: "#6366f1",
-        in_review: "#a855f7",
-        completed: "#10b981",
-        on_hold: "#ef4444",
+        in_review:   "#a855f7",
+        completed:   "#10b981",
+        on_hold:     "#ef4444",
     };
 
-    const isDark = resolvedTheme === "dark";
-    const axisColor = isDark ? "#94a3b8" : "#475569";
-    const gridColor = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
-    const tooltipBg = isDark ? "#0f172a" : "#ffffff";
-    const tooltipBorder = isDark ? "#1e293b" : "#e2e8f0";
-    const tooltipColor = isDark ? "#f8fafc" : "#0f172a";
-    const cursorColor = isDark ? "#1e293b" : "#f1f5f9";
-
+    /* ══════════════════════════════════════════════════
+       RENDER
+    ══════════════════════════════════════════════════ */
     return (
         <div className="space-y-8">
-            {/* Greetings Banner Header */}
-            <div className="relative overflow-hidden rounded-2xl border border-indigo-500/10 bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent p-6 sm:p-8">
-                <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
-                <div className="absolute -right-20 -bottom-20 h-40 w-40 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
 
-                <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                    <div>
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 select-none">
-                            <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+            {/* ─── Hero Banner ─── */}
+            <motion.div
+                initial={{ opacity: 0, y: -16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className="relative overflow-hidden rounded-3xl border border-indigo-500/15 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent p-6 sm:p-8"
+            >
+                {/* Glowing orbs */}
+                <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-indigo-500/15 blur-3xl" />
+                <div className="pointer-events-none absolute right-20 bottom-0 h-32 w-32 rounded-full bg-purple-500/10 blur-3xl" />
+
+                <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-2">
+                        <motion.span
+                            initial={{ opacity: 0, scale: 0.85 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.2, duration: 0.4 }}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-bold tracking-wide text-indigo-600 dark:text-indigo-400"
+                        >
+                            <Sparkles className="h-3 w-3" />
                             Co-Founder Workspace
-                        </span>
-                        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground mt-3">
-                            Admin & Analytics Dashboard
+                        </motion.span>
+                        <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
+                            Admin &amp; Analytics Dashboard
                         </h1>
-                        <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-                            Track Opygen's ongoing software developments, team
-                            task allocation workload, and financial payment
-                            collections in real-time.
+                        <p className="max-w-lg text-sm leading-relaxed text-muted-foreground">
+                            Track Opygen's ongoing software developments, team workload, and financial collections in real-time.
                         </p>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
+
+                    <div className="flex shrink-0 items-center gap-3">
+                        {/* Quick stats pill */}
+                        <div className="hidden lg:flex items-center gap-3 rounded-2xl border border-border/60 bg-card/60 px-4 py-2.5 backdrop-blur-sm text-xs font-semibold text-muted-foreground divide-x divide-border/60">
+                            <span className="pr-3"><span className="text-foreground font-bold text-sm">{summary.totalProjects}</span> Projects</span>
+                            <span className="pl-3"><span className="text-emerald-500 font-bold text-sm">{summary.completed}</span> Done</span>
+                        </div>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => refetch()}
                             disabled={isRefetching}
-                            className="h-10 px-4 text-xs font-bold text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-2 bg-card border-border shadow-xs hover:scale-[1.02] active:scale-[0.98] transition-all"
+                            className="h-9 cursor-pointer gap-2 border-border/60 bg-card/80 px-4 text-xs font-bold backdrop-blur-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all"
                         >
-                            <RefreshCw
-                                className={`h-4 w-4 ${isRefetching ? "animate-spin text-indigo-500" : ""}`}
-                            />
-                            {isRefetching ? "Refreshing..." : "Refresh Stats"}
+                            <RefreshCw className={`h-3.5 w-3.5 ${isRefetching ? "animate-spin text-indigo-500" : ""}`} />
+                            {isRefetching ? "Refreshing…" : "Refresh"}
                         </Button>
                     </div>
                 </div>
-            </div>
+            </motion.div>
 
-            {/* Financials & Billing Section */}
-            <div className="space-y-4">
-                <div className="flex items-center gap-2 px-1">
-                    <Activity className="h-4.5 w-4.5 text-indigo-500" />
-                    <h2 className="text-lg font-bold text-foreground">
-                        Financial & Billing Overview
-                    </h2>
+            {/* ─── Financial KPI Cards ─── */}
+            <div className="space-y-3">
+                <div className="flex items-center gap-2 px-0.5">
+                    <BarChart2 className="h-4 w-4 text-indigo-500" />
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Financial Overview</h2>
                 </div>
+
+                <MonthlyBudgetBar monthlyCollected={summary.monthlyCollected ?? 0} />
+
                 <motion.div
                     variants={containerVariants}
                     initial="hidden"
                     animate="show"
                     className="grid grid-cols-1 gap-4 sm:grid-cols-3"
                 >
-                    {financialCards.map((card) => {
-                        const CardIcon = card.icon;
+                    {financialCards.map((card, i) => {
+                        const Icon = card.icon;
                         return (
-                            <motion.div
-                                key={card.title}
-                                variants={itemVariants}
-                            >
-                                <Card
-                                    className={`bg-gradient-to-br ${card.color} border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group rounded-xl`}
-                                >
-                                    <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 p-5">
-                                        <CardTitle className="text-xs font-bold tracking-wider text-muted-foreground/80 uppercase">
-                                            {card.title}
-                                        </CardTitle>
-                                        <CardIcon className="h-4.5 w-4.5 shrink-0 text-muted-foreground/70 group-hover:text-indigo-550 transition-colors" />
-                                    </CardHeader>
-                                    <CardContent className="p-5 pt-0">
-                                        <div className="text-2xl font-extrabold tracking-tight text-foreground">
-                                            $
-                                            {card.isCurrency && (
-                                                <AnimatedCounter
-                                                    value={card.value}
-                                                />
+                            <motion.div key={card.title} variants={itemVariants} custom={i}>
+                                <Card className={`group relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br ${card.accent} bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300`}>
+                                    <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-white/5 to-transparent" />
+                                    <CardContent className="p-5">
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div className={`h-9 w-9 rounded-xl ${card.iconBg} flex items-center justify-center`}>
+                                                <Icon className={`h-4.5 w-4.5 ${card.iconColor}`} />
+                                            </div>
+                                            {card.trend && (
+                                                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-500">
+                                                    <ArrowUpRight className="h-2.5 w-2.5" />
+                                                    {card.trend}
+                                                </span>
                                             )}
                                         </div>
-                                        <p className="text-[10px] text-muted-foreground/90 mt-1 uppercase font-semibold tracking-wide leading-relaxed">
-                                            {card.description}
-                                        </p>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 mb-1">{card.title}</p>
+                                        <div className="text-2xl font-extrabold tracking-tight text-foreground">
+                                            $<AnimatedCounter value={card.value} />
+                                        </div>
+                                        <p className="mt-1 text-[10px] text-muted-foreground leading-relaxed">{card.description}</p>
                                     </CardContent>
                                 </Card>
                             </motion.div>
@@ -320,53 +359,39 @@ export default function AdminDashboardPage() {
                 </motion.div>
             </div>
 
-            {/* Project Status Section */}
-            <div className="space-y-4">
-                <div className="flex items-center gap-2 px-1">
-                    <FolderKanban className="h-4.5 w-4.5 text-indigo-500" />
-                    <h2 className="text-lg font-bold text-foreground">
-                        Project Delivery Statistics
-                    </h2>
+            {/* ─── Project Stat Cards ─── */}
+            <div className="space-y-3">
+                <div className="flex items-center gap-2 px-0.5">
+                    <FolderKanban className="h-4 w-4 text-indigo-500" />
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Project Statistics</h2>
                 </div>
                 <motion.div
                     variants={containerVariants}
                     initial="hidden"
                     animate="show"
-                    className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                    className="grid grid-cols-2 gap-4 lg:grid-cols-4"
                 >
-                    {projectCards.map((card) => {
-                        const CardIcon = card.icon;
+                    {projectCards.map((card, i) => {
+                        const Icon = card.icon;
                         return (
-                            <motion.div
-                                key={card.title}
-                                variants={itemVariants}
-                            >
-                                <Card
-                                    className={`bg-gradient-to-br ${card.color} border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group rounded-xl`}
-                                >
-                                    <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                                    <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 p-5">
-                                        <CardTitle className="text-xs font-bold tracking-wider text-muted-foreground/80 uppercase">
-                                            {card.title}
-                                        </CardTitle>
-                                        <CardIcon className="h-4.5 w-4.5 shrink-0 text-muted-foreground/70 group-hover:text-indigo-550 transition-colors" />
-                                    </CardHeader>
-                                    <CardContent className="p-5 pt-0">
-                                        <div className="text-2xl font-extrabold tracking-tight text-foreground">
-                                            <AnimatedCounter
-                                                value={card.value}
-                                            />
-                                        </div>
-                                        <p className="text-[10px] text-muted-foreground/90 mt-1 uppercase font-semibold tracking-wide leading-relaxed">
-                                            {card.description}
-                                        </p>
-                                    </CardContent>
+                            <motion.div key={card.title} variants={itemVariants} custom={i}>
+                                <Card className={`group relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br ${card.accent} bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300`}>
                                     {card.badge && (
-                                        <span className="absolute top-3 right-3 flex h-2 w-2">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                                        <span className="absolute right-3 top-3 flex h-2 w-2">
+                                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
+                                            <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500" />
                                         </span>
                                     )}
+                                    <CardContent className="p-5">
+                                        <div className={`mb-4 h-9 w-9 rounded-xl ${card.iconBg} flex items-center justify-center`}>
+                                            <Icon className={`h-4 w-4 ${card.iconColor}`} />
+                                        </div>
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 mb-1">{card.title}</p>
+                                        <div className="text-2xl font-extrabold tracking-tight text-foreground">
+                                            <AnimatedCounter value={card.value} />
+                                        </div>
+                                        <p className="mt-1 text-[10px] text-muted-foreground">{card.description}</p>
+                                    </CardContent>
                                 </Card>
                             </motion.div>
                         );
@@ -374,249 +399,225 @@ export default function AdminDashboardPage() {
                 </motion.div>
             </div>
 
-            {/* Charts Section */}
+            {/* ─── Charts + Follow-ups Row ─── */}
             {mounted && (
                 <motion.div
-                    initial={{ opacity: 0, y: 15 }}
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2, duration: 0.4 }}
-                    className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+                    transition={{ delay: 0.3, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                    className="space-y-3"
                 >
-                    {/* Status Breakdown Donut Chart */}
-                    <Card className="border-border bg-card shadow-sm text-card-foreground rounded-xl">
-                        <CardHeader className="border-b border-border pb-4 p-5">
-                            <CardTitle className="text-sm font-bold">
-                                Projects by Status
-                            </CardTitle>
-                            <CardDescription className="text-xs text-muted-foreground">
-                                Breakdown of current task distributions
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-5">
-                            <div className="h-64">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={statusBreakdown.filter(
-                                                (d: any) => d.value > 0,
-                                            )}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={60}
-                                            outerRadius={80}
-                                            paddingAngle={3}
-                                            dataKey="value"
-                                        >
-                                            {statusBreakdown.map(
-                                                (entry: any, index: number) => (
-                                                    <Cell
-                                                        key={`cell-${index}`}
-                                                        fill={
-                                                            PIE_COLORS[
-                                                                entry.key
-                                                            ] || "#8884d8"
-                                                        }
-                                                    />
-                                                ),
-                                            )}
-                                        </Pie>
-                                        <Tooltip
-                                            contentStyle={{
-                                                backgroundColor: tooltipBg,
-                                                borderColor: tooltipBorder,
-                                                borderRadius: "8px",
-                                                boxShadow:
-                                                    "0 4px 6px -1px rgb(0 0 0 / 0.05)",
-                                            }}
-                                            itemStyle={{
-                                                color: tooltipColor,
-                                                fontSize: "12px",
-                                            }}
-                                        />
-                                        <Legend
-                                            verticalAlign="bottom"
-                                            height={36}
-                                            iconType="circle"
-                                            formatter={(value, entry: any) => {
-                                                const count =
-                                                    entry?.payload?.value || 0;
-                                                return (
-                                                    <span className="text-[11px] text-muted-foreground font-semibold px-1">
-                                                        {value} ({count})
-                                                    </span>
-                                                );
-                                            }}
-                                        />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="flex items-center gap-2 px-0.5">
+                        <TrendingUp className="h-4 w-4 text-indigo-500" />
+                        <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Analytics &amp; Insights</h2>
+                    </div>
 
-                    {/* Workload per Founder Bar Chart */}
-                    <Card className="border-border bg-card shadow-sm text-card-foreground rounded-xl">
-                        <CardHeader className="border-b border-border pb-4 p-5">
-                            <CardTitle className="text-sm font-bold">
-                                Founder Workloads
-                            </CardTitle>
-                            <CardDescription className="text-xs text-muted-foreground">
-                                Number of active projects assigned to each
-                                co-founder
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-5">
-                            <div className="h-64">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart
-                                        data={workload}
-                                        margin={{
-                                            top: 10,
-                                            right: 10,
-                                            left: -20,
-                                            bottom: 0,
-                                        }}
-                                    >
-                                        <XAxis
-                                            dataKey="name"
-                                            stroke={axisColor}
-                                            fontSize={11}
-                                            tickLine={false}
-                                            axisLine={false}
-                                        />
-                                        <YAxis
-                                            stroke={axisColor}
-                                            fontSize={11}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            allowDecimals={false}
-                                        />
-                                        <Tooltip
-                                            cursor={{
-                                                fill: cursorColor,
-                                                opacity: isDark ? 0.2 : 0.8,
-                                            }}
-                                            contentStyle={{
-                                                backgroundColor: tooltipBg,
-                                                borderColor: tooltipBorder,
-                                                borderRadius: "8px",
-                                                boxShadow:
-                                                    "0 4px 6px -1px rgb(0 0 0 / 0.05)",
-                                            }}
-                                            itemStyle={{
-                                                color: tooltipColor,
-                                                fontSize: "12px",
-                                            }}
-                                        />
-                                        <Bar
-                                            dataKey="projects"
-                                            fill="#6366f1"
-                                            radius={[4, 4, 0, 0]}
-                                            maxBarSize={45}
-                                        >
-                                            {workload.map(
-                                                (entry: any, index: number) => (
-                                                    <Cell
-                                                        key={`cell-${index}`}
-                                                        fill={
-                                                            index % 2 === 0
-                                                                ? "#6366f1"
-                                                                : "#a855f7"
-                                                        }
-                                                    />
-                                                ),
-                                            )}
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    {/* Top row: Donut + Bar */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-                    {/* Completion Trend Area Chart */}
-                    <Card className="border-border bg-card shadow-sm text-card-foreground lg:col-span-2 rounded-xl">
-                        <CardHeader className="border-b border-border pb-4 p-5">
-                            <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                <TrendingUp className="h-4.5 w-4.5 text-emerald-500" />
-                                Completion Trend
-                            </CardTitle>
-                            <CardDescription className="text-xs text-muted-foreground">
-                                Total projects marked completed day-by-day (last
-                                30 days)
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-5">
-                            <div className="h-64">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart
-                                        data={completionTrend}
-                                        margin={{
-                                            top: 10,
-                                            right: 10,
-                                            left: -20,
-                                            bottom: 0,
-                                        }}
-                                    >
-                                        <defs>
-                                            <linearGradient
-                                                id="colorCompleted"
-                                                x1="0"
-                                                y1="0"
-                                                x2="0"
-                                                y2="1"
+                        {/* Donut – Status Breakdown */}
+                        <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl transition-all duration-300">
+                            <CardHeader className="border-b border-border/40 p-5 pb-4">
+                                <CardTitle className="text-sm font-bold">Projects by Status</CardTitle>
+                                <CardDescription className="text-xs">Breakdown of current project distributions</CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-5">
+                                <div className="h-64">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={statusBreakdown.filter((d: any) => d.value > 0)}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={58}
+                                                outerRadius={82}
+                                                paddingAngle={3}
+                                                dataKey="value"
+                                                strokeWidth={0}
                                             >
-                                                <stop
-                                                    offset="5%"
-                                                    stopColor="#10b981"
-                                                    stopOpacity={0.3}
-                                                />
-                                                <stop
-                                                    offset="95%"
-                                                    stopColor="#10b981"
-                                                    stopOpacity={0}
-                                                />
-                                            </linearGradient>
-                                        </defs>
-                                        <XAxis
-                                            dataKey="date"
-                                            stroke={axisColor}
-                                            fontSize={10}
-                                            tickLine={false}
-                                            axisLine={false}
-                                        />
-                                        <YAxis
-                                            stroke={axisColor}
-                                            fontSize={10}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            allowDecimals={false}
-                                        />
-                                        <Tooltip
-                                            contentStyle={{
-                                                backgroundColor: tooltipBg,
-                                                borderColor: tooltipBorder,
-                                                borderRadius: "8px",
-                                                boxShadow:
-                                                    "0 4px 6px -1px rgb(0 0 0 / 0.05)",
-                                            }}
-                                            itemStyle={{
-                                                color: tooltipColor,
-                                                fontSize: "12px",
-                                            }}
-                                        />
-                                        <Area
-                                            type="monotone"
-                                            dataKey="completed"
-                                            name="Completed Projects"
-                                            stroke="#10b981"
-                                            strokeWidth={2.5}
-                                            fillOpacity={1}
-                                            fill="url(#colorCompleted)"
-                                        />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                                {statusBreakdown.map((entry: any, index: number) => (
+                                                    <Cell
+                                                        key={`cell-${index}`}
+                                                        fill={PIE_COLORS[entry.key] || "#8884d8"}
+                                                    />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip
+                                                content={<CustomTooltip isDark={isDark} />}
+                                            />
+                                            <Legend
+                                                verticalAlign="bottom"
+                                                height={36}
+                                                iconType="circle"
+                                                iconSize={7}
+                                                formatter={(value: any, entry: any) => (
+                                                    <span className="text-[11px] font-semibold text-muted-foreground px-1">
+                                                        {value} ({entry?.payload?.value || 0})
+                                                    </span>
+                                                )}
+                                            />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Bar – Founder Workload */}
+                        <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl transition-all duration-300">
+                            <CardHeader className="border-b border-border/40 p-5 pb-4">
+                                <CardTitle className="text-sm font-bold">Founder Workloads</CardTitle>
+                                <CardDescription className="text-xs">Active projects assigned to each co-founder</CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-5">
+                                <div className="h-64">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart
+                                            data={workload}
+                                            margin={{ top: 8, right: 8, left: -24, bottom: 0 }}
+                                            barCategoryGap="35%"
+                                        >
+                                            <CartesianGrid vertical={false} stroke={gridColor} />
+                                            <XAxis dataKey="name" stroke={axisColor} fontSize={11} tickLine={false} axisLine={false} />
+                                            <YAxis stroke={axisColor} fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                                            <Tooltip
+                                                cursor={{ fill: cursorFill, opacity: isDark ? 0.15 : 0.6, radius: 4 }}
+                                                content={<CustomTooltip isDark={isDark} />}
+                                            />
+                                            <Bar dataKey="projects" name="Projects" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                                                {workload.map((_: any, index: number) => (
+                                                    <Cell
+                                                        key={`cell-${index}`}
+                                                        fill={["#6366f1", "#a855f7", "#06b6d4", "#f59e0b"][index % 4]}
+                                                    />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Bottom row: Area trend + Today's Follow-ups */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+                        {/* Area – Completion Trend */}
+                        <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl transition-all duration-300">
+                            <CardHeader className="border-b border-border/40 p-5 pb-4">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <TrendingUp className="h-4 w-4 text-emerald-500" />
+                                    Completion Trend
+                                </CardTitle>
+                                <CardDescription className="text-xs">Projects completed day-by-day (last 30 days)</CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-5">
+                                <div className="h-64">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart
+                                            data={completionTrend}
+                                            margin={{ top: 8, right: 8, left: -24, bottom: 0 }}
+                                        >
+                                            <defs>
+                                                <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%"   stopColor="#10b981" stopOpacity={0.35} />
+                                                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid vertical={false} stroke={gridColor} />
+                                            <XAxis dataKey="date" stroke={axisColor} fontSize={10} tickLine={false} axisLine={false} />
+                                            <YAxis stroke={axisColor} fontSize={10} tickLine={false} axisLine={false} allowDecimals={false} />
+                                            <Tooltip content={<CustomTooltip isDark={isDark} />} />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="completed"
+                                                name="Completed"
+                                                stroke="#10b981"
+                                                strokeWidth={2.5}
+                                                fill="url(#colorCompleted)"
+                                                dot={false}
+                                                activeDot={{ r: 5, fill: "#10b981", strokeWidth: 0 }}
+                                            />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Today's Follow-ups */}
+                        <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden">
+                            <CardHeader className="border-b border-border/40 p-5 pb-4 bg-gradient-to-r from-amber-500/5 to-transparent shrink-0">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <div className="h-7 w-7 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                                        <Clock className="h-4 w-4 text-amber-500" />
+                                    </div>
+                                    Today's Follow-ups
+                                    {todayFollowUps.length > 0 && (
+                                        <span className="ml-auto inline-flex items-center justify-center h-5 w-5 rounded-full bg-amber-500 text-white text-[10px] font-extrabold">
+                                            {todayFollowUps.length}
+                                        </span>
+                                    )}
+                                </CardTitle>
+                                <CardDescription className="text-xs">Clients requiring immediate attention today</CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-0 flex-1 overflow-y-auto" style={{ maxHeight: "296px" }}>
+                                {todayFollowUps.length === 0 ? (
+                                    <div className="flex h-full flex-col items-center justify-center gap-3 p-10 text-center">
+                                        <div className="h-14 w-14 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                                            <CheckCircle2 className="h-7 w-7 text-emerald-500" />
+                                        </div>
+                                        <p className="text-sm font-semibold text-muted-foreground">All clear — no follow-ups today!</p>
+                                    </div>
+                                ) : (
+                                    <ul className="divide-y divide-border/40">
+                                        {todayFollowUps.map((client: any, idx: number) => (
+                                            <motion.li
+                                                key={client._id}
+                                                initial={{ opacity: 0, x: -8 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: 0.05 * idx }}
+                                                className="group flex flex-col gap-2.5 p-4 hover:bg-muted/30 transition-colors duration-200"
+                                            >
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        <div className="h-8 w-8 shrink-0 rounded-full bg-indigo-500/10 flex items-center justify-center">
+                                                            <Users className="h-3.5 w-3.5 text-indigo-500" />
+                                                        </div>
+                                                        <h4 className="font-bold text-sm text-foreground group-hover:text-indigo-500 transition-colors truncate">
+                                                            {client.name}
+                                                        </h4>
+                                                    </div>
+                                                    <div className="flex shrink-0 flex-col items-end gap-1 text-[10px]">
+                                                        {client.number && (
+                                                            <span className="rounded-md bg-accent/50 px-2 py-0.5 font-medium text-muted-foreground">
+                                                                {client.number}
+                                                            </span>
+                                                        )}
+                                                        {client.socialMediaLink && (
+                                                            <a
+                                                                href={client.socialMediaLink}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="rounded-md bg-indigo-500/10 px-2 py-0.5 font-medium text-indigo-500 hover:underline transition-colors"
+                                                            >
+                                                                Social ↗
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                {client.notes && (
+                                                    <p className="text-[11px] leading-relaxed text-muted-foreground bg-background/50 rounded-lg px-2.5 py-1.5 border border-border/40">
+                                                        <span className="font-semibold text-foreground/70">Note: </span>
+                                                        {client.notes}
+                                                    </p>
+                                                )}
+                                            </motion.li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                    </div>
                 </motion.div>
             )}
         </div>

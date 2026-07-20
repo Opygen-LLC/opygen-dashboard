@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
-import { subDays, format } from "date-fns";
+import { subDays, format, startOfMonth, endOfMonth } from "date-fns";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/db";
 import Project from "@/models/Project";
@@ -39,6 +39,10 @@ export async function GET() {
         let totalBudget = 0;
         let totalRevenueReceived = 0;
         let totalRevenuePending = 0;
+        let monthlyCollected = 0;
+
+        const monthStart = startOfMonth(now);
+        const monthEnd = endOfMonth(now);
 
         projects.forEach((p) => {
             const activeStatuses = [
@@ -56,6 +60,13 @@ export async function GET() {
                 p.payments.forEach((pay: any) => {
                     if (pay.status === "paid") {
                         totalRevenueReceived += Number(pay.amount || 0);
+                        // Count toward this month's collected total
+                        if (pay.paymentDate) {
+                            const pd = new Date(pay.paymentDate);
+                            if (pd >= monthStart && pd <= monthEnd) {
+                                monthlyCollected += Number(pay.amount || 0);
+                            }
+                        }
                     } else if (pay.status === "pending") {
                         totalRevenuePending += Number(pay.amount || 0);
                     }
@@ -147,6 +158,7 @@ export async function GET() {
                     totalBudget,
                     totalRevenueReceived,
                     totalRevenuePending,
+                    monthlyCollected,
                 },
                 statusBreakdown,
                 workload,

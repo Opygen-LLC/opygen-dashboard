@@ -154,9 +154,27 @@ export default function ClientToProjectModal({
             }
             return res.json();
         },
-        onSuccess: () => {
+        onSuccess: async () => {
             toast.success("Project created successfully from client!");
             queryClient.invalidateQueries({ queryKey: ["projects"] });
+
+            // Update the originating client's status to "Confirmed"
+            if (activeClient?._id) {
+                try {
+                    const res = await fetch(`/api/clients/${activeClient._id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ status: "Confirmed" }),
+                    });
+                    if (res.ok) {
+                        queryClient.invalidateQueries({ queryKey: ["clients"] });
+                        toast.success("Client status updated to Confirmed");
+                    }
+                } catch {
+                    // Non-blocking — project was still created successfully
+                }
+            }
+
             onClose();
         },
         onError: (err: any) => toast.error(err.message),

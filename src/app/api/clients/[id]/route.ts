@@ -4,6 +4,45 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/db';
 import Client from '@/models/Client';
 import { clientSchema } from '@/lib/validations';
+import { z } from 'zod';
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions);
+  if (!session || session.user.role !== 'admin') {
+    return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
+  }
+
+  try {
+    await dbConnect();
+    const body = await req.json();
+    const { id } = await params;
+
+    // Validate only the fields provided (partial update)
+    const patchSchema = z.object({
+      status: z.enum(['Pending', 'Confirmed', 'Follow-up', 'Blocked', 'Declined']).optional(),
+    });
+
+    const parseResult = patchSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: parseResult.error.flatten() }, { status: 400 });
+    }
+
+    const updatedClient = await Client.findByIdAndUpdate(
+      id,
+      { $set: parseResult.data },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedClient) {
+      return NextResponse.json({ error: 'Client not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(updatedClient);
+  } catch (error: any) {
+    console.error('Patch client error:', error);
+    return NextResponse.json({ error: 'Server Error', details: error.message }, { status: 500 });
+  }
+}
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);

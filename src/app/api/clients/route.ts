@@ -5,6 +5,8 @@ import dbConnect from '@/lib/db';
 import Client from '@/models/Client';
 import { clientSchema } from '@/lib/validations';
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== 'admin') {
@@ -17,10 +19,14 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search');
     const source = searchParams.get('source');
+    const status = searchParams.get('status');
 
     const query: any = {};
     if (source && source !== 'All') {
       query.source = source;
+    }
+    if (status && status !== 'All') {
+      query.status = status;
     }
     
     if (search) {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import { useQuery } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -83,6 +84,17 @@ export default function MemberDashboardLayout({
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
+    const { data: appSettings } = useQuery<any>({
+        queryKey: ['settings'],
+        queryFn: async () => {
+            const res = await fetch('/api/settings');
+            if (!res.ok) return null;
+            return res.json();
+        },
+        staleTime: 1000 * 60 * 5, // cache 5 min
+    });
+    const companyName = appSettings?.companyName?.trim() || 'OpyDash';
+
     const navigation = [
         { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
         { name: "Profile", href: "/dashboard/profile", icon: UserIcon },
@@ -105,7 +117,7 @@ export default function MemberDashboardLayout({
                             className="object-contain dark:invert transition-all duration-300"
                         />
                         <span className="text-lg font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
-                            OpyDash
+                            {companyName}
                         </span>
                     </Link>
                 </div>

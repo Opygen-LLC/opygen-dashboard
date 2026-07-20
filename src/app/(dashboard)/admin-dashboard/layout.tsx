@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -20,6 +21,7 @@ import {
     Moon,
     Laptop,
     Wallet,
+    Settings,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,17 @@ export default function AdminDashboardLayout({
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
+    const { data: appSettings } = useQuery<any>({
+        queryKey: ['settings'],
+        queryFn: async () => {
+            const res = await fetch('/api/settings');
+            if (!res.ok) return null;
+            return res.json();
+        },
+        staleTime: 1000 * 60 * 5, // cache 5 min
+    });
+    const companyName = appSettings?.companyName?.trim() || 'OpyDash';
+
     const navigation = [
         { name: "Dashboard", href: "/admin-dashboard", icon: LayoutDashboard },
         { name: "Finance", href: "/admin-dashboard/finance", icon: Wallet },
@@ -43,13 +56,14 @@ export default function AdminDashboardLayout({
         { name: "Clients", href: "/admin-dashboard/clients", icon: Briefcase },
         { name: "Users", href: "/admin-dashboard/users", icon: Users },
         { name: "Profile", href: "/admin-dashboard/profile", icon: UserIcon },
+        { name: "Settings", href: "/admin-dashboard/settings", icon: Settings },
     ];
 
     return (
         <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground transition-colors duration-200">
             {/* Desktop sidebar */}
             <aside className="hidden md:flex md:w-64 md:flex-col md:border-r md:border-border md:bg-card/40 backdrop-blur-md">
-                <div className="flex h-16 items-center px-6 border-b border-border/80">
+                <div className="flex h-16 items-center justify-center px-6 border-b border-border/80">
                     <Link
                         href="/admin-dashboard"
                         className="flex items-center gap-2.5"
@@ -62,7 +76,7 @@ export default function AdminDashboardLayout({
                             className="object-contain dark:invert transition-all duration-300"
                         />
                         <span className="text-lg font-extrabold tracking-tight bg-indigo-600 bg-clip-text text-transparent">
-                            OpyDash
+                            {companyName}
                         </span>
                     </Link>
                 </div>
@@ -181,7 +195,7 @@ export default function AdminDashboardLayout({
                                         className="object-contain dark:invert transition-all duration-300"
                                     />
                                     <span className="text-lg font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
-                                        Opygen
+                                        {companyName}
                                     </span>
                                 </Link>
                                 <Button
