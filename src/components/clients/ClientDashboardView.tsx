@@ -18,6 +18,7 @@ import {
     FolderPlus,
     Eye,
     Download,
+    FileText,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -42,12 +43,15 @@ import { COUNTRIES } from "@/lib/countries";
 import ClientToProjectModal from "./ClientToProjectModal";
 import { ClientInfoModal } from "./modals/ClientInfoModal";
 import { ClientFormModal } from "./modals/ClientFormModal";
+import QuoteFormModal from "../quotes/QuoteFormModal";
 export default function ClientDashboardView() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClient, setEditingClient] = useState<any>(null);
     const [convertingClient, setConvertingClient] = useState<any>(null);
+    const [convertingQuoteClient, setConvertingQuoteClient] = useState<any>(null);
     const [filterSource, setFilterSource] = useState<string>("All");
     const [filterStatus, setFilterStatus] = useState<string>("All");
+    const [filterDate, setFilterDate] = useState<string>("");
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [searchInput, setSearchInput] = useState<string>("");
     const [currentPage, setCurrentPage] = useState<number>(1);
@@ -76,7 +80,7 @@ export default function ClientDashboardView() {
     // Reset pagination when filter or search changes
     useEffect(() => {
         setCurrentPage(1);
-    }, [filterSource, filterStatus, searchQuery]);
+    }, [filterSource, filterStatus, filterDate, searchQuery]);
 
     // Fetch clients
     const {
@@ -84,11 +88,12 @@ export default function ClientDashboardView() {
         isLoading: isClientsLoading,
         refetch: refetchClients,
     } = useQuery({
-        queryKey: ["clients", filterSource, filterStatus, searchQuery],
+        queryKey: ["clients", filterSource, filterStatus, filterDate, searchQuery],
         queryFn: async () => {
             const params = new URLSearchParams();
             if (filterSource !== "All") params.append("source", filterSource);
             if (filterStatus !== "All") params.append("status", filterStatus);
+            if (filterDate) params.append("followupDate", filterDate);
             if (searchQuery) params.append("search", searchQuery);
 
             const res = await fetch(`/api/clients?${params.toString()}`);
@@ -163,6 +168,44 @@ export default function ClientDashboardView() {
         onSuccess: () => {
             toast.success("Status updated");
             queryClient.invalidateQueries({ queryKey: ["clients"] });
+        },
+        onError: (err: any) => toast.error(err.message),
+    });
+
+    const convertQuoteMutation = useMutation({
+        mutationFn: async (data: any) => {
+            const res = await fetch("/api/admin/quotes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || "Failed to create quote");
+            }
+            return res.json();
+        },
+        onSuccess: async () => {
+            toast.success("Quote created successfully from client!");
+            queryClient.invalidateQueries({ queryKey: ["quotes"] });
+
+            // Update the originating client's status to "Follow-up" or "Confirmed"
+            if (convertingQuoteClient?._id) {
+                try {
+                    const res = await fetch(`/api/clients/${convertingQuoteClient._id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ status: "Follow-up" }),
+                    });
+                    if (res.ok) {
+                        queryClient.invalidateQueries({ queryKey: ["clients"] });
+                    }
+                } catch {
+                    // Non-blocking
+                }
+            }
+            setConvertingQuoteClient(null);
         },
         onError: (err: any) => toast.error(err.message),
     });
@@ -339,6 +382,15 @@ export default function ClientDashboardView() {
                             </SelectItem>
                         </SelectContent>
                     </Select>
+                </div>
+
+                <div>
+                    <Input
+                        type="date"
+                        value={filterDate}
+                        onChange={(e) => setFilterDate(e.target.value)}
+                        className="bg-background/50 border-border text-foreground h-10! focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 transition-all w-full"
+                    />
                 </div>
             </div>
 
@@ -558,6 +610,19 @@ export default function ClientDashboardView() {
                                                             }
                                                         >
                                                             <FolderPlus className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            title="Convert to Quote"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-purple-500 hover:bg-purple-500/10"
+                                                            onClick={() =>
+                                                                setConvertingQuoteClient(
+                                                                    client,
+                                                                )
+                                                            }
+                                                        >
+                                                            <FileText className="h-4 w-4" />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
@@ -842,6 +907,30 @@ export default function ClientDashboardView() {
                 client={convertingClient}
                 isOpen={!!convertingClient}
                 onClose={() => setConvertingClient(null)}
+            />
+
+            <QuoteFormModal
+                isOpen={!!convertingQuoteClient}
+                onClose={() => setConvertingQuoteClient(null)}
+                mode="convert"
+                initialData={convertingQuoteClient ? {
+                    projectName: `${convertingQuoteClient.name} - Project`,
+                    clientName: convertingQuoteClient.name || "Unknown Client",
+                    clientPhone: convertingQuoteClient.number || "",
+                    clientSocialLink: convertingQuoteClient.socialMediaLink || "",
+                    phases: [
+                        {
+                            phaseName: "Initial Phase",
+                            description: "Initial project phase based on client discussion",
+                            minBudget: convertingQuoteClient.minAmount || 0,
+                            maxBudget: convertingQuoteClient.maxAmount || 0,
+                        }
+                    ]
+                } : {}}
+                onSubmit={(data) => {
+                    convertQuoteMutation.mutate(data);
+                }}
+                isSubmitting={convertQuoteMutation.isPending}
             />
         </motion.div>
     );

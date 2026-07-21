@@ -33,8 +33,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { transactionSchema, TransactionInput } from "@/lib/validations";
 import { TransactionType, TransactionCategory } from "@/types";
@@ -120,6 +121,7 @@ export default function FinanceDashboardView() {
         reset,
         watch,
         setValue,
+        control,
         formState: { errors, isSubmitting },
     } = useForm({
         resolver: zodResolver(transactionSchema),
@@ -138,6 +140,7 @@ export default function FinanceDashboardView() {
     const selectedUser = watch("user");
     const needsUserSelection = [
         "salary",
+        "allowance",
         "loan_given",
         "loan_repayment",
         "loan_taken",
@@ -370,15 +373,16 @@ export default function FinanceDashboardView() {
                         </CardDescription>
                     </div>
                     <div className="flex gap-2">
-                        <select
-                            className="bg-background border border-input rounded-md text-sm px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                            value={filterType}
-                            onChange={(e) => setFilterType(e.target.value)}
-                        >
-                            <option value="">All Types</option>
-                            <option value="income">Income Only</option>
-                            <option value="expense">Expenses Only</option>
-                        </select>
+                        <Select value={filterType} onValueChange={setFilterType}>
+                            <SelectTrigger className="w-[180px] h-9 text-sm focus:ring-2 focus:ring-indigo-500">
+                                <SelectValue placeholder="All Types" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[150]">
+                                <SelectItem value="all_types">All Types</SelectItem>
+                                <SelectItem value="income">Income Only</SelectItem>
+                                <SelectItem value="expense">Expenses Only</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -678,20 +682,26 @@ export default function FinanceDashboardView() {
                                                         *
                                                     </span>
                                                 </label>
-                                                <select
-                                                    {...register("type")}
-                                                    className={cn(
-                                                        "w-full rounded-md h-10 px-3 text-sm focus:ring-2 outline-none border transition-colors",
-                                                        typeColorClass,
+                                                <Controller
+                                                    name="type"
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <Select value={field.value} onValueChange={field.onChange}>
+                                                            <SelectTrigger
+                                                                className={cn(
+                                                                    "w-full h-10! px-3 text-sm focus:ring-2 outline-none transition-colors",
+                                                                    typeColorClass
+                                                                )}
+                                                            >
+                                                                <SelectValue placeholder="Select type" />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="z-[150]">
+                                                                <SelectItem value="income" className={`h-10!`}>INCOME</SelectItem>
+                                                                <SelectItem value="expense" className={`h-10!`}>EXPENSE</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
                                                     )}
-                                                >
-                                                    <option value="income">
-                                                        INCOME
-                                                    </option>
-                                                    <option value="expense">
-                                                        EXPENSE
-                                                    </option>
-                                                </select>
+                                                />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-xs font-semibold text-muted-foreground uppercase">
@@ -725,26 +735,24 @@ export default function FinanceDashboardView() {
                                                         *
                                                     </span>
                                                 </label>
-                                                <select
-                                                    {...register("category")}
-                                                    className="w-full bg-background border border-input rounded-md h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                                                >
-                                                    {Object.values(
-                                                        TransactionCategory,
-                                                    ).map((cat) => (
-                                                        <option
-                                                            key={cat}
-                                                            value={cat}
-                                                        >
-                                                            {cat
-                                                                .replace(
-                                                                    "_",
-                                                                    " ",
-                                                                )
-                                                                .toUpperCase()}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                <Controller
+                                                    name="category"
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <Select value={field.value} onValueChange={field.onChange}>
+                                                            <SelectTrigger className="w-full h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                                <SelectValue placeholder="Select category" />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="z-[150]">
+                                                                {Object.values(TransactionCategory).map((cat) => (
+                                                                    <SelectItem key={cat} value={cat} className={`h-10!`}>
+                                                                        {cat.replace("_", " ").toUpperCase()}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                />
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-xs font-semibold text-muted-foreground uppercase">
@@ -774,25 +782,25 @@ export default function FinanceDashboardView() {
                                                         *
                                                     </span>
                                                 </label>
-                                                <select
-                                                    {...register("user")}
-                                                    className="w-full bg-background border border-input rounded-md h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                                                >
-                                                    <option value="">
-                                                        -- Select User --
-                                                    </option>
-                                                    {users.map((u: any) => (
-                                                        <option
-                                                            key={u._id}
-                                                            value={u._id}
-                                                        >
-                                                            {u.name} ({u.email})
-                                                        </option>
-                                                    ))}
-                                                    <option value="other">
-                                                        Other (External Entity)
-                                                    </option>
-                                                </select>
+                                                <Controller
+                                                    name="user"
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <Select value={field.value} onValueChange={field.onChange}>
+                                                            <SelectTrigger className="w-full h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                                <SelectValue placeholder="-- Select User --" />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="z-[150]">
+                                                                <SelectItem value="other">Other (External Entity)</SelectItem>
+                                                                {users.map((u: any) => (
+                                                                    <SelectItem key={u._id} value={u._id} className={`h-10!`}>
+                                                                        {u.name} ({u.email})
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                />
                                             </div>
                                         )}
 
@@ -963,16 +971,17 @@ export default function FinanceDashboardView() {
                                     <label className="text-xs font-semibold text-muted-foreground uppercase">
                                         Select Date Range
                                     </label>
-                                    <select
-                                        value={exportRange}
-                                        onChange={(e) => setExportRange(e.target.value)}
-                                        className="w-full bg-background border border-input rounded-md h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
-                                    >
-                                        <option value="7d">Last 7 Days</option>
-                                        <option value="30d">Last 30 Days</option>
-                                        <option value="90d">Last 90 Days</option>
-                                        <option value="all">All Time</option>
-                                    </select>
+                                    <Select value={exportRange} onValueChange={setExportRange}>
+                                        <SelectTrigger className="w-full h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
+                                            <SelectValue placeholder="Select Date Range" />
+                                        </SelectTrigger>
+                                        <SelectContent className="z-[150]">
+                                            <SelectItem value="7d">Last 7 Days</SelectItem>
+                                            <SelectItem value="30d">Last 30 Days</SelectItem>
+                                            <SelectItem value="90d">Last 90 Days</SelectItem>
+                                            <SelectItem value="all">All Time</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <div className="pt-4">
                                     <Button onClick={() => {

@@ -869,34 +869,19 @@ export default function ProjectDetails({
                                                     *
                                                 </span>
                                             </label>
-                                            <select
-                                                value={payType}
-                                                onChange={(e) =>
-                                                    setPayType(
-                                                        e.target.value as any,
-                                                    )
-                                                }
-                                                className="w-full h-9 px-3 rounded-lg border border-border bg-background hover:bg-background/80 focus:bg-background focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs text-foreground transition-all focus:outline-none cursor-pointer"
-                                            >
-                                                <option value="advance">
-                                                    Advance
-                                                </option>
-                                                <option value="frontend">
-                                                    Frontend
-                                                </option>
-                                                <option value="backend">
-                                                    Backend
-                                                </option>
-                                                <option value="ui">
-                                                    UI/UX Design
-                                                </option>
-                                                <option value="custom">
-                                                    Custom
-                                                </option>
-                                                <option value="other">
-                                                    Other
-                                                </option>
-                                            </select>
+                                            <Select value={payType} onValueChange={(val: any) => setPayType(val)}>
+                                                <SelectTrigger className="w-full h-9 px-3 rounded-lg border border-border bg-background focus:ring-1 focus:ring-indigo-500 text-xs text-foreground transition-all focus:outline-none cursor-pointer">
+                                                    <SelectValue placeholder="Select Milestone Type" />
+                                                </SelectTrigger>
+                                                <SelectContent className="z-[150]">
+                                                    <SelectItem value="advance">Advance</SelectItem>
+                                                    <SelectItem value="frontend">Frontend</SelectItem>
+                                                    <SelectItem value="backend">Backend</SelectItem>
+                                                    <SelectItem value="ui">UI/UX Design</SelectItem>
+                                                    <SelectItem value="custom">Custom</SelectItem>
+                                                    <SelectItem value="other">Other</SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
 
                                         <div className="space-y-1.5">

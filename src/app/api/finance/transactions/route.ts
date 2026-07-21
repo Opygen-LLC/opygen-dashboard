@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
         const userId = transactionData.user ? transactionData.user.toString() : null;
 
         if (userId) {
-            const statementCategories = ['salary', 'loan_taken', 'loan_given', 'loan_repayment'];
+            const statementCategories = ['salary', 'allowance', 'loan_taken', 'loan_given', 'loan_repayment'];
             if (statementCategories.includes(transactionData.category)) {
                 const stmtType = transactionData.category === 'loan_taken' ? '-' : '+';
                 await Statement.create({

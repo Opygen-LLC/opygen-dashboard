@@ -255,6 +255,7 @@ export const transactionSchema = z.object({
     type: z.enum(["income", "expense"]),
     category: z.enum([
         "salary",
+        "allowance",
         "loan_given",
         "loan_repayment",
         "loan_taken",

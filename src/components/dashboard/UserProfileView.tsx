@@ -254,6 +254,7 @@ export default function UserProfileView() {
         watch: watchAccount,
         formState: { errors: accountErrors },
         setValue: setAccountValue,
+        control: accountControl,
     } = useForm({
         shouldUnregister: false,
         defaultValues: {
@@ -2324,28 +2325,46 @@ export default function UserProfileView() {
                                 >
                                     <div className="space-y-2">
                                         <Label>Account Type</Label>
-                                        <select
-                                            {...registerAccount("type")}
-                                            onChange={(e) => {
-                                                registerAccount(
-                                                    "type",
-                                                ).onChange(e);
-                                                setProviderSelection("");
-                                                setAccountValue(
-                                                    "providerName",
-                                                    "",
-                                                );
-                                            }}
-                                            className="w-full bg-background border border-input rounded-md h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                                        >
-                                            <option value="bank">
-                                                Bank Account
-                                            </option>
-                                            <option value="mobile_banking">
-                                                Mobile Banking (e.g. bKash,
-                                                CashApp)
-                                            </option>
-                                        </select>
+                                        <Controller
+                                            name="type"
+                                            control={accountControl}
+                                            render={({ field }) => (
+                                                <Select
+                                                    value={field.value}
+                                                    onValueChange={(
+                                                        val: any,
+                                                    ) => {
+                                                        field.onChange(val);
+                                                        setProviderSelection(
+                                                            "",
+                                                        );
+                                                        setAccountValue(
+                                                            "providerName",
+                                                            "",
+                                                        );
+                                                    }}
+                                                >
+                                                    <SelectTrigger className="w-full bg-background border-input text-foreground focus-visible:ring-indigo-500 h-10!">
+                                                        <SelectValue placeholder="Select Account Type" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="z-[110]">
+                                                        <SelectItem
+                                                            value="bank"
+                                                            className={`h-10!`}
+                                                        >
+                                                            Bank Account
+                                                        </SelectItem>
+                                                        <SelectItem
+                                                            value="mobile_banking"
+                                                            className={`h-10!`}
+                                                        >
+                                                            Mobile Banking (e.g.
+                                                            bKash, CashApp)
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        />
                                     </div>
 
                                     <div className="space-y-2">
@@ -2354,10 +2373,15 @@ export default function UserProfileView() {
                                                 ? "Select Bank"
                                                 : "Select Provider"}
                                         </Label>
-                                        <select
-                                            value={providerSelection}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
+                                        <input
+                                            type="hidden"
+                                            {...registerAccount("providerName")}
+                                        />
+                                        <Select
+                                            value={
+                                                providerSelection || undefined
+                                            }
+                                            onValueChange={(val) => {
                                                 setProviderSelection(val);
                                                 if (val !== "Other") {
                                                     setAccountValue(
@@ -2371,28 +2395,36 @@ export default function UserProfileView() {
                                                     );
                                                 }
                                             }}
-                                            className="w-full bg-background border border-input rounded-md h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                                         >
-                                            <option value="" disabled>
-                                                -- Select --
-                                            </option>
-                                            {accountType === "bank"
-                                                ? BANGLADESH_BANKS.map((b) => (
-                                                      <option key={b} value={b}>
-                                                          {b}
-                                                      </option>
-                                                  ))
-                                                : MOBILE_BANKING_PROVIDERS.map(
-                                                      (p) => (
-                                                          <option
-                                                              key={p}
-                                                              value={p}
-                                                          >
-                                                              {p}
-                                                          </option>
-                                                      ),
-                                                  )}
-                                        </select>
+                                            <SelectTrigger className="w-full bg-background border-input text-foreground focus-visible:ring-indigo-500 h-10!">
+                                                <SelectValue placeholder="-- Select --" />
+                                            </SelectTrigger>
+                                            <SelectContent className="z-[110]">
+                                                {accountType === "bank"
+                                                    ? BANGLADESH_BANKS.map(
+                                                          (b) => (
+                                                              <SelectItem
+                                                                  key={b}
+                                                                  value={b}
+                                                                  className={`h-10!`}
+                                                              >
+                                                                  {b}
+                                                              </SelectItem>
+                                                          ),
+                                                      )
+                                                    : MOBILE_BANKING_PROVIDERS.map(
+                                                          (p) => (
+                                                              <SelectItem
+                                                                  key={p}
+                                                                  value={p}
+                                                                  className={`h-10!`}
+                                                              >
+                                                                  {p}
+                                                              </SelectItem>
+                                                          ),
+                                                      )}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
 
                                     {providerSelection === "Other" && (

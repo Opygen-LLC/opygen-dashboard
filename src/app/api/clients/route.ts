@@ -16,10 +16,11 @@ export async function GET(req: NextRequest) {
   try {
     await dbConnect();
     
-    const { searchParams } = new URL(req.url);
+    const searchParams = new URL(req.url).searchParams;
     const search = searchParams.get('search');
     const source = searchParams.get('source');
     const status = searchParams.get('status');
+    const followupFilter = searchParams.get('followupDate');
 
     const query: any = {};
     if (source && source !== 'All') {
@@ -27,6 +28,18 @@ export async function GET(req: NextRequest) {
     }
     if (status && status !== 'All') {
       query.status = status;
+    }
+    
+    if (followupFilter) {
+      const targetDate = new Date(followupFilter);
+      if (!isNaN(targetDate.getTime())) {
+        const startOfDay = new Date(targetDate);
+        startOfDay.setUTCHours(0, 0, 0, 0);
+        const endOfDay = new Date(targetDate);
+        endOfDay.setUTCHours(23, 59, 59, 999);
+        
+        query.followupDate = { $gte: startOfDay, $lte: endOfDay };
+      }
     }
     
     if (search) {

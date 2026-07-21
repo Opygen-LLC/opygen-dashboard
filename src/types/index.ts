@@ -45,6 +45,7 @@ export enum TransactionType {
 
 export enum TransactionCategory {
     SALARY = "salary",
+    ALLOWANCE = "allowance",
     LOAN_GIVEN = "loan_given",
     LOAN_TAKEN = "loan_taken",
     LOAN_REPAYMENT = "loan_repayment",
@@ -58,6 +59,7 @@ export enum TransactionCategory {
 export type TransactionTypeUnion = "income" | "expense";
 export type TransactionCategoryUnion =
     | "salary"
+    | "allowance"
     | "loan_given"
     | "loan_taken"
     | "loan_repayment"

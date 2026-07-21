@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { clientSchema, ClientInput } from "@/lib/validations";
 import { COUNTRIES } from "@/lib/countries";
@@ -245,31 +246,29 @@ export function ClientFormModal({
                                                 *
                                             </span>
                                         </label>
-                                        <select
-                                            {...register("status")}
-                                            className={cn(
-                                                "w-full bg-background border rounded-md h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none",
-                                                errors.status
-                                                    ? "border-rose-500"
-                                                    : "border-input",
+                                        <Controller
+                                            name="status"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select value={field.value} onValueChange={field.onChange}>
+                                                    <SelectTrigger
+                                                        className={cn(
+                                                            "w-full bg-background h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none",
+                                                            errors.status ? "border-rose-500" : "border-input"
+                                                        )}
+                                                    >
+                                                        <SelectValue placeholder="Select status" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="z-[150]">
+                                                        <SelectItem value="Pending">Pending</SelectItem>
+                                                        <SelectItem value="Confirmed">Confirmed</SelectItem>
+                                                        <SelectItem value="Follow-up">Follow-up</SelectItem>
+                                                        <SelectItem value="Blocked">Blocked</SelectItem>
+                                                        <SelectItem value="Declined">Declined</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             )}
-                                        >
-                                            <option value="Pending">
-                                                Pending
-                                            </option>
-                                            <option value="Confirmed">
-                                                Confirmed
-                                            </option>
-                                            <option value="Follow-up">
-                                                Follow-up
-                                            </option>
-                                            <option value="Blocked">
-                                                Blocked
-                                            </option>
-                                            <option value="Declined">
-                                                Declined
-                                            </option>
-                                        </select>
+                                        />
                                         {errors.status && (
                                             <p className="text-xs text-rose-500">
                                                 {errors.status?.message as string}
@@ -337,27 +336,29 @@ export function ClientFormModal({
                                                 *
                                             </span>
                                         </label>
-                                        <select
-                                            {...register("country")}
-                                            className={cn(
-                                                "w-full bg-background border rounded-md h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none",
-                                                errors.country
-                                                    ? "border-rose-500"
-                                                    : "border-input",
+                                        <Controller
+                                            name="country"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select value={field.value} onValueChange={field.onChange}>
+                                                    <SelectTrigger
+                                                        className={cn(
+                                                            "w-full bg-background h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none",
+                                                            errors.country ? "border-rose-500" : "border-input"
+                                                        )}
+                                                    >
+                                                        <SelectValue placeholder="Select a country" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="z-[150]">
+                                                        {COUNTRIES.map((country) => (
+                                                            <SelectItem key={country} value={country}>
+                                                                {country}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                             )}
-                                        >
-                                            <option value="">
-                                                Select a country
-                                            </option>
-                                            {COUNTRIES.map((country) => (
-                                                <option
-                                                    key={country}
-                                                    value={country}
-                                                >
-                                                    {country}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        />
                                         {errors.country && (
                                             <p className="text-xs text-rose-500">
                                                 {
@@ -443,33 +444,30 @@ export function ClientFormModal({
                                                 *
                                             </span>
                                         </label>
-                                        <select
-                                            {...register("source")}
-                                            className={cn(
-                                                "w-full bg-background border rounded-md h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none",
-                                                errors.source
-                                                    ? "border-rose-500"
-                                                    : "border-input",
+                                        <Controller
+                                            name="source"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select value={field.value} onValueChange={field.onChange}>
+                                                    <SelectTrigger
+                                                        className={cn(
+                                                            "w-full bg-background h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none",
+                                                            errors.source ? "border-rose-500" : "border-input"
+                                                        )}
+                                                    >
+                                                        <SelectValue placeholder="Select source" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="z-[150]">
+                                                        <SelectItem value="Social Media">Social Media</SelectItem>
+                                                        <SelectItem value="Ads">Ads</SelectItem>
+                                                        <SelectItem value="Referral">Referral</SelectItem>
+                                                        <SelectItem value="Cold Outreach">Cold Outreach</SelectItem>
+                                                        <SelectItem value="Organic Search">Organic Search</SelectItem>
+                                                        <SelectItem value="Other">Other</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             )}
-                                        >
-                                            <option value="">
-                                                Select source
-                                            </option>
-                                            <option value="Social Media">
-                                                Social Media
-                                            </option>
-                                            <option value="Ads">Ads</option>
-                                            <option value="Referral">
-                                                Referral
-                                            </option>
-                                            <option value="Cold Outreach">
-                                                Cold Outreach
-                                            </option>
-                                            <option value="Organic Search">
-                                                Organic Search
-                                            </option>
-                                            <option value="Other">Other</option>
-                                        </select>
+                                        />
                                         {errors.source && (
                                             <p className="text-xs text-rose-500">
                                                 {
