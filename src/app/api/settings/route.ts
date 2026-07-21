@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/db";
 import Settings from "@/models/Settings";
+import { deleteFromCloudinary } from "@/lib/cloudinary";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -19,6 +20,7 @@ const optionalUrl = z
     .default("");
 
 const settingsPatchSchema = z.object({
+    logo:              z.string().trim().optional().or(z.literal("")),
     companyName:       z.string().trim().optional(),
     tagline:           z.string().trim().optional(),
     description:       z.string().trim().optional(),
@@ -104,6 +106,14 @@ export async function PATCH(req: NextRequest) {
             } else {
                 flatUpdates[k] = v;
             }
+        }
+
+        const oldSettings = await Settings.findOne({ key: "global" }).lean();
+        
+        if (oldSettings && oldSettings.logo && updates.logo && updates.logo !== oldSettings.logo) {
+            deleteFromCloudinary(oldSettings.logo).catch(err => 
+                console.error("Failed to delete old logo from Cloudinary", err)
+            );
         }
 
         const settings = await Settings.findOneAndUpdate(

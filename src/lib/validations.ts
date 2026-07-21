@@ -182,6 +182,20 @@ export const commentSchema = z.object({
 
 export type CommentInput = z.infer<typeof commentSchema>;
 
+export const userAccountSchema = z.object({
+    _id: z.string().optional(),
+    type: z.enum(["bank", "mobile_banking"], {
+        required_error: "Account type is required",
+    }),
+    providerName: z.string().min(1, "Provider Name is required"),
+    accountName: z.string().min(1, "Account Name is required"),
+    accountNumber: z.string().min(1, "Account Number is required"),
+    routingNumber: z.string().optional(),
+    branch: z.string().optional(),
+});
+
+export type UserAccountInput = z.infer<typeof userAccountSchema>;
+
 export const profileSchema = z.object({
     name: z
         .string()
@@ -201,6 +215,13 @@ export const profileSchema = z.object({
         )
         .optional()
         .or(z.literal("")),
+    balance: z.number().optional(),
+    fathersName: z.string().optional().or(z.literal("")),
+    mothersName: z.string().optional().or(z.literal("")),
+    gender: z.string().optional().or(z.literal("")),
+    dateOfBirth: z.string().optional().or(z.literal("")),
+    bloodGroup: z.string().optional().or(z.literal("")),
+    accounts: z.array(userAccountSchema).optional(),
 });
 
 export type ProfileInput = z.infer<typeof profileSchema>;
@@ -320,3 +341,77 @@ export const clientSchema = z
     );
 
 export type ClientInput = z.infer<typeof clientSchema>;
+
+export const quotePhaseSchema = z.object({
+    _id: z.string().optional(),
+    phaseName: z.string().min(1, "Phase name is required"),
+    description: z.string().optional().default(""),
+    minBudget: z.coerce.number().min(0, "Min budget must be a positive number"),
+    maxBudget: z.coerce.number().min(0, "Max budget must be a positive number"),
+}).refine(
+    (data) => data.maxBudget >= data.minBudget,
+    {
+        message: "Max budget cannot be less than min budget",
+        path: ["maxBudget"],
+    }
+);
+
+export type QuotePhaseInput = z.infer<typeof quotePhaseSchema>;
+
+export const quoteSchema = z
+    .object({
+        projectName: z.string().min(1, "Project name is required"),
+        projectDetails: z.string().optional(),
+        clientName: z.string().min(1, "Client name is required"),
+        clientPhone: z.string().optional().or(z.literal("")),
+        clientSocialLink: z
+            .string()
+            .url("Please enter a valid URL")
+            .optional()
+            .or(z.literal("")),
+        phases: z.array(quotePhaseSchema).optional().default([]),
+        currency: z.enum(["USD", "BDT", "EUR"]).default("USD"),
+        advanceType: z.enum(["percentage", "fixed"]).default("percentage"),
+        advanceValue: z.coerce
+            .number()
+            .min(0)
+            .optional()
+            .nullable(),
+        projectDuration: z.string().min(1, "Project duration is required"),
+        paymentAccount: z.object({
+            providerName: z.string().min(1),
+            accountName: z.string().min(1),
+            accountNumber: z.string().min(1),
+            routingNumber: z.string().optional(),
+            branch: z.string().optional(),
+        }, { required_error: "Payment account is required" }),
+    })
+    .refine(
+        (data) => {
+            const hasPhone = !!data.clientPhone?.trim();
+            const hasSocial = !!data.clientSocialLink?.trim();
+            return hasPhone || hasSocial;
+        },
+        {
+            message: "Either client phone or social link must be provided",
+            path: ["clientPhone"],
+        },
+    )
+    .refine(
+        (data) => {
+            if (
+                data.advanceType === "percentage" &&
+                data.advanceValue !== null &&
+                data.advanceValue !== undefined
+            ) {
+                return data.advanceValue <= 100;
+            }
+            return true;
+        },
+        {
+            message: "Advance percentage cannot exceed 100",
+            path: ["advanceValue"],
+        },
+    );
+
+export type QuoteInput = z.infer<typeof quoteSchema>;

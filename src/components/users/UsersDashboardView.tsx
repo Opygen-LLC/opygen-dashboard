@@ -239,7 +239,7 @@ export default function UsersManagementPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent flex items-center gap-2">
-                        <Users className="h-7 w-7 text-indigo-505 shrink-0" />
+                        {/* <Users className="h-7 w-7 text-indigo-505 shrink-0" /> */}
                         Users
                     </h1>
                     <p className="text-sm text-muted-foreground mt-1">
@@ -347,7 +347,7 @@ export default function UsersManagementPage() {
                                                             updateUserMutation.isPending
                                                         }
                                                     >
-                                                        <SelectTrigger className="bg-background border-border text-foreground h-10 w-32 cursor-pointer">
+                                                        <SelectTrigger className="bg-background border-border text-foreground h-10! w-32 cursor-pointer">
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent className="bg-card border-border text-foreground">
@@ -355,6 +355,7 @@ export default function UsersManagementPage() {
                                                                 value={
                                                                     UserRole.MEMBER
                                                                 }
+                                                                className="h-10!"
                                                             >
                                                                 Member
                                                             </SelectItem>
@@ -362,6 +363,7 @@ export default function UsersManagementPage() {
                                                                 value={
                                                                     UserRole.ADMIN
                                                                 }
+                                                                className="h-10!"
                                                             >
                                                                 Admin
                                                             </SelectItem>
@@ -386,7 +388,7 @@ export default function UsersManagementPage() {
                                                             updateUserMutation.isPending
                                                         }
                                                     >
-                                                        <SelectTrigger className="bg-background border-border text-foreground h-10 w-32 cursor-pointer">
+                                                        <SelectTrigger className="bg-background border-border text-foreground h-10! w-32 cursor-pointer">
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent className="bg-card border-border text-foreground">
@@ -394,6 +396,7 @@ export default function UsersManagementPage() {
                                                                 value={
                                                                     UserStatus.ACTIVE
                                                                 }
+                                                                className="h-10!"
                                                             >
                                                                 Active
                                                             </SelectItem>
@@ -401,6 +404,7 @@ export default function UsersManagementPage() {
                                                                 value={
                                                                     UserStatus.BLOCKED
                                                                 }
+                                                                className="h-10!"
                                                             >
                                                                 Blocked
                                                             </SelectItem>
@@ -552,14 +556,14 @@ export default function UsersManagementPage() {
                                             )
                                         }
                                     >
-                                        <SelectTrigger className="pl-10 bg-background border-border text-foreground h-10 cursor-pointer">
+                                        <SelectTrigger className="pl-10 bg-background border-border text-foreground h-10! cursor-pointer">
                                             <SelectValue placeholder="Select role" />
                                         </SelectTrigger>
                                         <SelectContent className="bg-card border-border text-foreground">
-                                            <SelectItem value={UserRole.ADMIN}>
+                                            <SelectItem value={UserRole.ADMIN} className="h-10!">
                                                 Admin
                                             </SelectItem>
-                                            <SelectItem value={UserRole.MEMBER}>
+                                            <SelectItem value={UserRole.MEMBER} className="h-10!">
                                                 Member
                                             </SelectItem>
                                         </SelectContent>
@@ -577,7 +581,7 @@ export default function UsersManagementPage() {
                                 <div className="relative">
                                     <Activity className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
                                     <Select value={UserStatus.PENDING} disabled>
-                                        <SelectTrigger className="pl-10 bg-background/50 border-border text-foreground/75 h-10 cursor-not-allowed opacity-80">
+                                        <SelectTrigger className="pl-10 bg-background/50 border-border text-foreground/75 h-10! cursor-not-allowed opacity-80">
                                             <div className="flex items-center gap-2">
                                                 <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                                                 <span>Pending</span>
@@ -586,11 +590,13 @@ export default function UsersManagementPage() {
                                         <SelectContent className="bg-card border-border text-foreground">
                                             <SelectItem
                                                 value={UserStatus.ACTIVE}
+                                                className="h-10!"
                                             >
                                                 Active
                                             </SelectItem>
                                             <SelectItem
                                                 value={UserStatus.BLOCKED}
+                                                className="h-10!"
                                             >
                                                 Blocked
                                             </SelectItem>

@@ -30,6 +30,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PhoneInput } from "@/components/ui/PhoneInput";
+import { Upload, X } from "lucide-react";
 
 
 
@@ -91,6 +92,7 @@ const Field = ({
    DEFAULT FORM STATE
 ═══════════════════════════════════════ */
 const DEFAULT_FORM = {
+    logo: "",
     companyName: "",
     tagline: "",
     description: "",
@@ -111,7 +113,9 @@ export default function CompanySettingsView() {
     const queryClient = useQueryClient();
     const [form, setForm] = useState<FormState>(DEFAULT_FORM);
     const [savedForm, setSavedForm] = useState<FormState>(DEFAULT_FORM);
-    const isDirty = JSON.stringify(form) !== JSON.stringify(savedForm);
+    const [logoFile, setLogoFile] = useState<File | null>(null);
+    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const isDirty = JSON.stringify(form) !== JSON.stringify(savedForm) || logoFile !== null;
 
     /* ── fetch settings ── */
     const { data: settings, isLoading } = useQuery<any>({
@@ -126,6 +130,7 @@ export default function CompanySettingsView() {
     useEffect(() => {
         if (!settings) return;
         const loaded: FormState = {
+            logo: settings.logo ?? "",
             companyName: settings.companyName ?? "",
             tagline: settings.tagline ?? "",
             description: settings.description ?? "",
@@ -149,7 +154,25 @@ export default function CompanySettingsView() {
     /* ── save mutation ── */
     const saveMutation = useMutation({
         mutationFn: async () => {
+            let finalLogoUrl = form.logo;
+            if (logoPreview && logoPreview.startsWith("data:image")) {
+                const uploadRes = await fetch("/api/upload", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ image: logoPreview }),
+                });
+                if (!uploadRes.ok) {
+                    const errData = await uploadRes.json();
+                    throw new Error(errData.error || "Failed to upload logo");
+                }
+                const uploadData = await uploadRes.json();
+                finalLogoUrl = uploadData.url;
+            } else if (logoPreview === "") {
+                finalLogoUrl = "";
+            }
+
             const payload = {
+                logo: finalLogoUrl,
                 companyName: form.companyName,
                 tagline: form.tagline,
                 description: form.description,
@@ -174,6 +197,8 @@ export default function CompanySettingsView() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["settings"] });
             setSavedForm({ ...form });
+            setLogoFile(null);
+            setLogoPreview(null);
             toast.success("Settings saved successfully!");
         },
         onError: (err: any) => toast.error(err.message),
@@ -280,6 +305,76 @@ export default function CompanySettingsView() {
                     accent="from-indigo-500/8"
                 >
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        {/* Logo Upload */}
+                        <div className="sm:col-span-2 mb-2">
+                            <Field
+                                label="Company Logo"
+                                icon={<Upload className="h-3 w-3" />}
+                                hint="Recommended size: 256x256px. Max 4MB."
+                            >
+                                <div className="flex items-center gap-6 mt-2">
+                                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-border bg-accent flex items-center justify-center">
+                                        {(logoPreview || form.logo) && logoPreview !== "" ? (
+                                            <img
+                                                src={logoPreview || form.logo}
+                                                alt="Logo"
+                                                className="h-full w-full object-contain"
+                                            />
+                                        ) : (
+                                            <Building2 className="h-8 w-8 text-muted-foreground/40" />
+                                        )}
+                                        {(logoPreview || form.logo) && logoPreview !== "" && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setLogoPreview("");
+                                                    setForm((prev) => ({ ...prev, logo: "" }));
+                                                }}
+                                                className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-rose-500 flex items-center justify-center text-white cursor-pointer"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 space-y-2">
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                className="relative overflow-hidden cursor-pointer h-9 w-fit font-medium text-xs"
+                                            >
+                                                Choose Image
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (!file) return;
+                                                        if (!file.type.startsWith("image/")) {
+                                                            toast.error("Only image files are supported");
+                                                            return;
+                                                        }
+                                                        if (file.size > 4 * 1024 * 1024) {
+                                                            toast.error("Image size cannot exceed 4MB");
+                                                            return;
+                                                        }
+                                                        setLogoFile(file);
+                                                        const reader = new FileReader();
+                                                        reader.onload = () => {
+                                                            setLogoPreview(reader.result as string);
+                                                        };
+                                                        reader.readAsDataURL(file);
+                                                    }}
+                                                    className="absolute inset-0 cursor-pointer opacity-0"
+                                                />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Field>
+                        </div>
+
                         <Field
                             label="Company Name"
                             icon={<Building2 className="h-3 w-3" />}
@@ -465,7 +560,11 @@ export default function CompanySettingsView() {
                             </div>
                             <div className="h-4 w-px bg-border/60" />
                             <button
-                                onClick={() => setForm(savedForm)}
+                                onClick={() => {
+                                    setForm(savedForm);
+                                    setLogoFile(null);
+                                    setLogoPreview(null);
+                                }}
                                 className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                             >
                                 Discard

@@ -84,7 +84,9 @@ export default function ProjectDetails({
     const [payLabel, setPayLabel] = useState("");
     const [payAmount, setPayAmount] = useState("");
     const [payDate, setPayDate] = useState("");
-    const [editPaymentIndex, setEditPaymentIndex] = useState<number | null>(null);
+    const [editPaymentIndex, setEditPaymentIndex] = useState<number | null>(
+        null,
+    );
     const [payStatus, setPayStatus] = useState<"pending" | "paid">("pending");
     const [deletePaymentIndex, setDeletePaymentIndex] = useState<number | null>(
         null,
@@ -323,7 +325,12 @@ export default function ProjectDetails({
                     </Badge>
                     <span className="text-xs text-muted-foreground">
                         Updated{" "}
-                        {project.updatedAt ? format(new Date(project.updatedAt), "MMM dd, HH:mm") : "N/A"}
+                        {project.updatedAt
+                            ? format(
+                                  new Date(project.updatedAt),
+                                  "MMM dd, HH:mm",
+                              )
+                            : "N/A"}
                     </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -402,7 +409,7 @@ export default function ProjectDetails({
                                     onValueChange={handleStatusChange}
                                     disabled={updateMutation.isPending}
                                 >
-                                    <SelectTrigger className="bg-background border-border text-foreground h-10 cursor-pointer">
+                                    <SelectTrigger className="bg-background border-border text-foreground h-10! cursor-pointer">
                                         <SelectValue placeholder="Select status" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-card border-border text-foreground">
@@ -411,6 +418,7 @@ export default function ProjectDetails({
                                                 <SelectItem
                                                     key={key}
                                                     value={key}
+                                                    className="h-10!"
                                                 >
                                                     {statusLabels[key]}
                                                 </SelectItem>
@@ -429,18 +437,32 @@ export default function ProjectDetails({
                                     onValueChange={handlePriorityChange}
                                     disabled={updateMutation.isPending}
                                 >
-                                    <SelectTrigger className="bg-background border-border text-foreground h-10 cursor-pointer">
+                                    <SelectTrigger className="bg-background border-border text-foreground h-10! cursor-pointer">
                                         <SelectValue placeholder="Select priority" />
                                     </SelectTrigger>
                                     <SelectContent className="bg-card border-border text-foreground">
-                                        <SelectItem value="low">Low</SelectItem>
-                                        <SelectItem value="medium">
+                                        <SelectItem
+                                            value="low"
+                                            className="h-10!"
+                                        >
+                                            Low
+                                        </SelectItem>
+                                        <SelectItem
+                                            value="medium"
+                                            className="h-10!"
+                                        >
                                             Medium
                                         </SelectItem>
-                                        <SelectItem value="high">
+                                        <SelectItem
+                                            value="high"
+                                            className="h-10!"
+                                        >
                                             High
                                         </SelectItem>
-                                        <SelectItem value="urgent">
+                                        <SelectItem
+                                            value="urgent"
+                                            className="h-10!"
+                                        >
                                             Urgent
                                         </SelectItem>
                                     </SelectContent>
@@ -518,26 +540,28 @@ export default function ProjectDetails({
                                     Assignees ({project.assignees?.length || 0})
                                 </h4>
                                 <div className="flex flex-wrap gap-2">
-                                    {(project.assignees || []).map((user: any) => (
-                                        <div
-                                            key={user._id}
-                                            className="flex items-center gap-2 bg-background border border-border rounded-full py-1 px-3 pr-4"
-                                        >
-                                            <Avatar className="h-6 w-6">
-                                                <AvatarImage
-                                                    src={user.avatarUrl}
-                                                />
-                                                <AvatarFallback className="bg-accent text-muted-foreground text-xs">
-                                                    {user.name
-                                                        .substring(0, 2)
-                                                        .toUpperCase()}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <span className="text-xs font-medium text-foreground/80">
-                                                {user.name}
-                                            </span>
-                                        </div>
-                                    ))}
+                                    {(project.assignees || []).map(
+                                        (user: any) => (
+                                            <div
+                                                key={user._id}
+                                                className="flex items-center gap-2 bg-background border border-border rounded-full py-1 px-3 pr-4"
+                                            >
+                                                <Avatar className="h-6 w-6">
+                                                    <AvatarImage
+                                                        src={user.avatarUrl}
+                                                    />
+                                                    <AvatarFallback className="bg-accent text-muted-foreground text-xs">
+                                                        {user.name
+                                                            .substring(0, 2)
+                                                            .toUpperCase()}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <span className="text-xs font-medium text-foreground/80">
+                                                    {user.name}
+                                                </span>
+                                            </div>
+                                        ),
+                                    )}
                                     {(project.assignees || []).length === 0 && (
                                         <p className="text-xs italic text-muted-foreground/60">
                                             Unassigned
@@ -574,7 +598,9 @@ export default function ProjectDetails({
                                         {project.clientSocialLink && (
                                             <a
                                                 href={
-                                                    typeof project.clientSocialLink === 'string' && project.clientSocialLink.startsWith(
+                                                    typeof project.clientSocialLink ===
+                                                        "string" &&
+                                                    project.clientSocialLink.startsWith(
                                                         "http",
                                                     )
                                                         ? project.clientSocialLink
@@ -799,11 +825,15 @@ export default function ProjectDetails({
                                                     : "",
                                             amount: Number(payAmount),
                                             status: payStatus,
-                                            paymentDate: new Date(payDate).toISOString(),
+                                            paymentDate: new Date(
+                                                payDate,
+                                            ).toISOString(),
                                             receiptUrl:
                                                 receiptFile || undefined,
                                         };
-                                        const updated = [...(project.payments || [])];
+                                        const updated = [
+                                            ...(project.payments || []),
+                                        ];
                                         if (editPaymentIndex !== null) {
                                             updated[editPaymentIndex] = newPay;
                                         } else {
@@ -826,13 +856,18 @@ export default function ProjectDetails({
                                     <div className="flex items-center gap-1.5 border-b border-border/60 pb-2 mb-1">
                                         <CreditCard className="h-3.5 w-3.5 text-indigo-500" />
                                         <h4 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
-                                            {editPaymentIndex !== null ? "Edit Milestone Specifications" : "New Milestone Specifications"}
+                                            {editPaymentIndex !== null
+                                                ? "Edit Milestone Specifications"
+                                                : "New Milestone Specifications"}
                                         </h4>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                         <div className="space-y-1.5">
                                             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                                Milestone Type <span className="text-destructive">*</span>
+                                                Milestone Type{" "}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
                                             </label>
                                             <select
                                                 value={payType}
@@ -866,7 +901,10 @@ export default function ProjectDetails({
 
                                         <div className="space-y-1.5">
                                             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                                Amount ($) <span className="text-destructive">*</span>
+                                                Amount ($){" "}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
                                             </label>
                                             <div className="relative">
                                                 <DollarSign className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/75" />
@@ -890,7 +928,10 @@ export default function ProjectDetails({
                                     {payType === "custom" && (
                                         <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
                                             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                                Custom Label <span className="text-destructive">*</span>
+                                                Custom Label{" "}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
                                             </label>
                                             <input
                                                 type="text"
@@ -907,12 +948,17 @@ export default function ProjectDetails({
 
                                     <div className="space-y-1.5">
                                         <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                            Payment Date <span className="text-destructive">*</span>
+                                            Payment Date{" "}
+                                            <span className="text-destructive">
+                                                *
+                                            </span>
                                         </label>
                                         <input
                                             type="date"
                                             value={payDate}
-                                            onChange={(e) => setPayDate(e.target.value)}
+                                            onChange={(e) =>
+                                                setPayDate(e.target.value)
+                                            }
                                             className="w-full h-9 px-3 rounded-lg border border-border bg-background hover:bg-background/80 focus:bg-background focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs text-foreground transition-all focus:outline-none"
                                             required
                                         />
@@ -1153,14 +1199,42 @@ export default function ProjectDetails({
                                                         variant="ghost"
                                                         size="icon"
                                                         onClick={() => {
-                                                            setPayAmount(String(pay.amount));
-                                                            setPayType(pay.type);
-                                                            setPayLabel(pay.customLabel || "");
-                                                            setPayDate(pay.paymentDate ? new Date(pay.paymentDate).toISOString().split("T")[0] : "");
-                                                            setPayStatus(pay.status);
-                                                            setReceiptFile(pay.receiptUrl || null);
-                                                            setEditPaymentIndex(index);
-                                                            setShowAddPayment(true);
+                                                            setPayAmount(
+                                                                String(
+                                                                    pay.amount,
+                                                                ),
+                                                            );
+                                                            setPayType(
+                                                                pay.type,
+                                                            );
+                                                            setPayLabel(
+                                                                pay.customLabel ||
+                                                                    "",
+                                                            );
+                                                            setPayDate(
+                                                                pay.paymentDate
+                                                                    ? new Date(
+                                                                          pay.paymentDate,
+                                                                      )
+                                                                          .toISOString()
+                                                                          .split(
+                                                                              "T",
+                                                                          )[0]
+                                                                    : "",
+                                                            );
+                                                            setPayStatus(
+                                                                pay.status,
+                                                            );
+                                                            setReceiptFile(
+                                                                pay.receiptUrl ||
+                                                                    null,
+                                                            );
+                                                            setEditPaymentIndex(
+                                                                index,
+                                                            );
+                                                            setShowAddPayment(
+                                                                true,
+                                                            );
                                                         }}
                                                         className="h-7 w-7 text-muted-foreground hover:text-indigo-500 hover:bg-indigo-500/10 cursor-pointer"
                                                     >
@@ -1288,7 +1362,9 @@ export default function ProjectDetails({
                                                             <span className="text-xs text-muted-foreground">
                                                                 {log.createdAt
                                                                     ? format(
-                                                                          new Date(log.createdAt),
+                                                                          new Date(
+                                                                              log.createdAt,
+                                                                          ),
                                                                           "MMM dd, HH:mm",
                                                                       )
                                                                     : "N/A"}

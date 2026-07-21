@@ -13,6 +13,7 @@ import {
     FolderOpen,
     ChevronLeft,
     ChevronRight,
+    Download,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loading } from "@/components/ui/Loading";
@@ -175,6 +176,28 @@ export default function ProjectsDashboardView() {
 
                 <div className="flex items-center gap-2">
                     <Button
+                        onClick={() => {
+                            import("@/lib/export").then(({ exportToCSV }) => {
+                                const data = projects.map((p: any) => ({
+                                    Title: p.title,
+                                    Status: p.status,
+                                    Priority: p.priority,
+                                    "Client Name": p.clientName,
+                                    "Client Mobile": p.clientMobile || "",
+                                    Budget: p.budget || 0,
+                                    "Due Date": p.dueDate ? new Date(p.dueDate).toLocaleDateString() : "",
+                                    "Created At": new Date(p.createdAt).toLocaleDateString()
+                                }));
+                                exportToCSV("projects-export.csv", data);
+                            });
+                        }}
+                        variant="outline"
+                        className="bg-card border-border/60 hover:bg-muted text-foreground shadow-sm h-10 gap-2 shrink-0 cursor-pointer"
+                    >
+                        <Download className="h-4.5 w-4.5" />
+                        <span className="hidden sm:inline">Export CSV</span>
+                    </Button>
+                    <Button
                         onClick={() => handleAddProject("todo")}
                         className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/10 h-10 shrink-0 gap-1.5 cursor-pointer"
                     >
@@ -201,20 +224,34 @@ export default function ProjectsDashboardView() {
                         value={status}
                         onValueChange={(val) => dispatch(setStatusFilter(val || "all"))}
                     >
-                        <SelectTrigger className="bg-background/50 border-border text-foreground h-10 cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
+                        <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                             <SelectValue placeholder="Status" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border text-foreground">
-                            <SelectItem value="all">All Statuses</SelectItem>
-                            <SelectItem value="potential">Potential</SelectItem>
-                            <SelectItem value="future">Future</SelectItem>
-                            <SelectItem value="todo">To Do</SelectItem>
-                            <SelectItem value="in_progress">
+                            <SelectItem value="all" className="h-10!">
+                                All Statuses
+                            </SelectItem>
+                            <SelectItem value="potential" className="h-10!">
+                                Potential
+                            </SelectItem>
+                            <SelectItem value="future" className="h-10!">
+                                Future
+                            </SelectItem>
+                            <SelectItem value="todo" className="h-10!">
+                                To Do
+                            </SelectItem>
+                            <SelectItem value="in_progress" className="h-10!">
                                 In Progress
                             </SelectItem>
-                            <SelectItem value="in_review">In Review</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="on_hold">On Hold</SelectItem>
+                            <SelectItem value="in_review" className="h-10!">
+                                In Review
+                            </SelectItem>
+                            <SelectItem value="completed" className="h-10!">
+                                Completed
+                            </SelectItem>
+                            <SelectItem value="on_hold" className="h-10!">
+                                On Hold
+                            </SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -224,15 +261,25 @@ export default function ProjectsDashboardView() {
                         value={priority}
                         onValueChange={(val) => dispatch(setPriorityFilter(val || "all"))}
                     >
-                        <SelectTrigger className="bg-background/50 border-border text-foreground h-10 cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
+                        <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                             <SelectValue placeholder="Priority" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border text-foreground">
-                            <SelectItem value="all">All Priorities</SelectItem>
-                            <SelectItem value="low">Low</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="high">High</SelectItem>
-                            <SelectItem value="urgent">Urgent</SelectItem>
+                            <SelectItem value="all" className="h-10!">
+                                All Priorities
+                            </SelectItem>
+                            <SelectItem value="low" className="h-10!">
+                                Low
+                            </SelectItem>
+                            <SelectItem value="medium" className="h-10!">
+                                Medium
+                            </SelectItem>
+                            <SelectItem value="high" className="h-10!">
+                                High
+                            </SelectItem>
+                            <SelectItem value="urgent" className="h-10!">
+                                Urgent
+                            </SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -242,13 +289,15 @@ export default function ProjectsDashboardView() {
                         value={assignee}
                         onValueChange={(val) => dispatch(setAssigneeFilter(val || "all"))}
                     >
-                        <SelectTrigger className="bg-background/50 border-border text-foreground h-10 cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
+                        <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                             <SelectValue placeholder="Assignee" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border text-foreground">
-                            <SelectItem value="all">All Assignees</SelectItem>
+                            <SelectItem value="all" className="h-10!">
+                                All Assignees
+                            </SelectItem>
                             {users?.map((user) => (
-                                <SelectItem key={user._id} value={user._id}>
+                                <SelectItem key={user._id} value={user._id} className="h-10!">
                                     {user.name}
                                 </SelectItem>
                             ))}
@@ -261,18 +310,22 @@ export default function ProjectsDashboardView() {
                         value={sortBy}
                         onValueChange={(val) => dispatch(setSortByFilter(val || "updatedAt"))}
                     >
-                        <SelectTrigger className="bg-background/50 border-border text-foreground h-10 flex-1 cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
+                        <SelectTrigger className="bg-background/50 border-border text-foreground h-10! flex-1 cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                             <SelectValue placeholder="Sort by" />
                         </SelectTrigger>
                         <SelectContent className="bg-card border-border text-foreground">
-                            <SelectItem value="updatedAt">
+                            <SelectItem value="updatedAt" className="h-10!">
                                 Recently Updated
                             </SelectItem>
-                            <SelectItem value="dueDate">Due Date</SelectItem>
-                            <SelectItem value="createdAt">
+                            <SelectItem value="dueDate" className="h-10!">
+                                Due Date
+                            </SelectItem>
+                            <SelectItem value="createdAt" className="h-10!">
                                 Date Created
                             </SelectItem>
-                            <SelectItem value="title">Alphabetical</SelectItem>
+                            <SelectItem value="title" className="h-10!">
+                                Alphabetical
+                            </SelectItem>
                         </SelectContent>
                     </Select>
                     <Button

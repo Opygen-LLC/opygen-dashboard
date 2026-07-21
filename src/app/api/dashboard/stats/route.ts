@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
-import { subDays, format, startOfMonth, endOfMonth } from "date-fns";
+import { subDays, format, startOfMonth, endOfMonth, startOfYear } from "date-fns";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/db";
 import Project from "@/models/Project";
@@ -9,7 +9,7 @@ import User from "@/models/User";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export async function GET() {
+export async function GET(request: Request) {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "admin") {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -17,8 +17,23 @@ export async function GET() {
 
     try {
         await dbConnect();
+        
+        const { searchParams } = new URL(request.url);
+        const range = searchParams.get("range") || "all";
+        
+        const now = new Date();
+        let startDate: Date | null = null;
+        
+        if (range === "7d") {
+            startDate = subDays(now, 7);
+        } else if (range === "30d") {
+            startDate = subDays(now, 30);
+        } else if (range === "ytd") {
+            startDate = startOfYear(now);
+        }
 
-        const projects = await Project.find({});
+        const projectFilter = startDate ? { createdAt: { $gte: startDate } } : {};
+        const projects = await Project.find(projectFilter);
         const users = await User.find({}, "name avatarUrl");
 
         const totalProjects = projects.length;
@@ -28,7 +43,6 @@ export async function GET() {
         const completed = projects.filter(
             (p) => p.status === "completed",
         ).length;
-        const now = new Date();
         const overdue = projects.filter(
             (p) =>
                 p.status !== "completed" &&
@@ -58,17 +72,23 @@ export async function GET() {
 
             if (p.payments) {
                 p.payments.forEach((pay: any) => {
-                    if (pay.status === "paid") {
-                        totalRevenueReceived += Number(pay.amount || 0);
-                        // Count toward this month's collected total
-                        if (pay.paymentDate) {
-                            const pd = new Date(pay.paymentDate);
-                            if (pd >= monthStart && pd <= monthEnd) {
-                                monthlyCollected += Number(pay.amount || 0);
-                            }
-                        }
-                    } else if (pay.status === "pending") {
+                    // Always calculate pending from the filtered projects list
+                    if (pay.status === "pending") {
                         totalRevenuePending += Number(pay.amount || 0);
+                    } else if (pay.status === "paid") {
+                        const pd = pay.paymentDate ? new Date(pay.paymentDate) : null;
+                        
+                        // For Revenue Received, we only count it if it was received within the date range
+                        const isWithinRange = !startDate || (pd && pd >= startDate);
+                        
+                        if (isWithinRange) {
+                            totalRevenueReceived += Number(pay.amount || 0);
+                        }
+                        
+                        // Count toward this month's collected total (independent of range filter, usually fixed to current month)
+                        if (pd && pd >= monthStart && pd <= monthEnd) {
+                            monthlyCollected += Number(pay.amount || 0);
+                        }
                     }
                 });
             }

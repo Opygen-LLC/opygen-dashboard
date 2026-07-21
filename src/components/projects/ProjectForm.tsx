@@ -292,7 +292,7 @@ export default function ProjectForm({
                                                     }
                                                     className={cn(
                                                         fieldClass,
-                                                        "h-10 w-full sm:h-11",
+                                                        "h-10! w-full sm:h-11",
                                                     )}
                                                 >
                                                     <SelectValue placeholder="Select status" />
@@ -302,6 +302,7 @@ export default function ProjectForm({
                                                         value={
                                                             ProjectStatus.POTENTIAL
                                                         }
+                                                        className="h-10!"
                                                     >
                                                         Potential
                                                     </SelectItem>
@@ -309,6 +310,7 @@ export default function ProjectForm({
                                                         value={
                                                             ProjectStatus.FUTURE
                                                         }
+                                                        className="h-10!"
                                                     >
                                                         Future
                                                     </SelectItem>
@@ -316,6 +318,7 @@ export default function ProjectForm({
                                                         value={
                                                             ProjectStatus.TODO
                                                         }
+                                                        className="h-10!"
                                                     >
                                                         To Do
                                                     </SelectItem>
@@ -323,6 +326,7 @@ export default function ProjectForm({
                                                         value={
                                                             ProjectStatus.IN_PROGRESS
                                                         }
+                                                        className="h-10!"
                                                     >
                                                         In Progress
                                                     </SelectItem>
@@ -330,6 +334,7 @@ export default function ProjectForm({
                                                         value={
                                                             ProjectStatus.IN_REVIEW
                                                         }
+                                                        className="h-10!"
                                                     >
                                                         In Review
                                                     </SelectItem>
@@ -337,6 +342,7 @@ export default function ProjectForm({
                                                         value={
                                                             ProjectStatus.COMPLETED
                                                         }
+                                                        className="h-10!"
                                                     >
                                                         Completed
                                                     </SelectItem>
@@ -344,6 +350,7 @@ export default function ProjectForm({
                                                         value={
                                                             ProjectStatus.ON_HOLD
                                                         }
+                                                        className="h-10!"
                                                     >
                                                         On Hold
                                                     </SelectItem>
@@ -371,7 +378,7 @@ export default function ProjectForm({
                                                     }
                                                     className={cn(
                                                         fieldClass,
-                                                        "h-10 w-full sm:h-11",
+                                                        "h-10! w-full sm:h-11",
                                                     )}
                                                 >
                                                     <SelectValue placeholder="Select priority" />
@@ -381,6 +388,7 @@ export default function ProjectForm({
                                                         value={
                                                             ProjectPriority.LOW
                                                         }
+                                                        className="h-10!"
                                                     >
                                                         Low
                                                     </SelectItem>
@@ -388,6 +396,7 @@ export default function ProjectForm({
                                                         value={
                                                             ProjectPriority.MEDIUM
                                                         }
+                                                        className="h-10!"
                                                     >
                                                         Medium
                                                     </SelectItem>
@@ -395,6 +404,7 @@ export default function ProjectForm({
                                                         value={
                                                             ProjectPriority.HIGH
                                                         }
+                                                        className="h-10!"
                                                     >
                                                         High
                                                     </SelectItem>
@@ -402,6 +412,7 @@ export default function ProjectForm({
                                                         value={
                                                             ProjectPriority.URGENT
                                                         }
+                                                        className="h-10!"
                                                     >
                                                         Urgent
                                                     </SelectItem>

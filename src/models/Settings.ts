@@ -10,6 +10,7 @@ export interface ISocialLinks {
 
 export interface ISettings extends Document {
     key: string;
+    logo?: string;
     companyName?: string;
     tagline?: string;
     description?: string;
@@ -42,6 +43,7 @@ const SettingsSchema = new Schema<ISettings>(
             unique: true,
             default: "global",
         },
+        logo:              { type: String, trim: true, default: "" },
         companyName:       { type: String, trim: true, default: "" },
         tagline:           { type: String, trim: true, default: "" },
         description:       { type: String, trim: true, default: "" },
@@ -54,6 +56,10 @@ const SettingsSchema = new Schema<ISettings>(
     },
     { timestamps: true },
 );
+
+if (mongoose.models.Settings) {
+    delete mongoose.models.Settings;
+}
 
 export default mongoose.models.Settings ||
     mongoose.model<ISettings>("Settings", SettingsSchema);

@@ -1,6 +1,16 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 import { UserRole, UserRoleType, UserStatus, UserStatusType } from "@/types";
 
+export interface IUserAccount {
+    _id?: string;
+    type: "bank" | "mobile_banking";
+    providerName: string;
+    accountName: string;
+    accountNumber: string;
+    routingNumber?: string;
+    branch?: string;
+}
+
 export interface IUser extends Document {
     name: string;
     email: string;
@@ -13,6 +23,12 @@ export interface IUser extends Document {
     resetPasswordToken?: string;
     resetPasswordExpires?: Date;
     balance: number;
+    fathersName?: string;
+    mothersName?: string;
+    gender?: string;
+    dateOfBirth?: string;
+    bloodGroup?: string;
+    accounts?: IUserAccount[];
     createdAt: Date;
 }
 
@@ -36,10 +52,28 @@ const UserSchema = new Schema<IUser>({
     resetPasswordToken: { type: String },
     resetPasswordExpires: { type: Date },
     balance: { type: Number, default: 0 },
+    fathersName: { type: String },
+    mothersName: { type: String },
+    gender: { type: String, enum: ["Male", "Female", "Other"] },
+    dateOfBirth: { type: String },
+    bloodGroup: { type: String, enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] },
+    accounts: [
+        {
+            type: { type: String, enum: ["bank", "mobile_banking"], required: true },
+            providerName: { type: String, required: true },
+            accountName: { type: String, required: true },
+            accountNumber: { type: String, required: true },
+            routingNumber: { type: String },
+            branch: { type: String },
+        }
+    ],
     createdAt: { type: Date, default: Date.now },
 });
 
-const User: Model<IUser> =
-    mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+if (mongoose.models.User) {
+    delete mongoose.models.User;
+}
+
+const User: Model<IUser> = mongoose.model<IUser>("User", UserSchema);
 
 export default User;

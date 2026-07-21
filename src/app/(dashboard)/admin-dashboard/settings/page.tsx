@@ -2,7 +2,7 @@ import React from "react";
 import CompanySettingsView from "@/components/settings/CompanySettingsView";
 
 export const metadata = {
-    title: "Company Settings | OpyDash",
+    title: "Company Settings",
     description: "Manage your company profile, social links, and monthly revenue goals.",
 };
 

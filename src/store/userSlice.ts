@@ -9,6 +9,12 @@ export interface UserState {
   role: string | null;
   balance: number;
   status: string | null;
+  fathersName?: string | null;
+  mothersName?: string | null;
+  gender?: string | null;
+  dateOfBirth?: string | null;
+  bloodGroup?: string | null;
+  accounts: any[];
   isInitialized: boolean;
 }
 
@@ -21,6 +27,12 @@ const initialState: UserState = {
   role: null,
   balance: 0,
   status: null,
+  fathersName: null,
+  mothersName: null,
+  gender: null,
+  dateOfBirth: null,
+  bloodGroup: null,
+  accounts: [],
   isInitialized: false,
 };
 

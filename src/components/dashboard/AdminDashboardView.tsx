@@ -45,6 +45,10 @@ import {
 import { Button } from "@/components/ui/button";
 import AnimatedCounter from "@/components/dashboard/AnimatedCounter";
 import MonthlyBudgetBar from "@/components/dashboard/MonthlyBudgetBar";
+import { StatsGrid } from "@/components/dashboard/stats/StatsGrid";
+import { StatsCard } from "@/components/dashboard/stats/StatsCard";
+import { ClientInfoModal } from "@/components/clients/modals/ClientInfoModal";
+import { ClientFormModal } from "@/components/clients/modals/ClientFormModal";
 
 /* ─── Animation Variants ─── */
 const fadeUp = {
@@ -98,15 +102,23 @@ const CustomTooltip = ({ active, payload, label, isDark }: any) => {
 /* ─── Main Component ─── */
 export default function AdminDashboardPage() {
     const [mounted, setMounted] = useState(false);
+    const [dateRange, setDateRange] = useState("all");
+    
+    // Modal State
+    const [infoClient, setInfoClient] = useState<any>(null);
+    const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+    const [editingClient, setEditingClient] = useState<any>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme === "dark";
 
     useEffect(() => { setMounted(true); }, []);
 
     const { data: stats, isLoading, error, refetch, isRefetching } = useQuery<any>({
-        queryKey: ["stats"],
+        queryKey: ["stats", dateRange],
         queryFn: async () => {
-            const res = await fetch("/api/dashboard/stats", { cache: "no-store" });
+            const res = await fetch(`/api/dashboard/stats?range=${dateRange}`, { cache: "no-store" });
             if (!res.ok) throw new Error("Failed to fetch stats");
             return res.json();
         },
@@ -122,12 +134,12 @@ export default function AdminDashboardPage() {
     });
 
     const today = new Date().toISOString().split("T")[0];
-    const todayFollowUps = clientsData?.clients?.filter(
+    const todayFollowUps = (Array.isArray(clientsData) ? clientsData : []).filter(
         (c: any) =>
             c.status === "Follow-up" &&
             c.followupDate &&
             new Date(c.followupDate).toISOString().split("T")[0] === today,
-    ) || [];
+    );
 
     /* ─── Chart theme tokens ─── */
     const axisColor   = isDark ? "#64748b" : "#94a3b8";
@@ -274,7 +286,7 @@ export default function AdminDashboardPage() {
                 <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-indigo-500/15 blur-3xl" />
                 <div className="pointer-events-none absolute right-20 bottom-0 h-32 w-32 rounded-full bg-purple-500/10 blur-3xl" />
 
-                <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="relative z-10 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                     <div className="space-y-2">
                         <motion.span
                             initial={{ opacity: 0, scale: 0.85 }}
@@ -293,18 +305,29 @@ export default function AdminDashboardPage() {
                         </p>
                     </div>
 
-                    <div className="flex shrink-0 items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
                         {/* Quick stats pill */}
-                        <div className="hidden lg:flex items-center gap-3 rounded-2xl border border-border/60 bg-card/60 px-4 py-2.5 backdrop-blur-sm text-xs font-semibold text-muted-foreground divide-x divide-border/60">
-                            <span className="pr-3"><span className="text-foreground font-bold text-sm">{summary.totalProjects}</span> Projects</span>
-                            <span className="pl-3"><span className="text-emerald-500 font-bold text-sm">{summary.completed}</span> Done</span>
+                        <div className="flex items-center justify-center gap-2 sm:gap-3 rounded-2xl border border-border/60 bg-card/60 px-3 sm:px-4 py-2 sm:py-2.5 backdrop-blur-sm text-[10px] sm:text-xs font-semibold text-muted-foreground divide-x divide-border/60 w-full sm:w-auto">
+                            <span className="pr-2 sm:pr-3 whitespace-nowrap"><span className="text-foreground font-bold text-xs sm:text-sm">{summary.totalProjects}</span> Projects</span>
+                            <span className="px-2 sm:px-3 whitespace-nowrap"><span className="text-emerald-500 font-bold text-xs sm:text-sm">{summary.completed}</span> Done</span>
+                            <span className="pl-2 sm:pl-3 whitespace-nowrap"><span className="text-amber-500 font-bold text-xs sm:text-sm">{todayFollowUps.length}</span> Follow-ups</span>
                         </div>
+                        <select
+                            value={dateRange}
+                            onChange={(e) => setDateRange(e.target.value)}
+                            className="h-9 w-full sm:w-auto rounded-md border border-border/60 bg-card/80 px-3 text-xs font-semibold backdrop-blur-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer"
+                        >
+                            <option value="7d">Last 7 Days</option>
+                            <option value="30d">Last 30 Days</option>
+                            <option value="ytd">Year to Date</option>
+                            <option value="all">All Time</option>
+                        </select>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => refetch()}
                             disabled={isRefetching}
-                            className="h-9 cursor-pointer gap-2 border-border/60 bg-card/80 px-4 text-xs font-bold backdrop-blur-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all"
+                            className="h-9 w-full sm:w-auto cursor-pointer justify-center gap-2 border-border/60 bg-card/80 px-4 text-xs font-bold backdrop-blur-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all"
                         >
                             <RefreshCw className={`h-3.5 w-3.5 ${isRefetching ? "animate-spin text-indigo-500" : ""}`} />
                             {isRefetching ? "Refreshing…" : "Refresh"}
@@ -322,41 +345,21 @@ export default function AdminDashboardPage() {
 
                 <MonthlyBudgetBar monthlyCollected={summary.monthlyCollected ?? 0} />
 
-                <motion.div
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="show"
-                    className="grid grid-cols-1 gap-4 sm:grid-cols-3"
-                >
-                    {financialCards.map((card, i) => {
-                        const Icon = card.icon;
-                        return (
-                            <motion.div key={card.title} variants={itemVariants} custom={i}>
-                                <Card className={`group relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br ${card.accent} bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300`}>
-                                    <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-white/5 to-transparent" />
-                                    <CardContent className="p-5">
-                                        <div className="flex items-start justify-between mb-4">
-                                            <div className={`h-9 w-9 rounded-xl ${card.iconBg} flex items-center justify-center`}>
-                                                <Icon className={`h-4.5 w-4.5 ${card.iconColor}`} />
-                                            </div>
-                                            {card.trend && (
-                                                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-500">
-                                                    <ArrowUpRight className="h-2.5 w-2.5" />
-                                                    {card.trend}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 mb-1">{card.title}</p>
-                                        <div className="text-2xl font-extrabold tracking-tight text-foreground">
-                                            $<AnimatedCounter value={card.value} />
-                                        </div>
-                                        <p className="mt-1 text-[10px] text-muted-foreground leading-relaxed">{card.description}</p>
-                                    </CardContent>
-                                </Card>
-                            </motion.div>
-                        );
-                    })}
-                </motion.div>
+                <StatsGrid columns={3}>
+                    {financialCards.map((card, i) => (
+                        <StatsCard
+                            key={card.title}
+                            title={card.title}
+                            value={card.value}
+                            description={card.description}
+                            icon={card.icon}
+                            iconBg={card.iconBg}
+                            iconColor={card.iconColor}
+                            trend={card.trend}
+                            isCurrency={true}
+                        />
+                    ))}
+                </StatsGrid>
             </div>
 
             {/* ─── Project Stat Cards ─── */}
@@ -365,38 +368,21 @@ export default function AdminDashboardPage() {
                     <FolderKanban className="h-4 w-4 text-indigo-500" />
                     <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Project Statistics</h2>
                 </div>
-                <motion.div
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="show"
-                    className="grid grid-cols-2 gap-4 lg:grid-cols-4"
-                >
-                    {projectCards.map((card, i) => {
-                        const Icon = card.icon;
-                        return (
-                            <motion.div key={card.title} variants={itemVariants} custom={i}>
-                                <Card className={`group relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br ${card.accent} bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300`}>
-                                    {card.badge && (
-                                        <span className="absolute right-3 top-3 flex h-2 w-2">
-                                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
-                                            <span className="relative inline-flex h-2 w-2 rounded-full bg-rose-500" />
-                                        </span>
-                                    )}
-                                    <CardContent className="p-5">
-                                        <div className={`mb-4 h-9 w-9 rounded-xl ${card.iconBg} flex items-center justify-center`}>
-                                            <Icon className={`h-4 w-4 ${card.iconColor}`} />
-                                        </div>
-                                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70 mb-1">{card.title}</p>
-                                        <div className="text-2xl font-extrabold tracking-tight text-foreground">
-                                            <AnimatedCounter value={card.value} />
-                                        </div>
-                                        <p className="mt-1 text-[10px] text-muted-foreground">{card.description}</p>
-                                    </CardContent>
-                                </Card>
-                            </motion.div>
-                        );
-                    })}
-                </motion.div>
+                <StatsGrid columns={4}>
+                    {projectCards.map((card, i) => (
+                        <StatsCard
+                            key={card.title}
+                            title={card.title}
+                            value={card.value}
+                            description={card.description}
+                            icon={card.icon}
+                            iconBg={card.iconBg}
+                            iconColor={card.iconColor}
+                            badge={card.badge}
+                            isCurrency={false}
+                        />
+                    ))}
+                </StatsGrid>
             </div>
 
             {/* ─── Charts + Follow-ups Row ─── */}
@@ -575,7 +561,11 @@ export default function AdminDashboardPage() {
                                                 initial={{ opacity: 0, x: -8 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: 0.05 * idx }}
-                                                className="group flex flex-col gap-2.5 p-4 hover:bg-muted/30 transition-colors duration-200"
+                                                className="group flex flex-col gap-2.5 p-4 hover:bg-muted/30 transition-colors duration-200 cursor-pointer"
+                                                onClick={() => {
+                                                    setInfoClient(client);
+                                                    setIsInfoModalOpen(true);
+                                                }}
                                             >
                                                 <div className="flex items-start justify-between gap-3">
                                                     <div className="flex items-center gap-2.5 min-w-0">
@@ -620,6 +610,26 @@ export default function AdminDashboardPage() {
                     </div>
                 </motion.div>
             )}
+
+            <ClientInfoModal
+                isOpen={isInfoModalOpen}
+                onClose={() => setIsInfoModalOpen(false)}
+                client={infoClient}
+                onEdit={(client) => {
+                    setEditingClient(client);
+                    setIsEditModalOpen(true);
+                }}
+            />
+
+            <ClientFormModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                editingClient={editingClient}
+                onSuccessCallback={() => {
+                    // Refetch dashboard summary to update stats
+                    refetch();
+                }}
+            />
         </div>
     );
 }

@@ -22,6 +22,8 @@ import {
     Laptop,
     Wallet,
     Settings,
+    Landmark,
+    FileText,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -53,8 +55,10 @@ export default function AdminDashboardLayout({
         { name: "Dashboard", href: "/admin-dashboard", icon: LayoutDashboard },
         { name: "Finance", href: "/admin-dashboard/finance", icon: Wallet },
         { name: "Projects", href: "/admin-dashboard/projects", icon: FolderKanban },
+        { name: "Quotes", href: "/admin-dashboard/quotes", icon: FileText },
         { name: "Clients", href: "/admin-dashboard/clients", icon: Briefcase },
         { name: "Users", href: "/admin-dashboard/users", icon: Users },
+        { name: "Accounts", href: "/admin-dashboard/accounts", icon: Landmark },
         { name: "Profile", href: "/admin-dashboard/profile", icon: UserIcon },
         { name: "Settings", href: "/admin-dashboard/settings", icon: Settings },
     ];

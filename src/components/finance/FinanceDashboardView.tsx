@@ -20,6 +20,7 @@ import {
     Trash2,
     ChevronLeft,
     ChevronRight,
+    Download,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -55,6 +56,8 @@ const monthColors = [
 
 export default function FinanceDashboardView() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [exportRange, setExportRange] = useState("30d");
     const [transactionToDelete, setTransactionToDelete] = useState<
         string | null
     >(null);
@@ -282,13 +285,23 @@ export default function FinanceDashboardView() {
                         Track company expenses, revenue, salaries, and loans.
                     </p>
                 </div>
-                <Button
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md flex gap-2 items-center"
-                >
-                    <Plus className="h-4 w-4" />
-                    New Transaction
-                </Button>
+                <div className="flex gap-2 sm:gap-3">
+                    <Button
+                        onClick={() => setIsExportModalOpen(true)}
+                        variant="outline"
+                        className="bg-card border-border/60 hover:bg-muted text-foreground shadow-sm flex gap-2 items-center transition-all"
+                    >
+                        <Download className="h-4 w-4" />
+                        <span className="hidden sm:inline">Export CSV</span>
+                    </Button>
+                    <Button
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md flex gap-2 items-center"
+                    >
+                        <Plus className="h-4 w-4" />
+                        New Transaction
+                    </Button>
+                </div>
             </div>
 
             {/* Summary Cards */}
@@ -921,6 +934,87 @@ export default function FinanceDashboardView() {
                     </AnimatePresence>,
                     document.body,
                 )}
+
+            {/* Export Data Modal */}
+            {mounted && createPortal(
+                <AnimatePresence>
+                    {isExportModalOpen && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setIsExportModalOpen(false)}
+                                className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+                            />
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className="relative w-full max-w-sm border border-border bg-card shadow-2xl rounded-2xl overflow-hidden p-6 space-y-4"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-lg font-bold">Export Finance Data</h3>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsExportModalOpen(false)}>
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-muted-foreground uppercase">
+                                        Select Date Range
+                                    </label>
+                                    <select
+                                        value={exportRange}
+                                        onChange={(e) => setExportRange(e.target.value)}
+                                        className="w-full bg-background border border-input rounded-md h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+                                    >
+                                        <option value="7d">Last 7 Days</option>
+                                        <option value="30d">Last 30 Days</option>
+                                        <option value="90d">Last 90 Days</option>
+                                        <option value="all">All Time</option>
+                                    </select>
+                                </div>
+                                <div className="pt-4">
+                                    <Button onClick={() => {
+                                        import("@/lib/export").then(({ exportToCSV }) => {
+                                            const now = new Date();
+                                            let filtered = transactions;
+                                            
+                                            if (exportRange === "7d") {
+                                                const limitDate = new Date(now.setDate(now.getDate() - 7));
+                                                filtered = transactions.filter((t: any) => new Date(t.date) >= limitDate);
+                                            } else if (exportRange === "30d") {
+                                                const limitDate = new Date(now.setDate(now.getDate() - 30));
+                                                filtered = transactions.filter((t: any) => new Date(t.date) >= limitDate);
+                                            } else if (exportRange === "90d") {
+                                                const limitDate = new Date(now.setDate(now.getDate() - 90));
+                                                filtered = transactions.filter((t: any) => new Date(t.date) >= limitDate);
+                                            }
+                                            
+                                            const data = filtered.map((t: any) => ({
+                                                Date: new Date(t.date).toLocaleDateString(),
+                                                Type: t.type,
+                                                Category: t.category,
+                                                Amount: t.amount,
+                                                Description: t.description,
+                                                "User/Entity": t.user ? t.user.name : (t.externalEntity || ""),
+                                                "Created At": new Date(t.createdAt).toLocaleDateString()
+                                            }));
+                                            
+                                            exportToCSV(`finance-export-${exportRange}.csv`, data);
+                                            setIsExportModalOpen(false);
+                                        });
+                                    }} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white flex gap-2 items-center justify-center cursor-pointer">
+                                        <Download className="h-4 w-4" />
+                                        Export to CSV
+                                    </Button>
+                                </div>
+                            </motion.div>
+                        </div>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
         </motion.div>
     );
 }

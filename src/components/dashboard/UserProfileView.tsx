@@ -24,6 +24,10 @@ import {
     Calendar,
     ArrowUpRight,
     ArrowDownRight,
+    Landmark,
+    Plus,
+    X,
+    CreditCard,
 } from "lucide-react";
 import { Loading } from "@/components/ui/Loading";
 import { useForm, Controller } from "react-hook-form";
@@ -47,6 +51,88 @@ import { cn } from "../../lib/utils";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { setUserProfile, updateAvatar } from "@/store/userSlice";
 import User from "../../models/User";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "../ui/select";
+
+const BANGLADESH_BANKS = [
+    "AB Bank",
+    "Agrani Bank",
+    "Al-Arafah Islami Bank",
+    "Bangladesh Commerce Bank",
+    "Bangladesh Development Bank (BDBL)",
+    "Bangladesh Krishi Bank",
+    "Bank Alfalah",
+    "Bank Asia",
+    "BASIC Bank",
+    "Bengal Commercial Bank",
+    "BRAC Bank",
+    "Citizens Bank",
+    "Citibank N.A.",
+    "City Bank",
+    "Commercial Bank of Ceylon",
+    "Dhaka Bank",
+    "Dutch-Bangla Bank (DBBL)",
+    "Eastern Bank (EBL)",
+    "Exim Bank",
+    "First Security Islami Bank",
+    "Global Islami Bank",
+    "Habib Bank",
+    "HSBC",
+    "ICB Islamic Bank",
+    "IFIC Bank",
+    "Islami Bank (IBBL)",
+    "Jamuna Bank",
+    "Janata Bank",
+    "Meghna Bank",
+    "Mercantile Bank",
+    "Midland Bank",
+    "Modhumoti Bank",
+    "Mutual Trust Bank (MTB)",
+    "National Bank",
+    "National Bank of Pakistan",
+    "National Credit and Commerce Bank (NCC)",
+    "NRB Bank",
+    "NRB Commercial Bank",
+    "One Bank",
+    "Padma Bank",
+    "Premier Bank",
+    "Prime Bank",
+    "Probashi Kallyan Bank",
+    "Pubali Bank",
+    "Rajshahi Krishi Unnayan Bank",
+    "Rupali Bank",
+    "Shahjalal Islami Bank",
+    "Shimanto Bank",
+    "Social Islami Bank (SIBL)",
+    "Sonali Bank",
+    "South Bangla Agriculture and Commerce Bank (SBAC)",
+    "Southeast Bank",
+    "Standard Bank",
+    "Standard Chartered Bank",
+    "State Bank of India",
+    "Trust Bank",
+    "Union Bank",
+    "United Commercial Bank (UCB)",
+    "Uttara Bank",
+    "Woori Bank",
+    "Other",
+];
+
+const MOBILE_BANKING_PROVIDERS = [
+    "bKash",
+    "Nagad",
+    "Rocket",
+    "Upay",
+    "mCash",
+    "SureCash",
+    "Tap",
+    "Other",
+];
 
 /** Small pure helpers — no side effects, safe to keep outside the component */
 function formatRelativeTime(dateInput: string | Date) {
@@ -99,7 +185,7 @@ export default function UserProfileView() {
     const dispatch = useAppDispatch();
 
     const [activeTab, setActiveTab] = useState<
-        "profile" | "security" | "sessions" | "statement"
+        "profile" | "security" | "sessions" | "statement" | "accounts"
     >("profile");
     const [isUploading, setIsUploading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -108,6 +194,11 @@ export default function UserProfileView() {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [showBalance, setShowBalance] = useState(false);
     const [statementPage, setStatementPage] = useState(1);
+    const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+    const [accountToEdit, setAccountToEdit] = useState<any>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [accountToDelete, setAccountToDelete] = useState<string | null>(null);
+    const [providerSelection, setProviderSelection] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Form for Profile Details (Name, Mobile Number, Avatar)
@@ -126,6 +217,13 @@ export default function UserProfileView() {
             avatarUrl: reduxUser.avatarUrl || session?.user?.avatarUrl || "",
             mobileNumber:
                 reduxUser.mobileNumber || session?.user?.mobileNumber || "",
+            fathersName: reduxUser.fathersName || "",
+            mothersName: reduxUser.mothersName || "",
+            gender: reduxUser.gender || "",
+            dateOfBirth: reduxUser.dateOfBirth
+                ? new Date(reduxUser.dateOfBirth).toISOString().split("T")[0]
+                : "",
+            bloodGroup: reduxUser.bloodGroup || "",
         },
     });
 
@@ -147,6 +245,97 @@ export default function UserProfileView() {
 
     const newPasswordValue = watchPassword("newPassword");
     const passwordStrength = getPasswordStrength(newPasswordValue || "");
+
+    // Account Modal Form
+    const {
+        register: registerAccount,
+        handleSubmit: handleAccountSubmit,
+        reset: resetAccountForm,
+        watch: watchAccount,
+        formState: { errors: accountErrors },
+        setValue: setAccountValue,
+    } = useForm({
+        shouldUnregister: false,
+        defaultValues: {
+            type: "bank",
+            providerName: "",
+            accountName: "",
+            accountNumber: "",
+            routingNumber: "",
+            branch: "",
+        },
+    });
+
+    const accountType = watchAccount("type");
+
+    const saveAccountMutation = useMutation({
+        mutationFn: async (data: any) => {
+            const currentAccounts = reduxUser.accounts
+                ? [...reduxUser.accounts]
+                : [];
+            if (accountToEdit) {
+                const index = currentAccounts.findIndex(
+                    (a: any) => a._id === accountToEdit._id,
+                );
+                if (index !== -1) {
+                    currentAccounts[index] = {
+                        ...currentAccounts[index],
+                        ...data,
+                    };
+                }
+            } else {
+                currentAccounts.push(data);
+            }
+
+            const res = await fetch("/api/users/profile", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ accounts: currentAccounts }),
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || "Failed to save account");
+            }
+            return res.json();
+        },
+        onSuccess: (data) => {
+            dispatch(setUserProfile({ accounts: data.user.accounts }));
+            setIsAccountModalOpen(false);
+            setAccountToEdit(null);
+            resetAccountForm();
+            toast.success("Account saved successfully");
+        },
+        onError: (error: any) => {
+            toast.error(error.message || "Failed to save account");
+        },
+    });
+
+    const deleteAccountMutation = useMutation({
+        mutationFn: async (accountId: string) => {
+            const currentAccounts = (reduxUser.accounts || []).filter(
+                (a: any) => a._id !== accountId,
+            );
+            const res = await fetch("/api/users/profile", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ accounts: currentAccounts }),
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || "Failed to delete account");
+            }
+            return res.json();
+        },
+        onSuccess: (data) => {
+            dispatch(setUserProfile({ accounts: data.user.accounts }));
+            toast.success("Account deleted successfully");
+        },
+        onError: (error: any) => {
+            toast.error(error.message || "Failed to delete account");
+        },
+    });
 
     // Query to get active sessions
     const { data: sessions = [], refetch: refetchSessions } = useQuery<any[]>({
@@ -182,6 +371,12 @@ export default function UserProfileView() {
                     role: userProfile.role,
                     balance: userProfile.balance,
                     status: userProfile.status,
+                    fathersName: userProfile.fathersName,
+                    mothersName: userProfile.mothersName,
+                    gender: userProfile.gender,
+                    dateOfBirth: userProfile.dateOfBirth,
+                    bloodGroup: userProfile.bloodGroup,
+                    accounts: userProfile.accounts || [],
                 }),
             );
         }
@@ -337,7 +532,7 @@ export default function UserProfileView() {
             }
 
             const updatedData = await res.json();
-            
+
             dispatch(setUserProfile(updatedData.user));
 
             toast.success("Your profile has been updated!");
@@ -395,7 +590,27 @@ export default function UserProfileView() {
         .filter((t: any) => t.type !== "income" && t.type !== "+")
         .reduce((sum: number, t: any) => sum + Number(t.amount || 0), 0);
 
-    const balanceValue = pageIncome - pageExpense;
+    const balanceValue = Number((pageIncome - pageExpense).toFixed(2));
+
+    useEffect(() => {
+        if (balanceValue !== undefined && session?.user?.id && reduxUser) {
+            // Optimistically update redux
+            if (reduxUser.balance !== balanceValue) {
+                dispatch(
+                    setUserProfile({
+                        ...reduxUser,
+                        balance: balanceValue,
+                    }),
+                );
+                // Update backend
+                fetch("/api/users/profile", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ balance: balanceValue }),
+                }).catch((err) => console.error("Failed to sync balance", err));
+            }
+        }
+    }, [balanceValue, session?.user?.id, reduxUser, dispatch]);
 
     const tabs = [
         {
@@ -421,6 +636,12 @@ export default function UserProfileView() {
             name: "Salary & Balance",
             icon: Wallet,
             description: "Statements",
+        },
+        {
+            id: "accounts",
+            name: "Linked Accounts",
+            icon: Landmark,
+            description: "Bank & Mobile",
         },
     ] as const;
 
@@ -525,7 +746,7 @@ export default function UserProfileView() {
                                                     : "text-rose-600 dark:text-rose-400",
                                             )}
                                         >
-                                            ${balanceValue.toLocaleString()}
+                                            ${balanceValue.toFixed(2)}
                                         </motion.p>
                                     ) : (
                                         <motion.p
@@ -536,10 +757,68 @@ export default function UserProfileView() {
                                             transition={{ duration: 0.15 }}
                                             className="text-base font-black tracking-widest text-foreground/60 leading-tight"
                                         >
-                                            ••••
+                                            •••••
                                         </motion.p>
                                     )}
                                 </AnimatePresence>
+                            </div>
+                        </button> */}
+                        {/* <button
+                            type="button"
+                            onClick={() => setShowBalance(!showBalance)}
+                            className="group flex items-center gap-3 self-center lg:self-auto rounded-xl border border-border bg-accent/20 px-4 py-2.5 hover:bg-accent/40 active:scale-[0.98] transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
+                        >
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                                <Wallet className="h-4 w-4" />
+                            </div>
+
+                            <div className="text-left">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                    Balance
+                                </p>
+
+                                <div className="w-[140px] overflow-hidden">
+                                    <AnimatePresence
+                                        mode="wait"
+                                        initial={false}
+                                    >
+                                        {showBalance ? (
+                                            <motion.p
+                                                key="amount"
+                                                initial={{ opacity: 0, y: 4 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -4 }}
+                                                transition={{ duration: 0.15 }}
+                                                className={cn(
+                                                    "truncate text-base font-black leading-tight tabular-nums",
+                                                    balanceValue >= 0
+                                                        ? "text-emerald-600 dark:text-emerald-400"
+                                                        : "text-rose-600 dark:text-rose-400",
+                                                )}
+                                            >
+                                                $
+                                                {balanceValue.toLocaleString(
+                                                    undefined,
+                                                    {
+                                                        minimumFractionDigits: 2,
+                                                        maximumFractionDigits: 2,
+                                                    },
+                                                )}
+                                            </motion.p>
+                                        ) : (
+                                            <motion.p
+                                                key="hidden"
+                                                initial={{ opacity: 0, y: 4 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -4 }}
+                                                transition={{ duration: 0.15 }}
+                                                className="text-base font-black tracking-widest text-foreground/60 leading-tight"
+                                            >
+                                                •••••••••
+                                            </motion.p>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
                             </div>
                         </button> */}
                     </div>
@@ -719,6 +998,165 @@ export default function UserProfileView() {
                                                     Email addresses are unique
                                                     and locked to this account.
                                                 </p>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="space-y-1.5">
+                                                    <Label
+                                                        htmlFor="fathersName"
+                                                        className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                                                    >
+                                                        Father's Name
+                                                    </Label>
+                                                    <Input
+                                                        id="fathersName"
+                                                        placeholder="John Smith"
+                                                        {...registerProfile(
+                                                            "fathersName",
+                                                        )}
+                                                        className="bg-background border-border text-foreground focus-visible:ring-indigo-500 h-10 w-full"
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-1.5">
+                                                    <Label
+                                                        htmlFor="mothersName"
+                                                        className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                                                    >
+                                                        Mother's Name
+                                                    </Label>
+                                                    <Input
+                                                        id="mothersName"
+                                                        placeholder="Jane Smith"
+                                                        {...registerProfile(
+                                                            "mothersName",
+                                                        )}
+                                                        className="bg-background border-border text-foreground focus-visible:ring-indigo-500 h-10 w-full"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                <div className="space-y-1.5">
+                                                    <Label
+                                                        htmlFor="gender"
+                                                        className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                                                    >
+                                                        Gender
+                                                    </Label>
+                                                    <Controller
+                                                        name="gender"
+                                                        control={profileControl}
+                                                        render={({ field }) => (
+                                                            <Select
+                                                                value={
+                                                                    field.value ||
+                                                                    ""
+                                                                }
+                                                                onValueChange={
+                                                                    field.onChange
+                                                                }
+                                                            >
+                                                                <SelectTrigger className="bg-background border-border text-foreground focus-visible:ring-indigo-500 h-10! w-full">
+                                                                    <SelectValue placeholder="Select gender" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem
+                                                                        value="Male"
+                                                                        className="h-10!"
+                                                                    >
+                                                                        Male
+                                                                    </SelectItem>
+                                                                    <SelectItem
+                                                                        value="Female"
+                                                                        className="h-10!"
+                                                                    >
+                                                                        Female
+                                                                    </SelectItem>
+                                                                    <SelectItem
+                                                                        value="Other"
+                                                                        className="h-10!"
+                                                                    >
+                                                                        Other
+                                                                    </SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-1.5">
+                                                    <Label
+                                                        htmlFor="dateOfBirth"
+                                                        className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                                                    >
+                                                        Date of Birth
+                                                    </Label>
+                                                    <Input
+                                                        id="dateOfBirth"
+                                                        type="date"
+                                                        {...registerProfile(
+                                                            "dateOfBirth",
+                                                        )}
+                                                        className="bg-background border-border text-foreground focus-visible:ring-indigo-500 h-10 w-full"
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-1.5">
+                                                    <Label
+                                                        htmlFor="bloodGroup"
+                                                        className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                                                    >
+                                                        Blood Group
+                                                    </Label>
+                                                    <Controller
+                                                        name="bloodGroup"
+                                                        control={profileControl}
+                                                        render={({ field }) => (
+                                                            <Select
+                                                                value={
+                                                                    field.value ||
+                                                                    ""
+                                                                }
+                                                                onValueChange={
+                                                                    field.onChange
+                                                                }
+                                                            >
+                                                                <SelectTrigger className="bg-background border-border text-foreground focus-visible:ring-indigo-500 h-10! w-full">
+                                                                    <SelectValue placeholder="Select blood group" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {[
+                                                                        "A+",
+                                                                        "A-",
+                                                                        "B+",
+                                                                        "B-",
+                                                                        "AB+",
+                                                                        "AB-",
+                                                                        "O+",
+                                                                        "O-",
+                                                                    ].map(
+                                                                        (
+                                                                            bg,
+                                                                        ) => (
+                                                                            <SelectItem
+                                                                                key={
+                                                                                    bg
+                                                                                }
+                                                                                value={
+                                                                                    bg
+                                                                                }
+                                                                            >
+                                                                                {
+                                                                                    bg
+                                                                                }
+                                                                            </SelectItem>
+                                                                        ),
+                                                                    )}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                    />
+                                                </div>
                                             </div>
                                         </CardContent>
 
@@ -1168,12 +1606,11 @@ export default function UserProfileView() {
                                                     className={cn(
                                                         "text-xl font-black tabular-nums",
                                                         balanceValue >= 0
-                                                            ? "text-emerald-600 dark:text-emerald-400"
-                                                            : "text-rose-600 dark:text-rose-400",
+                                                            ? "text-emerald-600"
+                                                            : "text-rose-600",
                                                     )}
                                                 >
-                                                    $
-                                                    {balanceValue.toLocaleString()}
+                                                    ${balanceValue.toFixed(2)}
                                                 </span>
                                             </div>
                                         </div>
@@ -1185,15 +1622,13 @@ export default function UserProfileView() {
                                             <span className="flex items-center gap-1.5 text-muted-foreground">
                                                 <ArrowDownRight className="h-3.5 w-3.5 text-emerald-500" />
                                                 <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                                                    $
-                                                    {pageIncome.toLocaleString()}
+                                                    ${pageIncome.toFixed(2)}
                                                 </span>
                                             </span>
                                             <span className="flex items-center gap-1.5 text-muted-foreground">
                                                 <ArrowUpRight className="h-3.5 w-3.5 text-rose-500" />
                                                 <span className="font-bold text-rose-600 dark:text-rose-400 tabular-nums">
-                                                    $
-                                                    {pageExpense.toLocaleString()}
+                                                    ${pageExpense.toFixed(2)}
                                                 </span>
                                             </span>
                                         </div>
@@ -1304,7 +1739,9 @@ export default function UserProfileView() {
                                                                                     $
                                                                                     {Number(
                                                                                         t.amount,
-                                                                                    ).toLocaleString()}
+                                                                                    ).toFixed(
+                                                                                        2,
+                                                                                    )}
                                                                                 </div>
                                                                             </td>
                                                                         </tr>
@@ -1432,9 +1869,700 @@ export default function UserProfileView() {
                                 </Card>
                             </motion.div>
                         )}
+
+                        {activeTab === "accounts" && (
+                            <motion.div
+                                key="accounts"
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 10 }}
+                                transition={{ duration: 0.2 }}
+                                className="space-y-6"
+                            >
+                                <div className="flex items-center justify-between mb-2">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-foreground">
+                                            Linked Accounts
+                                        </h3>
+                                        <p className="text-sm text-muted-foreground">
+                                            Manage your bank and mobile banking
+                                            accounts.
+                                        </p>
+                                    </div>
+                                    <Button
+                                        onClick={() => {
+                                            resetAccountForm();
+                                            setAccountToEdit(null);
+                                            setProviderSelection("");
+                                            setIsAccountModalOpen(true);
+                                        }}
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white flex gap-2 items-center"
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                        Add Account
+                                    </Button>
+                                </div>
+                                {!reduxUser.accounts ||
+                                reduxUser.accounts.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border rounded-xl text-center space-y-3">
+                                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                                            <Landmark className="h-6 w-6 text-muted-foreground" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-foreground">
+                                                No accounts linked
+                                            </h4>
+                                            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                                                Add your bank or mobile banking
+                                                accounts to easily receive
+                                                payments and salaries.
+                                            </p>
+                                        </div>
+                                        <Button
+                                            onClick={() => {
+                                                resetAccountForm();
+                                                setAccountToEdit(null);
+                                                setProviderSelection("");
+                                                setIsAccountModalOpen(true);
+                                            }}
+                                            variant="outline"
+                                            className="mt-2"
+                                        >
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Add First Account
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Mobile View (Cards) */}
+                                        <div className="grid grid-cols-1 gap-4 md:hidden">
+                                            {reduxUser.accounts.map(
+                                                (acc: any) => (
+                                                    <Card
+                                                        key={acc._id}
+                                                        className="relative overflow-hidden group border border-border shadow-sm hover:shadow-md transition-all"
+                                                    >
+                                                        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-70" />
+                                                        <CardHeader className="p-4 pb-2">
+                                                            <div className="flex items-start justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600 dark:text-indigo-400">
+                                                                        {acc.type ===
+                                                                        "bank" ? (
+                                                                            <Landmark className="h-5 w-5" />
+                                                                        ) : (
+                                                                            <Smartphone className="h-5 w-5" />
+                                                                        )}
+                                                                    </div>
+                                                                    <div>
+                                                                        <CardTitle className="text-base font-bold">
+                                                                            {
+                                                                                acc.providerName
+                                                                            }
+                                                                        </CardTitle>
+                                                                        <CardDescription className="text-xs uppercase font-semibold text-muted-foreground tracking-wider">
+                                                                            {acc.type ===
+                                                                            "bank"
+                                                                                ? "Bank Account"
+                                                                                : "Mobile Banking"}
+                                                                        </CardDescription>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </CardHeader>
+                                                        <CardContent className="p-4 pt-2 space-y-2 text-sm">
+                                                            <div className="flex flex-col gap-0.5">
+                                                                <span className="text-xs text-muted-foreground font-medium">
+                                                                    Account Name
+                                                                </span>
+                                                                <span className="font-semibold text-foreground">
+                                                                    {
+                                                                        acc.accountName
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex flex-col gap-0.5">
+                                                                <span className="text-xs text-muted-foreground font-medium">
+                                                                    Account
+                                                                    Number
+                                                                </span>
+                                                                <span className="font-mono bg-muted/50 px-2 py-1 rounded text-foreground w-fit">
+                                                                    {
+                                                                        acc.accountNumber
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                            {acc.type ===
+                                                                "bank" &&
+                                                                acc.routingNumber && (
+                                                                    <div className="flex flex-col gap-0.5">
+                                                                        <span className="text-xs text-muted-foreground font-medium">
+                                                                            Routing
+                                                                            Number
+                                                                        </span>
+                                                                        <span className="font-mono text-foreground">
+                                                                            {
+                                                                                acc.routingNumber
+                                                                            }
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                            {acc.type ===
+                                                                "bank" &&
+                                                                acc.branch && (
+                                                                    <div className="flex flex-col gap-0.5">
+                                                                        <span className="text-xs text-muted-foreground font-medium">
+                                                                            Branch
+                                                                        </span>
+                                                                        <span className="text-foreground">
+                                                                            {
+                                                                                acc.branch
+                                                                            }
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                        </CardContent>
+                                                        <div className="absolute top-4 right-4 flex opacity-0 group-hover:opacity-100 transition-opacity bg-card/80 backdrop-blur-md rounded-md shadow-sm border border-border/50 overflow-hidden">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setAccountToEdit(
+                                                                        acc,
+                                                                    );
+                                                                    Object.keys(
+                                                                        acc,
+                                                                    ).forEach(
+                                                                        (k) =>
+                                                                            setAccountValue(
+                                                                                k as any,
+                                                                                acc[
+                                                                                    k
+                                                                                ],
+                                                                            ),
+                                                                    );
+
+                                                                    const isKnownBank =
+                                                                        acc.type ===
+                                                                            "bank" &&
+                                                                        BANGLADESH_BANKS.includes(
+                                                                            acc.providerName,
+                                                                        );
+                                                                    const isKnownMobile =
+                                                                        acc.type ===
+                                                                            "mobile_banking" &&
+                                                                        MOBILE_BANKING_PROVIDERS.includes(
+                                                                            acc.providerName,
+                                                                        );
+
+                                                                    if (
+                                                                        isKnownBank ||
+                                                                        isKnownMobile
+                                                                    ) {
+                                                                        setProviderSelection(
+                                                                            acc.providerName,
+                                                                        );
+                                                                    } else {
+                                                                        setProviderSelection(
+                                                                            "Other",
+                                                                        );
+                                                                    }
+
+                                                                    setIsAccountModalOpen(
+                                                                        true,
+                                                                    );
+                                                                }}
+                                                                className="p-2 hover:bg-muted text-foreground transition-colors"
+                                                                title="Edit"
+                                                            >
+                                                                <CreditCard className="h-4 w-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setAccountToDelete(
+                                                                        acc._id,
+                                                                    );
+                                                                    setIsDeleteModalOpen(
+                                                                        true,
+                                                                    );
+                                                                }}
+                                                                className="p-2 hover:bg-rose-500 hover:text-white text-rose-500 transition-colors"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </button>
+                                                        </div>
+                                                    </Card>
+                                                ),
+                                            )}
+                                        </div>
+
+                                        {/* Desktop View (Table) */}
+                                        <div className="hidden md:block border border-border rounded-xl overflow-hidden bg-card shadow-sm">
+                                            <table className="w-full text-sm text-left">
+                                                <thead className="bg-muted/50 text-muted-foreground text-xs uppercase font-semibold">
+                                                    <tr>
+                                                        <th className="px-4 py-3 border-b border-border">
+                                                            Provider
+                                                        </th>
+                                                        <th className="px-4 py-3 border-b border-border">
+                                                            Account Name
+                                                        </th>
+                                                        <th className="px-4 py-3 border-b border-border">
+                                                            Account No.
+                                                        </th>
+                                                        <th className="px-4 py-3 border-b border-border">
+                                                            Branch/Routing
+                                                        </th>
+                                                        <th className="px-4 py-3 border-b border-border text-right">
+                                                            Actions
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-border">
+                                                    {reduxUser.accounts.map(
+                                                        (acc: any) => (
+                                                            <tr
+                                                                key={`table-${acc._id}`}
+                                                                className="hover:bg-muted/30 transition-colors"
+                                                            >
+                                                                <td className="px-4 py-3">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-md text-indigo-600 dark:text-indigo-400">
+                                                                            {acc.type ===
+                                                                            "bank" ? (
+                                                                                <Landmark className="h-4 w-4" />
+                                                                            ) : (
+                                                                                <Smartphone className="h-4 w-4" />
+                                                                            )}
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="font-bold text-foreground">
+                                                                                {
+                                                                                    acc.providerName
+                                                                                }
+                                                                            </p>
+                                                                            <p className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">
+                                                                                {acc.type ===
+                                                                                "bank"
+                                                                                    ? "Bank"
+                                                                                    : "Mobile"}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-4 py-3 font-medium text-foreground">
+                                                                    {
+                                                                        acc.accountName
+                                                                    }
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    <span className="font-mono bg-muted/50 px-2 py-1 rounded text-foreground">
+                                                                        {
+                                                                            acc.accountNumber
+                                                                        }
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-muted-foreground text-xs">
+                                                                    {acc.type ===
+                                                                    "bank" ? (
+                                                                        <div className="flex flex-col gap-0.5">
+                                                                            {acc.branch ? (
+                                                                                <span>
+                                                                                    <span className="font-medium">
+                                                                                        Br:
+                                                                                    </span>{" "}
+                                                                                    {
+                                                                                        acc.branch
+                                                                                    }
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span>
+                                                                                    -
+                                                                                </span>
+                                                                            )}
+                                                                            {acc.routingNumber && (
+                                                                                <span>
+                                                                                    <span className="font-medium">
+                                                                                        Rt:
+                                                                                    </span>{" "}
+                                                                                    <span className="font-mono">
+                                                                                        {
+                                                                                            acc.routingNumber
+                                                                                        }
+                                                                                    </span>
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-muted-foreground/50">
+                                                                            -
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-right">
+                                                                    <div className="flex justify-end gap-1">
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setAccountToEdit(
+                                                                                    acc,
+                                                                                );
+                                                                                Object.keys(
+                                                                                    acc,
+                                                                                ).forEach(
+                                                                                    (
+                                                                                        k,
+                                                                                    ) =>
+                                                                                        setAccountValue(
+                                                                                            k as any,
+                                                                                            acc[
+                                                                                                k
+                                                                                            ],
+                                                                                        ),
+                                                                                );
+
+                                                                                const isKnownBank =
+                                                                                    acc.type ===
+                                                                                        "bank" &&
+                                                                                    BANGLADESH_BANKS.includes(
+                                                                                        acc.providerName,
+                                                                                    );
+                                                                                const isKnownMobile =
+                                                                                    acc.type ===
+                                                                                        "mobile_banking" &&
+                                                                                    MOBILE_BANKING_PROVIDERS.includes(
+                                                                                        acc.providerName,
+                                                                                    );
+
+                                                                                if (
+                                                                                    isKnownBank ||
+                                                                                    isKnownMobile
+                                                                                ) {
+                                                                                    setProviderSelection(
+                                                                                        acc.providerName,
+                                                                                    );
+                                                                                } else {
+                                                                                    setProviderSelection(
+                                                                                        "Other",
+                                                                                    );
+                                                                                }
+
+                                                                                setIsAccountModalOpen(
+                                                                                    true,
+                                                                                );
+                                                                            }}
+                                                                            className="p-1.5 hover:bg-muted rounded text-foreground transition-colors cursor-pointer"
+                                                                            title="Edit"
+                                                                        >
+                                                                            <CreditCard className="h-4 w-4" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setAccountToDelete(
+                                                                                    acc._id,
+                                                                                );
+                                                                                setIsDeleteModalOpen(
+                                                                                    true,
+                                                                                );
+                                                                            }}
+                                                                            className="p-1.5 hover:bg-rose-500/10 rounded hover:text-rose-600 text-rose-500 transition-colors cursor-pointer"
+                                                                            title="Delete"
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        ),
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </>
+                                )}
+                            </motion.div>
+                        )}
                     </AnimatePresence>
                 </div>
             </div>
+
+            {/* Account Modal */}
+            <AnimatePresence>
+                {isAccountModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsAccountModalOpen(false)}
+                            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="relative w-full max-w-lg border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
+                        >
+                            <div className="p-6 border-b border-border flex items-center justify-between">
+                                <h3 className="text-xl font-bold">
+                                    {accountToEdit
+                                        ? "Edit Account"
+                                        : "Add New Account"}
+                                </h3>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setIsAccountModalOpen(false)}
+                                >
+                                    <X className="h-5 w-5" />
+                                </Button>
+                            </div>
+                            <div className="p-6">
+                                <form
+                                    onSubmit={handleAccountSubmit((data) =>
+                                        saveAccountMutation.mutate(data),
+                                    )}
+                                    className="space-y-4"
+                                >
+                                    <div className="space-y-2">
+                                        <Label>Account Type</Label>
+                                        <select
+                                            {...registerAccount("type")}
+                                            onChange={(e) => {
+                                                registerAccount(
+                                                    "type",
+                                                ).onChange(e);
+                                                setProviderSelection("");
+                                                setAccountValue(
+                                                    "providerName",
+                                                    "",
+                                                );
+                                            }}
+                                            className="w-full bg-background border border-input rounded-md h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        >
+                                            <option value="bank">
+                                                Bank Account
+                                            </option>
+                                            <option value="mobile_banking">
+                                                Mobile Banking (e.g. bKash,
+                                                CashApp)
+                                            </option>
+                                        </select>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>
+                                            {accountType === "bank"
+                                                ? "Select Bank"
+                                                : "Select Provider"}
+                                        </Label>
+                                        <select
+                                            value={providerSelection}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setProviderSelection(val);
+                                                if (val !== "Other") {
+                                                    setAccountValue(
+                                                        "providerName",
+                                                        val,
+                                                    );
+                                                } else {
+                                                    setAccountValue(
+                                                        "providerName",
+                                                        "",
+                                                    );
+                                                }
+                                            }}
+                                            className="w-full bg-background border border-input rounded-md h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                        >
+                                            <option value="" disabled>
+                                                -- Select --
+                                            </option>
+                                            {accountType === "bank"
+                                                ? BANGLADESH_BANKS.map((b) => (
+                                                      <option key={b} value={b}>
+                                                          {b}
+                                                      </option>
+                                                  ))
+                                                : MOBILE_BANKING_PROVIDERS.map(
+                                                      (p) => (
+                                                          <option
+                                                              key={p}
+                                                              value={p}
+                                                          >
+                                                              {p}
+                                                          </option>
+                                                      ),
+                                                  )}
+                                        </select>
+                                    </div>
+
+                                    {providerSelection === "Other" && (
+                                        <div className="space-y-2">
+                                            <Label>
+                                                {accountType === "bank"
+                                                    ? "Bank Name (Other)"
+                                                    : "Provider Name (Other)"}
+                                            </Label>
+                                            <Input
+                                                {...registerAccount(
+                                                    "providerName",
+                                                )}
+                                                placeholder={
+                                                    accountType === "bank"
+                                                        ? "e.g. Foreign Bank"
+                                                        : "e.g. Other Provider"
+                                                }
+                                            />
+                                            {accountErrors.providerName && (
+                                                <p className="text-xs text-rose-500">
+                                                    {accountErrors.providerName.message?.toString()}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-2">
+                                        <Label>Account Name</Label>
+                                        <Input
+                                            {...registerAccount("accountName")}
+                                            placeholder="Name on the account"
+                                        />
+                                        {accountErrors.accountName && (
+                                            <p className="text-xs text-rose-500">
+                                                {accountErrors.accountName.message?.toString()}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Account Number</Label>
+                                        <Input
+                                            {...registerAccount(
+                                                "accountNumber",
+                                            )}
+                                            placeholder="Account or Mobile number"
+                                        />
+                                        {accountErrors.accountNumber && (
+                                            <p className="text-xs text-rose-500">
+                                                {accountErrors.accountNumber.message?.toString()}
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {accountType === "bank" && (
+                                        <>
+                                            <div className="space-y-2">
+                                                <Label>
+                                                    Routing Number (Optional)
+                                                </Label>
+                                                <Input
+                                                    {...registerAccount(
+                                                        "routingNumber",
+                                                    )}
+                                                    placeholder="Routing Number"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Branch (Optional)</Label>
+                                                <Input
+                                                    {...registerAccount(
+                                                        "branch",
+                                                    )}
+                                                    placeholder="Branch Name or Code"
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+
+                                    <div className="pt-4 flex justify-end gap-3">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            onClick={() =>
+                                                setIsAccountModalOpen(false)
+                                            }
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            type="submit"
+                                            disabled={
+                                                saveAccountMutation.isPending
+                                            }
+                                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                        >
+                                            {saveAccountMutation.isPending
+                                                ? "Saving..."
+                                                : "Save Account"}
+                                        </Button>
+                                    </div>
+                                </form>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Delete Confirmation Modal */}
+            <AnimatePresence>
+                {isDeleteModalOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsDeleteModalOpen(false)}
+                            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="relative w-full max-w-sm border border-border bg-card shadow-2xl rounded-2xl overflow-hidden p-6 text-center"
+                        >
+                            <div className="mx-auto w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center mb-4">
+                                <Trash2 className="h-6 w-6 text-rose-600 dark:text-rose-500" />
+                            </div>
+                            <h3 className="text-xl font-bold mb-2">
+                                Remove Account
+                            </h3>
+                            <p className="text-muted-foreground text-sm mb-6">
+                                Are you sure you want to remove this account?
+                                This action cannot be undone.
+                            </p>
+                            <div className="flex justify-center gap-3">
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => {
+                                        setIsDeleteModalOpen(false);
+                                        setAccountToDelete(null);
+                                    }}
+                                    className="flex-1 cursor-pointer"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    variant="destructive"
+                                    onClick={() => {
+                                        if (accountToDelete) {
+                                            deleteAccountMutation.mutate(
+                                                accountToDelete,
+                                            );
+                                            setIsDeleteModalOpen(false);
+                                            setAccountToDelete(null);
+                                        }
+                                    }}
+                                    disabled={deleteAccountMutation.isPending}
+                                    className="flex-1 cursor-pointer"
+                                >
+                                    {deleteAccountMutation.isPending
+                                        ? "Removing..."
+                                        : "Remove"}
+                                </Button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 }

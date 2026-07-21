@@ -32,8 +32,13 @@ export async function GET(req: NextRequest) {
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
+        { companyName: { $regex: search, $options: 'i' } },
+        { number: { $regex: search, $options: 'i' } },
+        { socialMediaLink: { $regex: search, $options: 'i' } },
         { country: { $regex: search, $options: 'i' } },
-        { notes: { $regex: search, $options: 'i' } }
+        { notes: { $regex: search, $options: 'i' } },
+        { source: { $regex: search, $options: 'i' } },
+        { otherSource: { $regex: search, $options: 'i' } }
       ];
     }
 
