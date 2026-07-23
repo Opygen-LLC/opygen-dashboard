@@ -37,6 +37,25 @@ const loadEnv = (fileName: string) => {
 loadEnv(".env");
 loadEnv(".env.local");
 
+async function resolveMongoUri(uri: string): Promise<string> {
+    if (!uri.startsWith("mongodb+srv://")) return uri;
+    try {
+        const { Resolver } = dns.promises;
+        const resolver = new Resolver();
+        resolver.setServers(["8.8.8.8", "1.1.1.1", "8.8.4.4"]);
+        const match = uri.match(/^mongodb\+srv:\/\/([^:]+):([^@]+)@([^\/]+)\/([^?]+)\?(.*)$/);
+        if (!match) return uri;
+        const [, user, pass, host, db, queryParams] = match;
+        const srvRecords = await resolver.resolveSrv(`_mongodb._tcp.${host}`);
+        if (!srvRecords || srvRecords.length === 0) return uri;
+        const hostList = srvRecords.map((r: any) => `${r.name}:${r.port}`).join(",");
+        return `mongodb://${user}:${pass}@${hostList}/${db}?ssl=true&authSource=admin&${queryParams}`;
+    } catch (e) {
+        console.warn("SRV resolution fallback warning:", e);
+        return uri;
+    }
+}
+
 async function seed() {
     const uri = process.env.MONGODB_URI;
     if (!uri) {
@@ -45,7 +64,8 @@ async function seed() {
     }
 
     console.log("Connecting to database...");
-    await mongoose.connect(uri);
+    const targetUri = await resolveMongoUri(uri);
+    await mongoose.connect(targetUri);
 
     const adminEmail = "syedmohiuddinmeshal24@gmail.com";
     console.log(`Checking if admin user with email ${adminEmail} exists...`);

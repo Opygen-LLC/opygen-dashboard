@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import NotificationBellDrawer from "@/components/notifications/NotificationBellDrawer";
 
 function ThemeToggler() {
     const { theme, setTheme } = useTheme();
@@ -168,6 +169,7 @@ export default function MemberDashboardLayout({
                                 {session?.user?.email}
                             </p>
                         </div>
+                        <NotificationBellDrawer />
                         <Button
                             variant="ghost"
                             size="icon"
@@ -200,14 +202,17 @@ export default function MemberDashboardLayout({
                             Opygen
                         </span>
                     </Link>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setMobileMenuOpen(true)}
-                        className="text-muted-foreground hover:text-foreground cursor-pointer"
-                    >
-                        <Menu className="h-6 w-6" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <NotificationBellDrawer />
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setMobileMenuOpen(true)}
+                            className="text-muted-foreground hover:text-foreground cursor-pointer"
+                        >
+                            <Menu className="h-6 w-6" />
+                        </Button>
+                    </div>
                 </header>
 
                 {/* Mobile Menu Drawer */}

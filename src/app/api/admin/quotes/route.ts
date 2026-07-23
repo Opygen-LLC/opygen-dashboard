@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/db";
 import Quote from "@/models/Quote";
 import { quoteSchema } from "@/lib/validations";
+import { createActivityLog } from "@/lib/activityLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,13 @@ export async function POST(req: NextRequest) {
         }
 
         const newQuote = await Quote.create(parseResult.data);
+
+        await createActivityLog({
+            user: session.user.id,
+            type: "quote_accepted",
+            message: `New proposal created for ${newQuote.clientName}: ${newQuote.projectName}`,
+            targetUrl: "/admin-dashboard/quotes"
+        });
 
         return NextResponse.json(newQuote, { status: 201 });
     } catch (error: any) {

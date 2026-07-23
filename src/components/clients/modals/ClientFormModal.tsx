@@ -11,7 +11,13 @@ import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { clientSchema, ClientInput } from "@/lib/validations";
 import { COUNTRIES } from "@/lib/countries";
@@ -250,28 +256,63 @@ export function ClientFormModal({
                                             name="status"
                                             control={control}
                                             render={({ field }) => (
-                                                <Select value={field.value} onValueChange={field.onChange}>
+                                                <Select
+                                                    value={field.value}
+                                                    onValueChange={
+                                                        field.onChange
+                                                    }
+                                                >
                                                     <SelectTrigger
                                                         className={cn(
-                                                            "w-full bg-background h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none",
-                                                            errors.status ? "border-rose-500" : "border-input"
+                                                            "w-full bg-background h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none",
+                                                            errors.status
+                                                                ? "border-rose-500"
+                                                                : "border-input",
                                                         )}
                                                     >
                                                         <SelectValue placeholder="Select status" />
                                                     </SelectTrigger>
                                                     <SelectContent className="z-[150]">
-                                                        <SelectItem value="Pending">Pending</SelectItem>
-                                                        <SelectItem value="Confirmed">Confirmed</SelectItem>
-                                                        <SelectItem value="Follow-up">Follow-up</SelectItem>
-                                                        <SelectItem value="Blocked">Blocked</SelectItem>
-                                                        <SelectItem value="Declined">Declined</SelectItem>
+                                                        <SelectItem
+                                                            value="Pending"
+                                                            className={`h-10!`}
+                                                        >
+                                                            Pending
+                                                        </SelectItem>
+                                                        <SelectItem
+                                                            value="Confirmed"
+                                                            className={`h-10!`}
+                                                        >
+                                                            Confirmed
+                                                        </SelectItem>
+                                                        <SelectItem
+                                                            value="Follow-up"
+                                                            className={`h-10!`}
+                                                        >
+                                                            Follow-up
+                                                        </SelectItem>
+                                                        <SelectItem
+                                                            value="Blocked"
+                                                            className={`h-10!`}
+                                                        >
+                                                            Blocked
+                                                        </SelectItem>
+                                                        <SelectItem
+                                                            value="Declined"
+                                                            className={`h-10!`}
+                                                        >
+                                                            Declined
+                                                        </SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             )}
                                         />
                                         {errors.status && (
                                             <p className="text-xs text-rose-500">
-                                                {errors.status?.message as string}
+                                                {
+                                                    errors.status
+                                                        ?.message as string
+                                                }
                                             </p>
                                         )}
                                     </div>
@@ -340,21 +381,37 @@ export function ClientFormModal({
                                             name="country"
                                             control={control}
                                             render={({ field }) => (
-                                                <Select value={field.value} onValueChange={field.onChange}>
+                                                <Select
+                                                    value={field.value}
+                                                    onValueChange={
+                                                        field.onChange
+                                                    }
+                                                >
                                                     <SelectTrigger
                                                         className={cn(
-                                                            "w-full bg-background h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none",
-                                                            errors.country ? "border-rose-500" : "border-input"
+                                                            "w-full bg-background h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none",
+                                                            errors.country
+                                                                ? "border-rose-500"
+                                                                : "border-input",
                                                         )}
                                                     >
                                                         <SelectValue placeholder="Select a country" />
                                                     </SelectTrigger>
                                                     <SelectContent className="z-[150]">
-                                                        {COUNTRIES.map((country) => (
-                                                            <SelectItem key={country} value={country}>
-                                                                {country}
-                                                            </SelectItem>
-                                                        ))}
+                                                        {COUNTRIES.map(
+                                                            (country) => (
+                                                                <SelectItem
+                                                                    key={
+                                                                        country
+                                                                    }
+                                                                    value={
+                                                                        country
+                                                                    } className={`h-10!`}
+                                                                >
+                                                                    {country}
+                                                                </SelectItem>
+                                                            ),
+                                                        )}
                                                     </SelectContent>
                                                 </Select>
                                             )}
@@ -448,22 +505,41 @@ export function ClientFormModal({
                                             name="source"
                                             control={control}
                                             render={({ field }) => (
-                                                <Select value={field.value} onValueChange={field.onChange}>
+                                                <Select
+                                                    value={field.value}
+                                                    onValueChange={
+                                                        field.onChange
+                                                    }
+                                                >
                                                     <SelectTrigger
                                                         className={cn(
-                                                            "w-full bg-background h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none",
-                                                            errors.source ? "border-rose-500" : "border-input"
+                                                            "w-full bg-background h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none",
+                                                            errors.source
+                                                                ? "border-rose-500"
+                                                                : "border-input",
                                                         )}
                                                     >
                                                         <SelectValue placeholder="Select source" />
                                                     </SelectTrigger>
                                                     <SelectContent className="z-[150]">
-                                                        <SelectItem value="Social Media">Social Media</SelectItem>
-                                                        <SelectItem value="Ads">Ads</SelectItem>
-                                                        <SelectItem value="Referral">Referral</SelectItem>
-                                                        <SelectItem value="Cold Outreach">Cold Outreach</SelectItem>
-                                                        <SelectItem value="Organic Search">Organic Search</SelectItem>
-                                                        <SelectItem value="Other">Other</SelectItem>
+                                                        <SelectItem value="Social Media" className={`h-10!`}>
+                                                            Social Media
+                                                        </SelectItem>
+                                                        <SelectItem value="Ads" className={`h-10!`}>
+                                                            Ads
+                                                        </SelectItem>
+                                                        <SelectItem value="Referral" className={`h-10!`}>
+                                                            Referral
+                                                        </SelectItem>
+                                                        <SelectItem value="Cold Outreach" className={`h-10!`}>
+                                                            Cold Outreach
+                                                        </SelectItem>
+                                                        <SelectItem value="Organic Search" className={`h-10!`}>
+                                                            Organic Search
+                                                        </SelectItem>
+                                                        <SelectItem value="Other" className={`h-10!`}>
+                                                            Other
+                                                        </SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             )}

@@ -242,17 +242,30 @@ export default function QuotesView() {
             const doc = new jsPDF();
             const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
-            let y = 20;
 
-            // Fetch standard icons - Dark Monochrome version
-            const fbIconP = getSvgIconBase64('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#0f172a"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>');
-            const liIconP = getSvgIconBase64('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#0f172a"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>');
-            const linkIconP = getSvgIconBase64('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#0f172a"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>');
+            // Ultra-Clean Executive Corporate Palette
+            const primaryNavy = [15, 23, 42];     // #0f172a Midnight Slate
+            const accentBlue = [37, 99, 235];     // #2563eb Royal Blue
+            const emeraldGreen = [16, 185, 129];   // #10b981 Emerald Green
+            const bodySlate = [51, 65, 85];        // #334155 Slate 700
+            const mutedSlate = [100, 116, 139];    // #64748b Slate 500
+            const lightBorder = [226, 232, 240];    // #e2e8f0 Slate 200
+            const softBg = [248, 250, 252];        // #f8fafc Slate 50
+
+            // Top Decorative Thin Accent Bar (3mm)
+            doc.setFillColor(accentBlue[0], accentBlue[1], accentBlue[2]);
+            doc.rect(0, 0, pageWidth, 3, "F");
+
+            let y = 16;
+
+            // Fetch brand SVG icons
+            const fbIconP = getSvgIconBase64('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#2563eb"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>');
+            const liIconP = getSvgIconBase64('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#0284c7"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>');
+            const linkIconP = getSvgIconBase64('<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#2563eb"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>');
             
             const [fbIcon, liIcon, linkIcon] = await Promise.all([fbIconP, liIconP, linkIconP]);
 
-            // --- HEADER ---
-            // Logo on the top left
+            // --- EXECUTIVE HEADER BRANDING ---
             let logoBase64 = null;
             if (settings?.logo && settings.logo.trim() !== "") {
                 try {
@@ -268,155 +281,155 @@ export default function QuotesView() {
             }
 
             if (logoBase64) {
-                doc.addImage(logoBase64, "PNG", 16, y, 16, 16);
-                doc.setFontSize(22);
+                doc.addImage(logoBase64, "PNG", 16, y, 14, 14);
+                doc.setFontSize(20);
                 doc.setFont("helvetica", "bold");
-                doc.setTextColor(15, 23, 42); // Slate 900
-                doc.text("Opygen", 36, y + 12);
+                doc.setTextColor(primaryNavy[0], primaryNavy[1], primaryNavy[2]);
+                doc.text(settings?.companyName || "Opygen", 34, y + 10);
             } else {
-                doc.setFontSize(22);
+                doc.setFontSize(20);
                 doc.setFont("helvetica", "bold");
-                doc.setTextColor(15, 23, 42);
-                doc.text("Opygen", 16, y + 12);
+                doc.setTextColor(primaryNavy[0], primaryNavy[1], primaryNavy[2]);
+                doc.text(settings?.companyName || "Opygen", 16, y + 10);
             }
 
-            // PROPOSAL TITLE on the right
-            doc.setFontSize(36);
+            // DOCUMENT TITLE & METADATA (Right Header)
+            doc.setFontSize(22);
             doc.setFont("helvetica", "bold");
-            doc.setTextColor(15, 23, 42);
-            doc.text("PROPOSAL", pageWidth - 16, y + 12, { align: "right" });
+            doc.setTextColor(primaryNavy[0], primaryNavy[1], primaryNavy[2]);
+            doc.text("PROJECT PROPOSAL", pageWidth - 16, y + 7, { align: "right" });
 
-            doc.setFontSize(10);
+            doc.setFontSize(8.5);
             doc.setFont("helvetica", "normal");
-            doc.setTextColor(100, 116, 139); // Slate 500
-            doc.text(
-                `DATE: ${new Date(quote.createdAt || Date.now()).toLocaleDateString().toUpperCase()}`,
-                pageWidth - 16,
-                y + 20,
-                { align: "right" },
-            );
+            doc.setTextColor(mutedSlate[0], mutedSlate[1], mutedSlate[2]);
+            const formattedDate = new Date(quote.createdAt || Date.now()).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+            });
+            doc.text(`DATE: ${formattedDate.toUpperCase()}`, pageWidth - 16, y + 14, { align: "right" });
+            doc.text("VALIDITY: 30 DAYS", pageWidth - 16, y + 19, { align: "right" });
 
-            y += 28;
+            y += 26;
 
-            // --- SEPARATOR ---
-            doc.setDrawColor(226, 232, 240); // Slate 200
+            // Subtle Horizontal Rule
+            doc.setDrawColor(lightBorder[0], lightBorder[1], lightBorder[2]);
             doc.setLineWidth(0.5);
             doc.line(16, y, pageWidth - 16, y);
             
-            y += 12;
+            y += 10;
 
-            // --- COMPANY & CLIENT INFO (Clean Layout) ---
+            // --- 2-COLUMN METADATA GRID (ISSUED BY / PREPARED FOR) ---
+            const colWidth = (pageWidth - 40) / 2;
             
-            // Company Info (Left)
-            let boxY = y;
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(15, 23, 42);
-            doc.text(settings?.companyName || "Company Name", 16, boxY);
-
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(71, 85, 105); // Slate 600
-            boxY += 6;
-            if (settings?.tagline) {
-                doc.text(settings.tagline, 16, boxY);
-                boxY += 5;
-            }
-            if (settings?.phone) {
-                doc.text(settings.phone, 16, boxY);
-                boxY += 5;
-            }
-            if (settings?.email) {
-                doc.text(settings.email, 16, boxY);
-                boxY += 5;
-            }
-            if (settings?.website) {
-                doc.text(settings.website, 16, boxY);
-                boxY += 5;
-            }
-
-            // Social icons loop for company
-            let socialX = 16;
-            if (settings?.socials?.facebook) {
-                doc.addImage(fbIcon, "PNG", socialX, boxY - 3, 4, 4);
-                socialX += 6;
-            }
-            if (settings?.socials?.linkedin) {
-                doc.addImage(liIcon, "PNG", socialX, boxY - 3, 4, 4);
-            }
-
-            // Client Info (Right)
-            let rightY = y;
+            // Left Column (Company)
             doc.setFontSize(8);
             doc.setFont("helvetica", "bold");
-            doc.setTextColor(148, 163, 184); // Slate 400
-            doc.text("PREPARED FOR", pageWidth - 16, rightY, { align: "right" });
-
-            rightY += 6;
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(15, 23, 42);
-            doc.text(quote.clientName, pageWidth - 16, rightY, { align: "right" });
-            
-            rightY += 6;
-            doc.setFontSize(9);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(71, 85, 105);
-            if (quote.clientPhone) {
-                doc.text(quote.clientPhone, pageWidth - 16, rightY, { align: "right" });
-                rightY += 5;
-            }
-            if (quote.clientSocialLink) {
-                doc.text(quote.clientSocialLink.substring(0, 30) + (quote.clientSocialLink.length > 30 ? '...' : ''), pageWidth - 23, rightY, { align: "right" });
-                doc.addImage(linkIcon, "PNG", pageWidth - 21, rightY - 3, 4, 4);
-            }
-
-            y = Math.max(boxY, rightY) + 20;
-
-            // --- PROJECT DETAILS ---
-            doc.setFontSize(18);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(15, 23, 42);
-            doc.text(quote.projectName, 16, y);
+            doc.setTextColor(accentBlue[0], accentBlue[1], accentBlue[2]);
+            doc.text("FROM (SERVICE PROVIDER)", 16, y);
 
             doc.setFontSize(10);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(100, 116, 139);
-            doc.text(
-                `Duration: ${quote.projectDuration}`,
-                16,
-                y + 6,
-            );
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(primaryNavy[0], primaryNavy[1], primaryNavy[2]);
+            doc.text(settings?.companyName || "Company Name", 16, y + 6);
 
-            y += 16;
+            doc.setFontSize(8.5);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(bodySlate[0], bodySlate[1], bodySlate[2]);
+            let compY = y + 11;
+            if (settings?.tagline) {
+                doc.text(settings.tagline, 16, compY);
+                compY += 4.5;
+            }
+            if (settings?.phone) {
+                doc.text(`Tel: ${settings.phone}`, 16, compY);
+                compY += 4.5;
+            }
+            if (settings?.email) {
+                doc.text(`Email: ${settings.email}`, 16, compY);
+                compY += 4.5;
+            }
+            if (settings?.website) {
+                doc.text(`Web: ${settings.website}`, 16, compY);
+            }
+
+            // Right Column (Client)
+            const rightColX = 16 + colWidth + 8;
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(accentBlue[0], accentBlue[1], accentBlue[2]);
+            doc.text("PREPARED FOR (CLIENT)", rightColX, y);
+
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(primaryNavy[0], primaryNavy[1], primaryNavy[2]);
+            doc.text(quote.clientName, rightColX, y + 6);
+
+            doc.setFontSize(8.5);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(bodySlate[0], bodySlate[1], bodySlate[2]);
+            let clientY = y + 11;
+            if (quote.clientPhone) {
+                doc.text(`Phone: ${quote.clientPhone}`, rightColX, clientY);
+                clientY += 4.5;
+            }
+            if (quote.clientSocialLink) {
+                const truncatedLink = quote.clientSocialLink.substring(0, 32) + (quote.clientSocialLink.length > 32 ? '...' : '');
+                doc.text(truncatedLink, rightColX, clientY);
+            }
+
+            y = Math.max(compY, clientY) + 14;
+
+            // --- PROJECT SCOPE SECTION ---
+            doc.setDrawColor(lightBorder[0], lightBorder[1], lightBorder[2]);
+            doc.setLineWidth(0.5);
+            doc.line(16, y, pageWidth - 16, y);
+            y += 8;
+
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(mutedSlate[0], mutedSlate[1], mutedSlate[2]);
+            doc.text("PROJECT SCOPE & OBJECTIVES", 16, y);
+
+            y += 6;
+            doc.setFontSize(13);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(primaryNavy[0], primaryNavy[1], primaryNavy[2]);
+            doc.text(quote.projectName, 16, y);
+
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(accentBlue[0], accentBlue[1], accentBlue[2]);
+            doc.text(`Duration: ${quote.projectDuration}`, pageWidth - 16, y, { align: "right" });
+
+            y += 8;
 
             if (quote.projectDetails) {
-                doc.setFontSize(10);
+                doc.setFontSize(8.5);
                 doc.setFont("helvetica", "normal");
-                doc.setTextColor(71, 85, 105);
+                doc.setTextColor(bodySlate[0], bodySlate[1], bodySlate[2]);
                 const splitDetails = doc.splitTextToSize(
                     quote.projectDetails,
                     pageWidth - 32,
                 );
                 doc.text(splitDetails, 16, y);
-                y += splitDetails.length * 5 + 8;
+                y += splitDetails.length * 4.5 + 6;
             }
 
-            // --- TABLE ---
-            // Combine MIN/MAX into a single AMOUNT column
+            // --- EXECUTIVE SCOPE TABLE ---
             const tableColumn = [
-                "PHASE / DESCRIPTION",
-                `AMOUNT (${quote.currency})`,
+                "PHASE / DELIVERABLE DESCRIPTION",
+                `ESTIMATED BUDGET (${quote.currency})`,
             ];
             const tableRows = quote.phases.map((p: any) => {
                 let amountStr = "";
                 if (Number(p.minBudget) === Number(p.maxBudget)) {
-                    amountStr = Number(p.minBudget).toLocaleString();
+                    amountStr = `${quote.currency === "USD" ? "$" : ""}${Number(p.minBudget).toLocaleString()}`;
                 } else {
-                    amountStr = `${Number(p.minBudget).toLocaleString()} - ${Number(p.maxBudget).toLocaleString()}`;
+                    amountStr = `${quote.currency === "USD" ? "$" : ""}${Number(p.minBudget).toLocaleString()} - ${Number(p.maxBudget).toLocaleString()}`;
                 }
                 return [
-                    `${p.phaseName}\n${p.description}`,
+                    `${p.phaseName.toUpperCase()}\n${p.description || ''}`,
                     amountStr
                 ];
             });
@@ -428,38 +441,35 @@ export default function QuotesView() {
                 theme: "plain",
                 margin: { left: 16, right: 16 },
                 headStyles: {
-                    fillColor: [255, 255, 255],
-                    textColor: [15, 23, 42],
+                    fillColor: [primaryNavy[0], primaryNavy[1], primaryNavy[2]],
+                    textColor: [255, 255, 255],
                     fontStyle: "bold",
-                    fontSize: 9,
-                    cellPadding: { top: 6, bottom: 6, left: 4, right: 4 },
+                    fontSize: 8.5,
+                    cellPadding: { top: 6, bottom: 6, left: 6, right: 6 },
+                    halign: "left",
+                },
+                alternateRowStyles: {
+                    fillColor: [softBg[0], softBg[1], softBg[2]],
                 },
                 bodyStyles: {
-                    textColor: [51, 65, 85], // Slate 700
-                    fontSize: 9,
-                    cellPadding: { top: 6, bottom: 6, left: 4, right: 4 },
+                    textColor: [30, 41, 59],
+                    fontSize: 8.5,
+                    cellPadding: { top: 6, bottom: 6, left: 6, right: 6 },
                 },
                 columnStyles: {
                     0: { cellWidth: "auto" },
-                    1: { cellWidth: 55, halign: "right" },
+                    1: { cellWidth: 65, halign: "right", fontStyle: "bold" },
                 },
                 didDrawCell: (data) => {
-                    if (data.row.section === "head") {
-                        // Top border
-                        doc.setDrawColor(15, 23, 42); // Slate 900
-                        doc.setLineWidth(1);
-                        if (data.row.index === 0) {
-                            doc.line(data.cell.x, data.cell.y, data.cell.x + data.cell.width, data.cell.y);
-                        }
-                        // Bottom border
-                        doc.setLineWidth(0.5);
-                        doc.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
-                    }
                     if (data.row.section === "body") {
-                        // Very faint bottom border for rows
-                        doc.setDrawColor(241, 245, 249); // Slate 100
-                        doc.setLineWidth(0.5);
-                        doc.line(data.cell.x, data.cell.y + data.cell.height, data.cell.x + data.cell.width, data.cell.y + data.cell.height);
+                        doc.setDrawColor(lightBorder[0], lightBorder[1], lightBorder[2]);
+                        doc.setLineWidth(0.4);
+                        doc.line(
+                            data.cell.x,
+                            data.cell.y + data.cell.height,
+                            data.cell.x + data.cell.width,
+                            data.cell.y + data.cell.height
+                        );
                     }
                 },
             });
@@ -472,112 +482,107 @@ export default function QuotesView() {
                 maxTotal += Number(p.maxBudget) || 0;
             });
 
-            y = (doc as any).lastAutoTable.finalY + 15;
+            y = (doc as any).lastAutoTable.finalY + 12;
 
-            // --- SUMMARY TOTALS & PAYMENT ---
-
-            // Totals (Right side)
-            const totalsX = pageWidth / 2 + 10;
-            const totalsRightX = pageWidth - 16;
-
-            doc.setFontSize(10);
-            doc.setTextColor(100, 116, 139);
-            doc.text("Estimated Total", totalsX, y);
+            // --- FINANCIAL SUMMARY & PAYMENT DETAILS ---
+            const boxWidth = (pageWidth - 40) / 2;
             
+            // Payment Details Box (Left)
+            if (quote.paymentAccount) {
+                doc.setFillColor(softBg[0], softBg[1], softBg[2]);
+                doc.setDrawColor(lightBorder[0], lightBorder[1], lightBorder[2]);
+                doc.setLineWidth(0.5);
+                doc.roundedRect(16, y, boxWidth, 34, 2, 2, "FD");
+
+                doc.setFontSize(8);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(accentBlue[0], accentBlue[1], accentBlue[2]);
+                doc.text("PAYMENT & BANKING DETAILS", 22, y + 7);
+
+                doc.setFontSize(9);
+                doc.setFont("helvetica", "bold");
+                doc.setTextColor(primaryNavy[0], primaryNavy[1], primaryNavy[2]);
+                doc.text(`${quote.paymentAccount.providerName}`, 22, y + 13);
+                
+                doc.setFontSize(8);
+                doc.setFont("helvetica", "normal");
+                doc.setTextColor(bodySlate[0], bodySlate[1], bodySlate[2]);
+                doc.text(`Account Name: ${quote.paymentAccount.accountName}`, 22, y + 18.5);
+                doc.setFont("helvetica", "bold");
+                doc.text(`A/C: ${quote.paymentAccount.accountNumber}`, 22, y + 24);
+                
+                if (quote.paymentAccount.routingNumber) {
+                    doc.setFont("helvetica", "normal");
+                    doc.text(`Routing: ${quote.paymentAccount.routingNumber}`, 22, y + 29);
+                }
+            }
+
+            // Financial Summary Box (Right)
+            const sumBoxX = 16 + boxWidth + 8;
+            doc.setFillColor(softBg[0], softBg[1], softBg[2]);
+            doc.setDrawColor(lightBorder[0], lightBorder[1], lightBorder[2]);
+            doc.setLineWidth(0.5);
+            doc.roundedRect(sumBoxX, y, boxWidth, 34, 2, 2, "FD");
+
+            doc.setFontSize(8);
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
-            doc.setTextColor(15, 23, 42);
-            
+            doc.setTextColor(mutedSlate[0], mutedSlate[1], mutedSlate[2]);
+            doc.text("ESTIMATED TOTAL BUDGET", sumBoxX + 6, y + 7);
+
             let totalStr = "";
             if (minTotal === maxTotal) {
-                totalStr = `${maxTotal.toLocaleString()} ${quote.currency}`;
+                totalStr = `${quote.currency === "USD" ? "$" : ""}${maxTotal.toLocaleString()} ${quote.currency}`;
             } else {
-                totalStr = `${minTotal.toLocaleString()} - ${maxTotal.toLocaleString()} ${quote.currency}`;
+                totalStr = `${quote.currency === "USD" ? "$" : ""}${minTotal.toLocaleString()} - ${maxTotal.toLocaleString()} ${quote.currency}`;
             }
-            doc.text(totalStr, totalsRightX, y, { align: "right" });
+            
+            doc.setFontSize(13);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(emeraldGreen[0], emeraldGreen[1], emeraldGreen[2]);
+            doc.text(totalStr, sumBoxX + 6, y + 16);
 
+            // Advance requirement calculation
             const advanceType = quote.advanceType || "percentage";
             const advanceVal = quote.advanceValue ?? quote.advancePercent;
 
             if (advanceVal !== undefined && advanceVal !== null) {
                 let advanceStr = "";
                 if (advanceType === "fixed") {
-                    advanceStr = `${advanceVal.toLocaleString()} ${quote.currency}`;
+                    advanceStr = `${quote.currency === "USD" ? "$" : ""}${advanceVal.toLocaleString()} ${quote.currency}`;
                 } else {
                     const advMin = minTotal * (advanceVal / 100);
                     const advMax = maxTotal * (advanceVal / 100);
                     if (advMin === advMax) {
-                        advanceStr = `${advMax.toLocaleString()} ${quote.currency}`;
+                        advanceStr = `${quote.currency === "USD" ? "$" : ""}${advMax.toLocaleString()} ${quote.currency}`;
                     } else {
-                        advanceStr = `${advMin.toLocaleString()} - ${advMax.toLocaleString()} ${quote.currency}`;
+                        advanceStr = `${quote.currency === "USD" ? "$" : ""}${advMin.toLocaleString()} - ${advMax.toLocaleString()} ${quote.currency}`;
                     }
                 }
 
-                doc.setFontSize(9);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(100, 116, 139);
-                doc.text(
-                    advanceType === "fixed"
-                        ? `Required Advance:`
-                        : `Required Advance (${advanceVal}%):`,
-                    totalsX,
-                    y + 8,
-                );
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(15, 23, 42);
-                doc.text(
-                    advanceStr,
-                    totalsRightX,
-                    y + 8,
-                    { align: "right" },
-                );
-            }
-
-            // Payment Account Details (Left side)
-            if (quote.paymentAccount) {
                 doc.setFontSize(8);
                 doc.setFont("helvetica", "bold");
-                doc.setTextColor(148, 163, 184); // Slate 400
-                doc.text("PAYMENT DETAILS", 16, y);
-
-                doc.setFontSize(10);
+                doc.setTextColor(accentBlue[0], accentBlue[1], accentBlue[2]);
+                doc.text(
+                    advanceType === "fixed" ? `REQUIRED ADVANCE:` : `REQUIRED ADVANCE (${advanceVal}%):`,
+                    sumBoxX + 6,
+                    y + 24,
+                );
+                doc.setFontSize(9.5);
                 doc.setFont("helvetica", "bold");
-                doc.setTextColor(15, 23, 42);
-                let accY = y + 6;
-                doc.text(`${quote.paymentAccount.providerName}`, 16, accY);
-                
-                doc.setFontSize(9);
-                doc.setFont("helvetica", "normal");
-                doc.setTextColor(71, 85, 105);
-                accY += 5;
-                doc.text(`Account Name: ${quote.paymentAccount.accountName}`, 16, accY);
-                
-                accY += 5;
-                doc.setFont("helvetica", "bold");
-                doc.text(`A/C: ${quote.paymentAccount.accountNumber}`, 16, accY);
-                
-                doc.setFont("helvetica", "normal");
-                accY += 5;
-                if (quote.paymentAccount.routingNumber) {
-                    doc.text(`Routing: ${quote.paymentAccount.routingNumber}`, 16, accY);
-                    accY += 5;
-                }
-                if (quote.paymentAccount.branch) {
-                    doc.text(`Branch: ${quote.paymentAccount.branch}`, 16, accY);
-                }
+                doc.setTextColor(primaryNavy[0], primaryNavy[1], primaryNavy[2]);
+                doc.text(advanceStr, sumBoxX + 6, y + 29.5);
             }
 
-            // --- FOOTER ---
-            // Elegant simple footer border
-            doc.setDrawColor(241, 245, 249);
+            // --- EXECUTIVE FOOTER ---
+            doc.setDrawColor(lightBorder[0], lightBorder[1], lightBorder[2]);
             doc.setLineWidth(0.5);
-            doc.line(16, pageHeight - 15, pageWidth - 16, pageHeight - 15);
-            
+            doc.line(16, pageHeight - 14, pageWidth - 16, pageHeight - 14);
+
             doc.setFontSize(8);
             doc.setFont("helvetica", "italic");
-            doc.setTextColor(148, 163, 184); // Slate 400
+            doc.setTextColor(mutedSlate[0], mutedSlate[1], mutedSlate[2]);
             doc.text(
-                "Thank you for your business. This proposal is valid for 30 days.",
+                "Thank you for your business. For any questions regarding this proposal, please contact us.",
                 pageWidth / 2,
                 pageHeight - 8,
                 { align: "center" },

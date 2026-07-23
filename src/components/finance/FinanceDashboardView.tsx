@@ -21,6 +21,7 @@ import {
     ChevronLeft,
     ChevronRight,
     Download,
+    BarChart3,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -39,6 +40,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { transactionSchema, TransactionInput } from "@/lib/validations";
 import { TransactionType, TransactionCategory } from "@/types";
+import FinancialAnalyticsView from "./FinancialAnalyticsView";
 
 const monthColors = [
     "bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400",
@@ -56,6 +58,7 @@ const monthColors = [
 ];
 
 export default function FinanceDashboardView() {
+    const [activeViewTab, setActiveViewTab] = useState<"overview" | "analytics">("overview");
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const [exportRange, setExportRange] = useState("30d");
@@ -63,6 +66,7 @@ export default function FinanceDashboardView() {
         string | null
     >(null);
     const [filterType, setFilterType] = useState<string>("");
+    const [filterCategory, setFilterCategory] = useState<string>("");
     const [currentPage, setCurrentPage] = useState<number>(1);
 
     const [mounted, setMounted] = useState(false);
@@ -71,7 +75,7 @@ export default function FinanceDashboardView() {
     // Reset pagination when filter changes
     useEffect(() => {
         setCurrentPage(1);
-    }, [filterType]);
+    }, [filterType, filterCategory]);
 
     // Fetch summary
     const {
@@ -93,10 +97,18 @@ export default function FinanceDashboardView() {
         isLoading: isTransactionsLoading,
         refetch: refetchTransactions,
     } = useQuery({
-        queryKey: ["finance-transactions", filterType],
+        queryKey: ["finance-transactions", filterType, filterCategory],
         queryFn: async () => {
-            const url = filterType
-                ? `/api/finance/transactions?type=${filterType}`
+            const params = new URLSearchParams();
+            if (filterType && filterType !== "all_types" && filterType !== "all") {
+                params.append("type", filterType);
+            }
+            if (filterCategory && filterCategory !== "all_categories" && filterCategory !== "all") {
+                params.append("category", filterCategory);
+            }
+            const queryString = params.toString();
+            const url = queryString
+                ? `/api/finance/transactions?${queryString}`
                 : `/api/finance/transactions`;
             const res = await fetch(url);
             if (!res.ok) throw new Error("Failed to fetch transactions");
@@ -285,21 +297,21 @@ export default function FinanceDashboardView() {
                         Finance Dashboard
                     </h1>
                     <p className="text-muted-foreground mt-1">
-                        Track company expenses, revenue, salaries, and loans.
+                        Track company expenses, revenue, salaries, and forecasting analytics.
                     </p>
                 </div>
                 <div className="flex gap-2 sm:gap-3">
                     <Button
                         onClick={() => setIsExportModalOpen(true)}
                         variant="outline"
-                        className="bg-card border-border/60 hover:bg-muted text-foreground shadow-sm flex gap-2 items-center transition-all"
+                        className="bg-card border-border/60 hover:bg-muted text-foreground shadow-sm flex gap-2 items-center transition-all cursor-pointer"
                     >
                         <Download className="h-4 w-4" />
                         <span className="hidden sm:inline">Export CSV</span>
                     </Button>
                     <Button
                         onClick={() => setIsAddModalOpen(true)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md flex gap-2 items-center"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md flex gap-2 items-center cursor-pointer"
                     >
                         <Plus className="h-4 w-4" />
                         New Transaction
@@ -307,6 +319,36 @@ export default function FinanceDashboardView() {
                 </div>
             </div>
 
+            {/* View Switcher Tabs */}
+            <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+                <Button
+                    variant={activeViewTab === "overview" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setActiveViewTab("overview")}
+                    className={`gap-2 h-10! cursor-pointer font-medium ${
+                        activeViewTab === "overview" ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                >
+                    <Wallet className="h-4 w-4" />
+                    Overview & Transactions
+                </Button>
+                <Button
+                    variant={activeViewTab === "analytics" ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setActiveViewTab("analytics")}
+                    className={`gap-2 h-10! cursor-pointer font-medium ${
+                        activeViewTab === "analytics" ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                >
+                    <BarChart3 className="h-4 w-4" />
+                    Analytics & Forecasting
+                </Button>
+            </div>
+
+            {activeViewTab === "analytics" ? (
+                <FinancialAnalyticsView />
+            ) : (
+                <>
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="bg-gradient-to-br from-indigo-500/10 to-indigo-600/5 border-indigo-500/20">
@@ -372,17 +414,52 @@ export default function FinanceDashboardView() {
                             All financial activities across the organization.
                         </CardDescription>
                     </div>
-                    <div className="flex gap-2">
-                        <Select value={filterType} onValueChange={setFilterType}>
-                            <SelectTrigger className="w-[180px] h-9 text-sm focus:ring-2 focus:ring-indigo-500">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Select
+                            value={filterType || "all_types"}
+                            onValueChange={(val) => setFilterType(val === "all_types" ? "" : val)}
+                        >
+                            <SelectTrigger className="w-[150px] h-10! text-sm focus:ring-2 focus:ring-indigo-500">
                                 <SelectValue placeholder="All Types" />
                             </SelectTrigger>
                             <SelectContent className="z-[150]">
-                                <SelectItem value="all_types">All Types</SelectItem>
-                                <SelectItem value="income">Income Only</SelectItem>
-                                <SelectItem value="expense">Expenses Only</SelectItem>
+                                <SelectItem value="all_types" className="h-10!">All Types</SelectItem>
+                                <SelectItem value="income" className="h-10!">Income Only</SelectItem>
+                                <SelectItem value="expense" className="h-10!">Expenses Only</SelectItem>
                             </SelectContent>
                         </Select>
+
+                        <Select
+                            value={filterCategory || "all_categories"}
+                            onValueChange={(val) => setFilterCategory(val === "all_categories" ? "" : val)}
+                        >
+                            <SelectTrigger className="w-[180px] h-10! text-sm focus:ring-2 focus:ring-indigo-500">
+                                <SelectValue placeholder="All Categories" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[150]">
+                                <SelectItem value="all_categories" className="h-10!">All Categories</SelectItem>
+                                {Object.values(TransactionCategory).map((cat) => (
+                                    <SelectItem key={cat} value={cat} className="h-10! capitalize">
+                                        {cat.replace("_", " ")}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        {(filterType || filterCategory) && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                    setFilterType("");
+                                    setFilterCategory("");
+                                }}
+                                className="h-10 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                                Reset
+                            </Button>
+                        )}
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -628,6 +705,8 @@ export default function FinanceDashboardView() {
                     )}
                 </CardContent>
             </Card>
+            </>
+            )}
 
             {/* Add Transaction Modal */}
             {mounted &&

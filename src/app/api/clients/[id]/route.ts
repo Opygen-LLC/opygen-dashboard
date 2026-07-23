@@ -17,7 +17,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const body = await req.json();
     const { id } = await params;
 
-    // Validate only the fields provided (partial update)
     const patchSchema = z.object({
       status: z.enum(['Pending', 'Confirmed', 'Follow-up', 'Blocked', 'Declined']).optional(),
     });
@@ -44,7 +43,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
@@ -53,14 +52,42 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   try {
     await dbConnect();
     const body = await req.json();
+    const { id } = await params;
 
     const parseResult = clientSchema.safeParse(body);
     if (!parseResult.success) {
       return NextResponse.json({ error: parseResult.error.flatten() }, { status: 400 });
     }
 
-    const { id } = await params;
     const clientData = parseResult.data;
+
+    // Check unique number if provided
+    if (clientData.number && clientData.number.trim() !== "") {
+      const existingNum = await Client.findOne({
+        _id: { $ne: id },
+        number: clientData.number.trim(),
+      });
+      if (existingNum) {
+        return NextResponse.json(
+          { error: "A client with this phone number already exists." },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Check unique socialMediaLink if provided
+    if (clientData.socialMediaLink && clientData.socialMediaLink.trim() !== "") {
+      const existingSocial = await Client.findOne({
+        _id: { $ne: id },
+        socialMediaLink: clientData.socialMediaLink.trim(),
+      });
+      if (existingSocial) {
+        return NextResponse.json(
+          { error: "A client with this social media link already exists." },
+          { status: 400 }
+        );
+      }
+    }
 
     const updatedClient = await Client.findByIdAndUpdate(
       id,
@@ -75,11 +102,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json(updatedClient);
   } catch (error: any) {
     console.error("Update client error:", error);
+    if (error.code === 11000) {
+      const key = Object.keys(error.keyPattern || {})[0];
+      const label = key === 'number' ? 'phone number' : key === 'socialMediaLink' ? 'social media link' : key;
+      return NextResponse.json({ error: `A client with this ${label} already exists.` }, { status: 400 });
+    }
     return NextResponse.json({ error: 'Server Error', details: error.message }, { status: 500 });
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
@@ -87,7 +119,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   try {
     await dbConnect();
-    
     const { id } = await params;
     
     const deletedClient = await Client.findByIdAndDelete(id);

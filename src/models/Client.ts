@@ -31,10 +31,14 @@ const ClientSchema = new Schema<IClient>(
         number: {
             type: String,
             trim: true,
+            unique: true,
+            sparse: true,
         },
         socialMediaLink: {
             type: String,
             trim: true,
+            unique: true,
+            sparse: true,
         },
         country: {
             type: String,
@@ -73,6 +77,10 @@ const ClientSchema = new Schema<IClient>(
         timestamps: true,
     },
 );
+
+if (process.env.NODE_ENV === "development") {
+    delete mongoose.models.Client;
+}
 
 export default mongoose.models.Client ||
     mongoose.model<IClient>("Client", ClientSchema);

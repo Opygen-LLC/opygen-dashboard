@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/db';
 import Client from '@/models/Client';
 import { clientSchema } from '@/lib/validations';
+import { createActivityLog } from '@/lib/activityLogger';
 
 export const dynamic = "force-dynamic";
 
@@ -43,16 +44,25 @@ export async function GET(req: NextRequest) {
     }
     
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { companyName: { $regex: search, $options: 'i' } },
-        { number: { $regex: search, $options: 'i' } },
-        { socialMediaLink: { $regex: search, $options: 'i' } },
-        { country: { $regex: search, $options: 'i' } },
-        { notes: { $regex: search, $options: 'i' } },
-        { source: { $regex: search, $options: 'i' } },
-        { otherSource: { $regex: search, $options: 'i' } }
+      const cleanSearch = search.trim();
+      const digitsOnly = cleanSearch.replace(/\D/g, '');
+
+      const searchConditions: any[] = [
+        { name: { $regex: cleanSearch, $options: 'i' } },
+        { companyName: { $regex: cleanSearch, $options: 'i' } },
+        { number: { $regex: cleanSearch, $options: 'i' } },
+        { socialMediaLink: { $regex: cleanSearch, $options: 'i' } },
+        { country: { $regex: cleanSearch, $options: 'i' } },
+        { notes: { $regex: cleanSearch, $options: 'i' } },
+        { source: { $regex: cleanSearch, $options: 'i' } },
+        { otherSource: { $regex: cleanSearch, $options: 'i' } }
       ];
+
+      if (digitsOnly.length >= 3) {
+        searchConditions.push({ number: { $regex: digitsOnly, $options: 'i' } });
+      }
+
+      query.$or = searchConditions;
     }
 
     const clients = await Client.find(query).sort({ createdAt: -1 });
@@ -81,12 +91,46 @@ export async function POST(req: NextRequest) {
 
     const clientData = parseResult.data;
 
+    // Uniqueness validation for Phone Number
+    if (clientData.number && clientData.number.trim() !== "") {
+      const existingNum = await Client.findOne({ number: clientData.number.trim() });
+      if (existingNum) {
+        return NextResponse.json(
+          { error: "A client with this phone number already exists." },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Uniqueness validation for Social Media Link
+    if (clientData.socialMediaLink && clientData.socialMediaLink.trim() !== "") {
+      const existingSocial = await Client.findOne({ socialMediaLink: clientData.socialMediaLink.trim() });
+      if (existingSocial) {
+        return NextResponse.json(
+          { error: "A client with this social media link already exists." },
+          { status: 400 }
+        );
+      }
+    }
+
     const newClient = new Client(clientData);
     await newClient.save();
+
+    await createActivityLog({
+      user: session.user.id,
+      type: "client_added",
+      message: `New client onboarded: ${newClient.name}${newClient.companyName ? ` (${newClient.companyName})` : ''}`,
+      targetUrl: "/admin-dashboard/clients"
+    });
 
     return NextResponse.json(newClient, { status: 201 });
   } catch (error: any) {
     console.error("Create client error:", error);
+    if (error.code === 11000) {
+      const key = Object.keys(error.keyPattern || {})[0];
+      const label = key === 'number' ? 'phone number' : key === 'socialMediaLink' ? 'social media link' : key;
+      return NextResponse.json({ error: `A client with this ${label} already exists.` }, { status: 400 });
+    }
     return NextResponse.json({ error: 'Server Error', details: error.message }, { status: 500 });
   }
 }

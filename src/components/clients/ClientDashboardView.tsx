@@ -309,7 +309,7 @@ export default function ClientDashboardView() {
                 <div className="relative sm:col-span-2">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Search by name, company, notes..."
+                        placeholder="Search by name, phone number, company..."
                         className="pl-9 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 text-foreground h-10 transition-all w-full"
                         value={searchInput}
                         onChange={(e) => setSearchInput(e.target.value)}
