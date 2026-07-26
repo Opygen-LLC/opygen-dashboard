@@ -832,7 +832,7 @@ export default function UsersManagementPage() {
                                 <Button
                                     onClick={handleDeleteConfirm}
                                     disabled={deleteUserMutation.isPending}
-                                    className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-medium shadow-md shadow-destructive/10 h-10 cursor-pointer hover:scale-[1.03] active:scale-[0.97]"
+                                    className="bg-destructive hover:bg-destructive/90 text-white font-medium shadow-md shadow-destructive/10 h-10 cursor-pointer hover:scale-[1.03] active:scale-[0.97]"
                                 >
                                     {deleteUserMutation.isPending ? (
                                         <Loading variant="mini" />

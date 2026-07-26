@@ -1639,7 +1639,7 @@ export default function UserProfileView() {
                                         {isLoadingStatement ? (
                                             <div className="p-12 flex justify-center">
                                                 <Loading
-                                                    variant="spinner"
+                                                    variant="block"
                                                     text="Loading statement..."
                                                 />
                                             </div>
@@ -2381,12 +2381,13 @@ export default function UserProfileView() {
                                             value={
                                                 providerSelection || undefined
                                             }
-                                            onValueChange={(val) => {
-                                                setProviderSelection(val);
-                                                if (val !== "Other") {
+                                            onValueChange={(val: any) => {
+                                                const strVal = typeof val === "string" ? val : "";
+                                                setProviderSelection(strVal);
+                                                if (strVal !== "Other") {
                                                     setAccountValue(
                                                         "providerName",
-                                                        val,
+                                                        strVal,
                                                     );
                                                 } else {
                                                     setAccountValue(

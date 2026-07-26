@@ -222,7 +222,7 @@ export default function ProjectsDashboardView() {
                 <div>
                     <Select
                         value={status}
-                        onValueChange={(val) => dispatch(setStatusFilter(val || "all"))}
+                        onValueChange={(val: any) => dispatch(setStatusFilter(typeof val === "string" ? val : "all"))}
                     >
                         <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                             <SelectValue placeholder="Status" />
@@ -259,7 +259,7 @@ export default function ProjectsDashboardView() {
                 <div>
                     <Select
                         value={priority}
-                        onValueChange={(val) => dispatch(setPriorityFilter(val || "all"))}
+                        onValueChange={(val: any) => dispatch(setPriorityFilter(typeof val === "string" ? val : "all"))}
                     >
                         <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                             <SelectValue placeholder="Priority" />
@@ -287,7 +287,7 @@ export default function ProjectsDashboardView() {
                 <div>
                     <Select
                         value={assignee}
-                        onValueChange={(val) => dispatch(setAssigneeFilter(val || "all"))}
+                        onValueChange={(val: any) => dispatch(setAssigneeFilter(typeof val === "string" ? val : "all"))}
                     >
                         <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                             <SelectValue placeholder="Assignee" />
@@ -308,7 +308,7 @@ export default function ProjectsDashboardView() {
                 <div className="flex gap-2">
                     <Select
                         value={sortBy}
-                        onValueChange={(val) => dispatch(setSortByFilter(val || "updatedAt"))}
+                        onValueChange={(val: any) => dispatch(setSortByFilter(typeof val === "string" ? val : "updatedAt"))}
                     >
                         <SelectTrigger className="bg-background/50 border-border text-foreground h-10! flex-1 cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                             <SelectValue placeholder="Sort by" />

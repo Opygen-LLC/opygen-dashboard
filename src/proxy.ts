@@ -80,8 +80,9 @@ const authMiddleware = withAuth(
     {
         callbacks: {
             authorized: ({ req, token }) => {
-                // Allow anyone to access the login page so middleware can handle redirect logic
-                if (req.nextUrl.pathname === "/login") {
+                const path = req.nextUrl.pathname;
+                // Allow public access to login and portal routes
+                if (path === "/login" || path.startsWith("/portal") || path.startsWith("/api/portal")) {
                     return true;
                 }
                 return !!token;

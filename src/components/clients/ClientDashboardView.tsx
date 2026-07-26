@@ -19,7 +19,15 @@ import {
     Eye,
     Download,
     FileText,
+    Users,
+    Clock,
+    CheckCircle2,
+    Calendar as CalendarIcon,
+    List,
 } from "lucide-react";
+import { ClientCalendarView } from "./ClientCalendarView";
+import { StatsGrid } from "@/components/dashboard/stats/StatsGrid";
+import { StatsCard } from "@/components/dashboard/stats/StatsCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,6 +63,7 @@ export default function ClientDashboardView() {
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [searchInput, setSearchInput] = useState<string>("");
     const [currentPage, setCurrentPage] = useState<number>(1);
+    const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
     const [deleteClientTarget, setDeleteClientTarget] = useState<any | null>(
         null,
     );
@@ -102,6 +111,21 @@ export default function ClientDashboardView() {
         },
     });
 
+    // Fetch all clients for overview stats cards
+    const { data: allClients = [] } = useQuery<any[]>({
+        queryKey: ["all-clients-stats"],
+        queryFn: async () => {
+            const res = await fetch("/api/clients");
+            if (!res.ok) throw new Error("Failed to fetch all clients");
+            return res.json();
+        },
+    });
+
+    const totalClientsCount = allClients.length;
+    const followupCount = allClients.filter((c: any) => c.status === "Follow-up").length;
+    const meetingCount = allClients.filter((c: any) => c.status === "Meeting Scheduled").length;
+    const confirmedCount = allClients.filter((c: any) => c.status === "Confirmed").length;
+
     const openAddModal = () => {
         setEditingClient(null);
         setIsModalOpen(true);
@@ -123,6 +147,7 @@ export default function ClientDashboardView() {
             setDeleteClientTarget(null);
             setDeleteConfirmText("");
             queryClient.invalidateQueries({ queryKey: ["clients"] });
+            queryClient.invalidateQueries({ queryKey: ["all-clients-stats"] });
         },
         onError: (err: any) => toast.error(err.message),
     });
@@ -135,23 +160,29 @@ export default function ClientDashboardView() {
             client: any;
             newStatus: string;
         }) => {
-            const payload = {
-                name: client.name,
-                number: client.number || "",
-                socialMediaLink: client.socialMediaLink || "",
-                country: client.country,
-                minAmount: client.minAmount || 0,
-                maxAmount: client.maxAmount || 0,
-                notes: client.notes || "",
-                source: client.source,
-                otherSource: client.otherSource || "",
+            const payload: any = {
                 status: newStatus,
-                followupDate: client.followupDate
-                    ? new Date(client.followupDate).toISOString().split("T")[0]
-                    : undefined,
             };
+            if (newStatus === "Meeting Scheduled") {
+                payload.meetingDate = client.meetingDate
+                    ? new Date(client.meetingDate).toISOString().split("T")[0]
+                    : new Date().toISOString().split("T")[0];
+            } else if (client.meetingDate) {
+                payload.meetingDate = new Date(client.meetingDate)
+                    .toISOString()
+                    .split("T")[0];
+            }
+            if (newStatus === "Follow-up") {
+                payload.followupDate = client.followupDate
+                    ? new Date(client.followupDate).toISOString().split("T")[0]
+                    : new Date().toISOString().split("T")[0];
+            } else if (client.followupDate) {
+                payload.followupDate = new Date(client.followupDate)
+                    .toISOString()
+                    .split("T")[0];
+            }
             const res = await fetch(`/api/clients/${client._id}`, {
-                method: "PUT",
+                method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
@@ -168,6 +199,9 @@ export default function ClientDashboardView() {
         onSuccess: () => {
             toast.success("Status updated");
             queryClient.invalidateQueries({ queryKey: ["clients"] });
+            queryClient.invalidateQueries({ queryKey: ["all-clients-stats"] });
+            queryClient.invalidateQueries({ queryKey: ["dashboardSummary"] });
+            queryClient.invalidateQueries({ queryKey: ["stats"] });
         },
         onError: (err: any) => toast.error(err.message),
     });
@@ -265,7 +299,35 @@ export default function ClientDashboardView() {
                         Manage and track your client pipeline and details.
                     </p>
                 </div>
-                <div className="flex gap-2 sm:gap-3">
+                <div className="flex gap-2 sm:gap-3 items-center">
+                    {/* View Switcher Toggle */}
+                    <div className="flex items-center bg-muted/40 p-1 rounded-xl border border-border/50 text-xs font-semibold">
+                        <button
+                            onClick={() => setViewMode("table")}
+                            className={cn(
+                                "px-3 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5",
+                                viewMode === "table"
+                                    ? "bg-background text-foreground shadow-xs font-bold"
+                                    : "text-muted-foreground hover:text-foreground",
+                            )}
+                        >
+                            <List className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Table</span>
+                        </button>
+                        <button
+                            onClick={() => setViewMode("calendar")}
+                            className={cn(
+                                "px-3 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5",
+                                viewMode === "calendar"
+                                    ? "bg-background text-foreground shadow-xs font-bold"
+                                    : "text-muted-foreground hover:text-foreground",
+                            )}
+                        >
+                            <CalendarIcon className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Calendar</span>
+                        </button>
+                    </div>
+
                     <Button
                         onClick={() => {
                             import("@/lib/export").then(({ exportToCSV }) => {
@@ -281,6 +343,11 @@ export default function ClientDashboardView() {
                                     "Follow-up Date": c.followupDate
                                         ? new Date(
                                               c.followupDate,
+                                          ).toLocaleDateString()
+                                        : "",
+                                    "Meeting Date": c.meetingDate
+                                        ? new Date(
+                                              c.meetingDate,
                                           ).toLocaleDateString()
                                         : "",
                                     Notes: c.notes || "",
@@ -304,6 +371,54 @@ export default function ClientDashboardView() {
                 </div>
             </div>
 
+            {/* KPI Stats Cards */}
+            <StatsGrid columns={4}>
+                <StatsCard
+                    title="Total Clients"
+                    value={totalClientsCount}
+                    description="All clients in pipeline"
+                    icon={Users}
+                    iconBg="bg-indigo-500/10"
+                    iconColor="text-indigo-500"
+                />
+                <StatsCard
+                    title="Follow-ups"
+                    value={followupCount}
+                    description="Pending follow-up actions"
+                    icon={Clock}
+                    iconBg="bg-amber-500/10"
+                    iconColor="text-amber-500"
+                />
+                <StatsCard
+                    title="Meetings Scheduled"
+                    value={meetingCount}
+                    description="Scheduled client meetings"
+                    icon={CalendarIcon}
+                    iconBg="bg-purple-500/10"
+                    iconColor="text-purple-500"
+                />
+                <StatsCard
+                    title="Confirmed"
+                    value={confirmedCount}
+                    description="Confirmed & active clients"
+                    icon={CheckCircle2}
+                    iconBg="bg-emerald-500/10"
+                    iconColor="text-emerald-500"
+                />
+            </StatsGrid>
+
+            {/* View Mode Content Switching */}
+            {viewMode === "calendar" ? (
+                <ClientCalendarView
+                    clients={allClients}
+                    onSelectClient={(client) => {
+                        setInfoClient(client);
+                        setIsInfoModalOpen(true);
+                    }}
+                />
+            ) : (
+                <>
+
             {/* Redesigned Filters Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 bg-card/60 backdrop-blur-md p-4 rounded-xl border border-border shadow-xs mb-6">
                 <div className="relative sm:col-span-2">
@@ -319,7 +434,7 @@ export default function ClientDashboardView() {
                 <div>
                     <Select
                         value={filterStatus}
-                        onValueChange={(val) => setFilterStatus(val || "All")}
+                        onValueChange={(val: any) => setFilterStatus(typeof val === "string" ? val : "All")}
                     >
                         <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                             <SelectValue placeholder="Status" />
@@ -337,6 +452,9 @@ export default function ClientDashboardView() {
                             <SelectItem value="Follow-up" className="h-10!">
                                 Follow-up
                             </SelectItem>
+                            <SelectItem value="Meeting Scheduled" className="h-10!">
+                                Meeting Scheduled
+                            </SelectItem>
                             <SelectItem value="Blocked" className="h-10!">
                                 Blocked
                             </SelectItem>
@@ -350,7 +468,7 @@ export default function ClientDashboardView() {
                 <div>
                     <Select
                         value={filterSource}
-                        onValueChange={(val) => setFilterSource(val || "All")}
+                        onValueChange={(val: any) => setFilterSource(typeof val === "string" ? val : "All")}
                     >
                         <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                             <SelectValue placeholder="Source" />
@@ -468,6 +586,18 @@ export default function ClientDashboardView() {
                                                                 </span>
                                                             </div>
                                                         )}
+                                                    {client.status ===
+                                                        "Meeting Scheduled" &&
+                                                        client.meetingDate && (
+                                                            <div className="text-[10px] text-muted-foreground mt-1">
+                                                                Meeting:{" "}
+                                                                <span className="font-medium text-purple-500">
+                                                                    {new Date(
+                                                                        client.meetingDate,
+                                                                    ).toLocaleDateString()}
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-1.5 text-foreground font-medium">
@@ -513,7 +643,7 @@ export default function ClientDashboardView() {
                                                             client.status ||
                                                             "Pending"
                                                         }
-                                                        onValueChange={(val) =>
+                                                        onValueChange={(val: any) =>
                                                             updateStatusMutation.mutate(
                                                                 {
                                                                     client,
@@ -528,7 +658,7 @@ export default function ClientDashboardView() {
                                                     >
                                                         <SelectTrigger
                                                             className={cn(
-                                                                "text-[11px] font-semibold px-2 py-1.5 h-8! rounded-md border cursor-pointer outline-none transition-colors w-[110px]",
+                                                                "text-[11px] font-semibold px-2 py-1.5 h-8! rounded-md border cursor-pointer outline-none transition-colors w-[135px]",
                                                                 client.status ===
                                                                     "Confirmed"
                                                                     ? "text-emerald-600 bg-emerald-500/10 border-emerald-500/30"
@@ -536,12 +666,15 @@ export default function ClientDashboardView() {
                                                                         "Follow-up"
                                                                       ? "text-blue-600 bg-blue-500/10 border-blue-500/30"
                                                                       : client.status ===
-                                                                          "Blocked"
-                                                                        ? "text-orange-600 bg-orange-500/10 border-orange-500/30"
+                                                                          "Meeting Scheduled"
+                                                                        ? "text-purple-600 bg-purple-500/10 border-purple-500/30"
                                                                         : client.status ===
-                                                                            "Declined"
-                                                                          ? "text-rose-600 bg-rose-500/10 border-rose-500/30"
-                                                                          : "text-amber-600 bg-amber-500/10 border-amber-500/30",
+                                                                            "Blocked"
+                                                                          ? "text-orange-600 bg-orange-500/10 border-orange-500/30"
+                                                                          : client.status ===
+                                                                              "Declined"
+                                                                            ? "text-rose-600 bg-rose-500/10 border-rose-500/30"
+                                                                            : "text-amber-600 bg-amber-500/10 border-amber-500/30",
                                                             )}
                                                         >
                                                             <SelectValue />
@@ -566,13 +699,19 @@ export default function ClientDashboardView() {
                                                                 Follow-up
                                                             </SelectItem>
                                                             <SelectItem
+                                                                value="Meeting Scheduled"
+                                                                className={`h-8!`}
+                                                            >
+                                                                Meeting Scheduled
+                                                            </SelectItem>
+                                                            <SelectItem
                                                                 value="Blocked"
                                                                 className={`h-8!`}
                                                             >
                                                                 Blocked
                                                             </SelectItem>
                                                             <SelectItem
-                                                                value="Declined "
+                                                                value="Declined"
                                                                 className={`h-8!`}
                                                             >
                                                                 Declined
@@ -792,6 +931,8 @@ export default function ClientDashboardView() {
                     )}
                 </CardContent>
             </Card>
+            </>
+            )}
 
             {/* Add/Edit Client Modal */}
             <ClientFormModal

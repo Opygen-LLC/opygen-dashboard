@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, FolderPlus, Globe, ExternalLink, Edit } from 'lucide-react';
+import { X, FolderPlus, Globe, ExternalLink, Edit, Clock, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -145,6 +145,9 @@ export function ClientInfoModal({ isOpen, onClose, client, onEdit }: ClientInfoM
                                                 {client.source === "Other" && client.otherSource && (
                                                     <span className="text-xs text-muted-foreground">({client.otherSource})</span>
                                                 )}
+                                                {client.source === "Ads" && client.adName && (
+                                                    <span className="text-xs text-indigo-500 font-semibold bg-indigo-500/10 px-2 py-0.5 rounded-md">({client.adName})</span>
+                                                )}
                                             </div>
                                         </div>
                                         {client.status === "Follow-up" && client.followupDate && (
@@ -152,6 +155,14 @@ export function ClientInfoModal({ isOpen, onClose, client, onEdit }: ClientInfoM
                                                 <p className="text-xs text-muted-foreground mb-1">Scheduled Follow-up</p>
                                                 <p className="text-sm font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 w-fit px-2 py-0.5 rounded-md">
                                                     {new Date(client.followupDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                                </p>
+                                            </div>
+                                        )}
+                                        {client.status === "Meeting Scheduled" && client.meetingDate && (
+                                            <div>
+                                                <p className="text-xs text-muted-foreground mb-1">Scheduled Meeting</p>
+                                                <p className="text-sm font-medium text-purple-600 dark:text-purple-400 bg-purple-500/10 w-fit px-2 py-0.5 rounded-md">
+                                                    {new Date(client.meetingDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                                                 </p>
                                             </div>
                                         )}
@@ -181,6 +192,56 @@ export function ClientInfoModal({ isOpen, onClose, client, onEdit }: ClientInfoM
                                     </p>
                                 </div>
                             )}
+
+                            {/* System Metadata Section: Timestamps & Last Updated By */}
+                            <div className="p-4 rounded-2xl border border-border/50 bg-muted/20 space-y-3">
+                                <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                    <Clock className="h-3.5 w-3.5" /> Activity & Audit Details
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Created At</p>
+                                        <p className="text-sm font-medium text-foreground">
+                                            {client.createdAt
+                                                ? new Date(client.createdAt).toLocaleString("en-US", {
+                                                      month: "short",
+                                                      day: "numeric",
+                                                      year: "numeric",
+                                                      hour: "numeric",
+                                                      minute: "2-digit",
+                                                      hour12: true,
+                                                  })
+                                                : "N/A"}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Updated At</p>
+                                        <p className="text-sm font-medium text-foreground">
+                                            {client.updatedAt
+                                                ? new Date(client.updatedAt).toLocaleString("en-US", {
+                                                      month: "short",
+                                                      day: "numeric",
+                                                      year: "numeric",
+                                                      hour: "numeric",
+                                                      minute: "2-digit",
+                                                      hour12: true,
+                                                  })
+                                                : "N/A"}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Last Updated By</p>
+                                        <p className="text-sm font-semibold text-indigo-500 flex items-center gap-1.5 mt-0.5">
+                                            <User className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                                            <span>
+                                                {typeof client.lastUpdatedBy === "object"
+                                                    ? client.lastUpdatedBy?.name || "N/A"
+                                                    : client.lastUpdatedBy || "N/A"}
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Footer Actions */}

@@ -67,6 +67,13 @@ export default function QuoteFormModal({
         phases: [
             { phaseName: "", description: "", minBudget: 0, maxBudget: 0 },
         ],
+        paymentAccount: {
+            providerName: "",
+            accountName: "",
+            accountNumber: "",
+            routingNumber: "",
+            branch: "",
+        },
         ...initialData,
     };
 
@@ -76,7 +83,7 @@ export default function QuoteFormModal({
         handleSubmit,
         reset,
         formState: { errors },
-    } = useForm<QuoteInput>({
+    } = useForm<any>({
         resolver: zodResolver(quoteSchema),
         defaultValues: defaultFormValues,
     });
@@ -278,8 +285,12 @@ export default function QuoteFormModal({
                                 render={({ field }) => (
                                     <div className="space-y-1">
                                         <Select
-                                            onValueChange={(val) => {
-                                                field.onChange(JSON.parse(val));
+                                            onValueChange={(val: any) => {
+                                                if (typeof val === "string" && val) {
+                                                    try {
+                                                        field.onChange(JSON.parse(val));
+                                                    } catch (e) {}
+                                                }
                                             }}
                                             value={field.value ? JSON.stringify(field.value) : undefined}
                                         >

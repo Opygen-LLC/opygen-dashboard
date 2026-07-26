@@ -417,7 +417,7 @@ export default function FinanceDashboardView() {
                     <div className="flex flex-wrap items-center gap-2">
                         <Select
                             value={filterType || "all_types"}
-                            onValueChange={(val) => setFilterType(val === "all_types" ? "" : val)}
+                            onValueChange={(val: any) => setFilterType(val === "all_types" ? "" : val)}
                         >
                             <SelectTrigger className="w-[150px] h-10! text-sm focus:ring-2 focus:ring-indigo-500">
                                 <SelectValue placeholder="All Types" />
@@ -431,7 +431,7 @@ export default function FinanceDashboardView() {
 
                         <Select
                             value={filterCategory || "all_categories"}
-                            onValueChange={(val) => setFilterCategory(val === "all_categories" ? "" : val)}
+                            onValueChange={(val: any) => setFilterCategory(val === "all_categories" ? "" : val)}
                         >
                             <SelectTrigger className="w-[180px] h-10! text-sm focus:ring-2 focus:ring-indigo-500">
                                 <SelectValue placeholder="All Categories" />
@@ -1050,7 +1050,7 @@ export default function FinanceDashboardView() {
                                     <label className="text-xs font-semibold text-muted-foreground uppercase">
                                         Select Date Range
                                     </label>
-                                    <Select value={exportRange} onValueChange={setExportRange}>
+                                    <Select value={exportRange} onValueChange={(val: any) => setExportRange(val)}>
                                         <SelectTrigger className="w-full h-10 px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
                                             <SelectValue placeholder="Select Date Range" />
                                         </SelectTrigger>

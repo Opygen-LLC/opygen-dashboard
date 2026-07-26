@@ -29,8 +29,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import NotificationBellDrawer from "@/components/notifications/NotificationBellDrawer";
 
-
-
 export default function AdminDashboardLayout({
     children,
 }: {
@@ -42,20 +40,24 @@ export default function AdminDashboardLayout({
     const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
     const { data: appSettings } = useQuery<any>({
-        queryKey: ['settings'],
+        queryKey: ["settings"],
         queryFn: async () => {
-            const res = await fetch('/api/settings');
+            const res = await fetch("/api/settings");
             if (!res.ok) return null;
             return res.json();
         },
         staleTime: 1000 * 60 * 5, // cache 5 min
     });
-    const companyName = appSettings?.companyName?.trim() || 'OpyDash';
+    const companyName = appSettings?.companyName?.trim() || "OpyDash";
 
     const navigation = [
         { name: "Dashboard", href: "/admin-dashboard", icon: LayoutDashboard },
         { name: "Finance", href: "/admin-dashboard/finance", icon: Wallet },
-        { name: "Projects", href: "/admin-dashboard/projects", icon: FolderKanban },
+        {
+            name: "Projects",
+            href: "/admin-dashboard/projects",
+            icon: FolderKanban,
+        },
         { name: "Quotes", href: "/admin-dashboard/quotes", icon: FileText },
         { name: "Clients", href: "/admin-dashboard/clients", icon: Briefcase },
         { name: "Users", href: "/admin-dashboard/users", icon: Users },
@@ -160,12 +162,12 @@ export default function AdminDashboardLayout({
                         <Image
                             src="/logo.png"
                             alt="Opygen Logo"
-                            width={20}
-                            height={20}
+                            width={24}
+                            height={24}
                             className="object-contain dark:invert transition-all duration-300"
                         />
-                        <span className="text-lg font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
-                            Opygen
+                        <span className="text-lg font-extrabold tracking-tight bg-indigo-600 bg-clip-text text-transparent">
+                            {companyName}
                         </span>
                     </Link>
                     <div className="flex items-center gap-2">
@@ -244,8 +246,6 @@ export default function AdminDashboardLayout({
                             </nav>
 
                             <div className="border-t border-border p-4 space-y-4 bg-accent/5">
-    
-
                                 <div className="flex items-center gap-3 pt-1">
                                     <Avatar className="h-9 w-9">
                                         <AvatarImage
@@ -309,7 +309,8 @@ export default function AdminDashboardLayout({
                                 Sign Out
                             </h3>
                             <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-                                Are you sure you want to log out of your OpyDash session?
+                                Are you sure you want to log out of your OpyDash
+                                session?
                             </p>
                             <div className="flex justify-end gap-3 mt-6">
                                 <Button

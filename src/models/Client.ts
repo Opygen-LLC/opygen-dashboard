@@ -11,8 +11,11 @@ export interface IClient extends Document {
     notes?: string;
     source: string;
     otherSource?: string;
+    adName?: string;
     followupDate?: Date;
+    meetingDate?: Date;
     status: string;
+    lastUpdatedBy?: Schema.Types.ObjectId | string | any;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -64,13 +67,25 @@ const ClientSchema = new Schema<IClient>(
             type: String,
             trim: true,
         },
+        adName: {
+            type: String,
+            trim: true,
+        },
         followupDate: {
+            type: Date,
+        },
+        meetingDate: {
             type: Date,
         },
         status: {
             type: String,
-            enum: ["Pending", "Confirmed", "Follow-up", "Blocked", "Declined"],
+            enum: ["Pending", "Confirmed", "Follow-up", "Meeting Scheduled", "Blocked", "Declined"],
             default: "Pending",
+        },
+        lastUpdatedBy: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+            required: false,
         },
     },
     {

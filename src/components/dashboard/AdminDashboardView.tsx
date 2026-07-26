@@ -16,8 +16,10 @@ import {
     CreditCard,
     Activity,
     Users,
+    User,
     BarChart2,
     ArrowUpRight,
+    Calendar,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -175,6 +177,18 @@ export default function AdminDashboardPage() {
             ).startsWith(today),
     );
 
+    const todayMeetings = (
+        Array.isArray(clientsData) ? clientsData : []
+    ).filter(
+        (c: any) =>
+            c.status === "Meeting Scheduled" &&
+            c.meetingDate &&
+            (typeof c.meetingDate === "string"
+                ? c.meetingDate
+                : new Date(c.meetingDate).toISOString()
+            ).startsWith(today),
+    );
+
     const isRefetching = isRefetchingStats || isRefetchingClients;
     const handleRefresh = () => {
         refetchStats();
@@ -229,7 +243,7 @@ export default function AdminDashboardPage() {
                     </p>
                 </div>
                 <Button
-                    onClick={() => refetch()}
+                    onClick={() => handleRefresh()}
                     className="mt-2 cursor-pointer"
                 >
                     Retry
@@ -375,17 +389,23 @@ export default function AdminDashboardPage() {
                                 </span>{" "}
                                 Done
                             </span>
-                            <span className="pl-2 sm:pl-3 whitespace-nowrap">
+                            <span className="px-2 sm:px-3 whitespace-nowrap">
                                 <span className="text-amber-500 font-bold text-xs sm:text-sm">
                                     {todayFollowUps.length}
                                 </span>{" "}
                                 Follow-ups
                             </span>
+                            <span className="pl-2 sm:pl-3 whitespace-nowrap">
+                                <span className="text-purple-500 font-bold text-xs sm:text-sm">
+                                    {todayMeetings.length}
+                                </span>{" "}
+                                Meetings
+                            </span>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <Select
                                 value={dateRange}
-                                onValueChange={setDateRange}
+                                onValueChange={(val: any) => setDateRange(val)}
                             >
                                 <SelectTrigger className="h-10! w-full sm:w-auto rounded-md border border-border/60 bg-card/80 px-3 text-xs font-semibold backdrop-blur-sm focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer">
                                     <SelectValue placeholder="Select Date Range" />
@@ -660,96 +680,127 @@ export default function AdminDashboardPage() {
                         </Card>
                     </div>
 
-                    {/* Bottom row: Area trend + Today's Follow-ups */}
+                    {/* Middle row: Today's Meetings + Today's Follow-ups */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                        {/* Area – Completion Trend */}
-                        <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl transition-all duration-300">
-                            <CardHeader className="border-b border-border/40 p-5 pb-4">
+                        {/* Today's Meetings */}
+                        <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden">
+                            <CardHeader className="border-b border-border/40 p-5 pb-4 bg-gradient-to-r from-purple-500/5 to-transparent shrink-0">
                                 <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                    <TrendingUp className="h-4 w-4 text-emerald-500" />
-                                    Completion Trend
+                                    <div className="h-7 w-7 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                                        <Calendar className="h-4 w-4 text-purple-500" />
+                                    </div>
+                                    Today's Meetings
+                                    {todayMeetings.length > 0 && (
+                                        <span className="ml-auto inline-flex items-center justify-center h-5 w-5 rounded-full bg-purple-500 text-white text-[10px] font-extrabold">
+                                            {todayMeetings.length}
+                                        </span>
+                                    )}
                                 </CardTitle>
                                 <CardDescription className="text-xs">
-                                    Projects completed day-by-day (last 30 days)
+                                    Clients with meetings scheduled today
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent className="p-5">
-                                <div className="h-64">
-                                    <ResponsiveContainer
-                                        width="100%"
-                                        height="100%"
-                                    >
-                                        <AreaChart
-                                            data={completionTrend}
-                                            margin={{
-                                                top: 8,
-                                                right: 8,
-                                                left: -24,
-                                                bottom: 0,
-                                            }}
-                                        >
-                                            <defs>
-                                                <linearGradient
-                                                    id="colorCompleted"
-                                                    x1="0"
-                                                    y1="0"
-                                                    x2="0"
-                                                    y2="1"
+                            <CardContent
+                                className="p-0 flex-1 overflow-y-auto"
+                                style={{ maxHeight: "296px" }}
+                            >
+                                {todayMeetings.length === 0 ? (
+                                    <div className="flex h-full flex-col items-center justify-center gap-3 p-10 text-center">
+                                        <div className="h-14 w-14 rounded-full bg-purple-500/10 flex items-center justify-center">
+                                            <Calendar className="h-7 w-7 text-purple-500" />
+                                        </div>
+                                        <p className="text-sm font-semibold text-muted-foreground">
+                                            All clear — no meetings today!
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <ul className="divide-y divide-border/40">
+                                        {todayMeetings.map(
+                                            (client: any, idx: number) => (
+                                                <motion.li
+                                                    key={client._id}
+                                                    initial={{
+                                                        opacity: 0,
+                                                        x: -8,
+                                                    }}
+                                                    animate={{
+                                                        opacity: 1,
+                                                        x: 0,
+                                                    }}
+                                                    transition={{
+                                                        delay: 0.05 * idx,
+                                                    }}
+                                                    className="group flex flex-col gap-2.5 p-4 hover:bg-muted/30 transition-colors duration-200 cursor-pointer"
+                                                    onClick={() => {
+                                                        setInfoClient(client);
+                                                        setIsInfoModalOpen(
+                                                            true,
+                                                        );
+                                                    }}
                                                 >
-                                                    <stop
-                                                        offset="0%"
-                                                        stopColor="#10b981"
-                                                        stopOpacity={0.35}
-                                                    />
-                                                    <stop
-                                                        offset="100%"
-                                                        stopColor="#10b981"
-                                                        stopOpacity={0}
-                                                    />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid
-                                                vertical={false}
-                                                stroke={gridColor}
-                                            />
-                                            <XAxis
-                                                dataKey="date"
-                                                stroke={axisColor}
-                                                fontSize={10}
-                                                tickLine={false}
-                                                axisLine={false}
-                                            />
-                                            <YAxis
-                                                stroke={axisColor}
-                                                fontSize={10}
-                                                tickLine={false}
-                                                axisLine={false}
-                                                allowDecimals={false}
-                                            />
-                                            <Tooltip
-                                                content={
-                                                    <CustomTooltip
-                                                        isDark={isDark}
-                                                    />
-                                                }
-                                            />
-                                            <Area
-                                                type="monotone"
-                                                dataKey="completed"
-                                                name="Completed"
-                                                stroke="#10b981"
-                                                strokeWidth={2.5}
-                                                fill="url(#colorCompleted)"
-                                                dot={false}
-                                                activeDot={{
-                                                    r: 5,
-                                                    fill: "#10b981",
-                                                    strokeWidth: 0,
-                                                }}
-                                            />
-                                        </AreaChart>
-                                    </ResponsiveContainer>
-                                </div>
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div className="flex items-center gap-2.5 min-w-0">
+                                                            <div className="h-8 w-8 shrink-0 rounded-full bg-purple-500/10 flex items-center justify-center">
+                                                                <Users className="h-3.5 w-3.5 text-purple-500" />
+                                                            </div>
+                                                            <h4 className="font-bold text-sm text-foreground group-hover:text-purple-500 transition-colors truncate">
+                                                                {client.name}
+                                                            </h4>
+                                                        </div>
+                                                        <div className="flex shrink-0 flex-col items-end gap-1 text-[10px]">
+                                                            {client.number && (
+                                                                <span className="rounded-md bg-accent/50 px-2 py-0.5 font-medium text-muted-foreground">
+                                                                    {client.number}
+                                                                </span>
+                                                            )}
+                                                            {client.socialMediaLink && (
+                                                                <a
+                                                                    href={client.socialMediaLink}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="rounded-md bg-purple-500/10 px-2 py-0.5 font-medium text-purple-500 hover:underline transition-colors"
+                                                                >
+                                                                    Social ↗
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    {client.notes && (
+                                                        <p className="text-[11px] leading-relaxed text-muted-foreground bg-background/50 rounded-lg px-2.5 py-1.5 border border-border/40">
+                                                            <span className="font-semibold text-foreground/70">
+                                                                Note:{" "}
+                                                            </span>
+                                                            {client.notes}
+                                                        </p>
+                                                    )}
+                                                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/20 mt-0.5">
+                                                        <span className="flex items-center gap-1.5 text-xs font-medium">
+                                                            <User className="h-3 w-3 text-purple-500/80" />
+                                                            <span className="text-muted-foreground">Updated by:</span>{" "}
+                                                            <span className="text-foreground font-semibold">
+                                                                {typeof client.lastUpdatedBy === "object"
+                                                                    ? client.lastUpdatedBy?.name || "N/A"
+                                                                    : client.lastUpdatedBy || "N/A"}
+                                                            </span>
+                                                        </span>
+                                                        {client.updatedAt && (
+                                                            <span className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                                                                <Clock className="h-3 w-3 text-purple-500/80" />
+                                                                {new Date(client.updatedAt).toLocaleString("en-US", {
+                                                                    month: "short",
+                                                                    day: "numeric",
+                                                                    hour: "numeric",
+                                                                    minute: "2-digit",
+                                                                    hour12: true,
+                                                                })}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </motion.li>
+                                            ),
+                                        )}
+                                    </ul>
+                                )}
                             </CardContent>
                         </Card>
 
@@ -848,11 +899,128 @@ export default function AdminDashboardPage() {
                                                             {client.notes}
                                                         </p>
                                                     )}
+                                                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/20 mt-0.5">
+                                                        <span className="flex items-center gap-1.5 text-xs font-medium">
+                                                            <User className="h-3 w-3 text-indigo-500/80" />
+                                                            <span className="text-muted-foreground">Updated by:</span>{" "}
+                                                            <span className="text-foreground font-semibold">
+                                                                {typeof client.lastUpdatedBy === "object"
+                                                                    ? client.lastUpdatedBy?.name || "N/A"
+                                                                    : client.lastUpdatedBy || "N/A"}
+                                                            </span>
+                                                        </span>
+                                                        {client.updatedAt && (
+                                                            <span className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                                                                <Clock className="h-3 w-3 text-amber-500/80" />
+                                                                {new Date(client.updatedAt).toLocaleString("en-US", {
+                                                                    month: "short",
+                                                                    day: "numeric",
+                                                                    hour: "numeric",
+                                                                    minute: "2-digit",
+                                                                    hour12: true,
+                                                                })}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </motion.li>
                                             ),
                                         )}
                                     </ul>
                                 )}
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Full Width Bottom row: Area trend */}
+                    <div className="w-full">
+                        {/* Area – Completion Trend */}
+                        <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl transition-all duration-300">
+                            <CardHeader className="border-b border-border/40 p-5 pb-4">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <TrendingUp className="h-4 w-4 text-emerald-500" />
+                                    Completion Trend
+                                </CardTitle>
+                                <CardDescription className="text-xs">
+                                    Projects completed day-by-day (last 30 days)
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-5">
+                                <div className="h-64">
+                                    <ResponsiveContainer
+                                        width="100%"
+                                        height="100%"
+                                    >
+                                        <AreaChart
+                                            data={completionTrend}
+                                            margin={{
+                                                top: 8,
+                                                right: 8,
+                                                left: -24,
+                                                bottom: 0,
+                                            }}
+                                        >
+                                            <defs>
+                                                <linearGradient
+                                                    id="colorCompleted"
+                                                    x1="0"
+                                                    y1="0"
+                                                    x2="0"
+                                                    y2="1"
+                                                >
+                                                    <stop
+                                                        offset="0%"
+                                                        stopColor="#10b981"
+                                                        stopOpacity={0.35}
+                                                    />
+                                                    <stop
+                                                        offset="100%"
+                                                        stopColor="#10b981"
+                                                        stopOpacity={0}
+                                                    />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid
+                                                vertical={false}
+                                                stroke={gridColor}
+                                            />
+                                            <XAxis
+                                                dataKey="date"
+                                                stroke={axisColor}
+                                                fontSize={10}
+                                                tickLine={false}
+                                                axisLine={false}
+                                            />
+                                            <YAxis
+                                                stroke={axisColor}
+                                                fontSize={10}
+                                                tickLine={false}
+                                                axisLine={false}
+                                                allowDecimals={false}
+                                            />
+                                            <Tooltip
+                                                content={
+                                                    <CustomTooltip
+                                                        isDark={isDark}
+                                                    />
+                                                }
+                                            />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="completed"
+                                                name="Completed"
+                                                stroke="#10b981"
+                                                strokeWidth={2.5}
+                                                fill="url(#colorCompleted)"
+                                                dot={false}
+                                                activeDot={{
+                                                    r: 5,
+                                                    fill: "#10b981",
+                                                    strokeWidth: 0,
+                                                }}
+                                            />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
@@ -875,7 +1043,7 @@ export default function AdminDashboardPage() {
                 editingClient={editingClient}
                 onSuccessCallback={() => {
                     // Refetch dashboard summary to update stats
-                    refetch();
+                    handleRefresh();
                 }}
             />
         </div>

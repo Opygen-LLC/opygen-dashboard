@@ -30,7 +30,7 @@ export const metadata: Metadata = {
         siteName: "OpyDash",
         images: [
             {
-                url: "/og-image.jpg",
+                url: "/logo.png",
                 width: 1200,
                 height: 675,
                 alt: "OpyDash — Opygen Project Management Hub",
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
         title: "OpyDash — Opygen Project Hub",
         description:
             "Sleek internal project-management dashboard for Opygen co-founders.",
-        images: ["/og-image.jpg"],
+        images: ["/logo.png"],
     },
 };
 

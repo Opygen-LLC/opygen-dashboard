@@ -185,7 +185,7 @@ export type CommentInput = z.infer<typeof commentSchema>;
 export const userAccountSchema = z.object({
     _id: z.string().optional(),
     type: z.enum(["bank", "mobile_banking"], {
-        required_error: "Account type is required",
+        message: "Account type is required",
     }),
     providerName: z.string().min(1, "Provider Name is required"),
     accountName: z.string().min(1, "Account Name is required"),
@@ -301,8 +301,11 @@ export const clientSchema = z
         notes: z.string().optional(),
         source: z.string().min(1, "Source is required"),
         otherSource: z.string().optional(),
-        followupDate: z.string().optional().nullable().transform(val => val ? new Date(val) : undefined),
-        status: z.enum(["Pending", "Confirmed", "Follow-up", "Blocked", "Declined"]).default("Pending"),
+        adName: z.string().optional(),
+        followupDate: z.string().optional().nullable(),
+        meetingDate: z.string().optional().nullable(),
+        status: z.enum(["Pending", "Confirmed", "Follow-up", "Meeting Scheduled", "Blocked", "Declined"]).default("Pending"),
+        lastUpdatedBy: z.string().optional().nullable(),
     })
     .refine(
         (data) => {
@@ -317,6 +320,21 @@ export const clientSchema = z
         {
             message: "Please specify the other source",
             path: ["otherSource"],
+        },
+    )
+    .refine(
+        (data) => {
+            if (
+                data.source === "Ads" &&
+                (!data.adName || data.adName.trim() === "")
+            ) {
+                return false;
+            }
+            return true;
+        },
+        {
+            message: "Ad Name is required when Ads is selected as source",
+            path: ["adName"],
         },
     )
     .refine(
@@ -385,7 +403,7 @@ export const quoteSchema = z
             accountNumber: z.string().min(1),
             routingNumber: z.string().optional(),
             branch: z.string().optional(),
-        }, { required_error: "Payment account is required" }),
+        }, { message: "Payment account is required" }),
     })
     .refine(
         (data) => {

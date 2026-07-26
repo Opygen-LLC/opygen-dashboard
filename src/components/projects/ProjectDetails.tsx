@@ -29,6 +29,7 @@ import {
     ArrowRight,
     Smartphone,
     Globe,
+    Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -339,6 +340,29 @@ export default function ProjectDetails({
                             <Button
                                 variant="ghost"
                                 size="icon"
+                                onClick={async () => {
+                                    try {
+                                        const portalUrl = `${window.location.origin}/portal/${project._id}`;
+                                        await navigator.clipboard.writeText(
+                                            portalUrl,
+                                        );
+                                        toast.success(
+                                            "Permanent Portal Link copied to clipboard!",
+                                        );
+                                    } catch (err: any) {
+                                        toast.error(
+                                            "Could not copy client portal link",
+                                        );
+                                    }
+                                }}
+                                className="text-muted-foreground hover:text-indigo-500 hover:bg-indigo-500/10 h-10 w-10 cursor-pointer hover:scale-[1.05] active:scale-[0.95]"
+                                title="Share Client Portal Link"
+                            >
+                                <Globe className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
                                 onClick={() => setIsEditing(true)}
                                 className="text-muted-foreground hover:text-foreground h-10 w-10 cursor-pointer hover:scale-[1.05] active:scale-[0.95]"
                                 title="Edit Project"
@@ -398,6 +422,42 @@ export default function ProjectDetails({
                             </p>
                         </div>
 
+                        {/* Permanent Client Portal Link Card */}
+                        {/* <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-950 dark:text-indigo-200">
+                            <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                                    <Globe className="h-4 w-4" />
+                                </div>
+                                <div>
+                                    <p className="text-xs font-bold text-foreground">
+                                        Permanent Client Portal
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground">
+                                        Permanent link • Never expires until
+                                        project is deleted
+                                    </p>
+                                </div>
+                            </div>
+                            <Button
+                                size="sm"
+                                onClick={async () => {
+                                    try {
+                                        toast.success(
+                                            "Permanent Portal Link copied to clipboard!"
+                                        );
+                                    } catch (err: any) {
+                                        toast.error(
+                                            "Failed to copy link to clipboard",
+                                        );
+                                    }
+                                }}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-8 px-3 rounded-lg shadow-xs cursor-pointer flex items-center gap-1.5 w-full sm:w-auto justify-center"
+                            >
+                                <Copy className="h-3.5 w-3.5" />
+                                Copy Link
+                            </Button>
+                        </div> */}
+
                         {/* Quick Status / Priority Inline Updates */}
                         <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-accent/10 border border-border">
                             <div className="space-y-1.5">
@@ -406,7 +466,9 @@ export default function ProjectDetails({
                                 </span>
                                 <Select
                                     value={project.status}
-                                    onValueChange={handleStatusChange}
+                                    onValueChange={(val: any) =>
+                                        handleStatusChange(val)
+                                    }
                                     disabled={updateMutation.isPending}
                                 >
                                     <SelectTrigger className="bg-background border-border text-foreground h-10! cursor-pointer">
@@ -434,7 +496,9 @@ export default function ProjectDetails({
                                 </span>
                                 <Select
                                     value={project.priority}
-                                    onValueChange={handlePriorityChange}
+                                    onValueChange={(val: any) =>
+                                        handlePriorityChange(val)
+                                    }
                                     disabled={updateMutation.isPending}
                                 >
                                     <SelectTrigger className="bg-background border-border text-foreground h-10! cursor-pointer">
@@ -869,17 +933,34 @@ export default function ProjectDetails({
                                                     *
                                                 </span>
                                             </label>
-                                            <Select value={payType} onValueChange={(val: any) => setPayType(val)}>
+                                            <Select
+                                                value={payType}
+                                                onValueChange={(val: any) =>
+                                                    setPayType(val)
+                                                }
+                                            >
                                                 <SelectTrigger className="w-full h-9 px-3 rounded-lg border border-border bg-background focus:ring-1 focus:ring-indigo-500 text-xs text-foreground transition-all focus:outline-none cursor-pointer">
                                                     <SelectValue placeholder="Select Milestone Type" />
                                                 </SelectTrigger>
                                                 <SelectContent className="z-[150]">
-                                                    <SelectItem value="advance">Advance</SelectItem>
-                                                    <SelectItem value="frontend">Frontend</SelectItem>
-                                                    <SelectItem value="backend">Backend</SelectItem>
-                                                    <SelectItem value="ui">UI/UX Design</SelectItem>
-                                                    <SelectItem value="custom">Custom</SelectItem>
-                                                    <SelectItem value="other">Other</SelectItem>
+                                                    <SelectItem value="advance">
+                                                        Advance
+                                                    </SelectItem>
+                                                    <SelectItem value="frontend">
+                                                        Frontend
+                                                    </SelectItem>
+                                                    <SelectItem value="backend">
+                                                        Backend
+                                                    </SelectItem>
+                                                    <SelectItem value="ui">
+                                                        UI/UX Design
+                                                    </SelectItem>
+                                                    <SelectItem value="custom">
+                                                        Custom
+                                                    </SelectItem>
+                                                    <SelectItem value="other">
+                                                        Other
+                                                    </SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>

@@ -39,7 +39,10 @@ export async function GET(req: NextRequest) {
         const endOfDay = new Date(targetDate);
         endOfDay.setUTCHours(23, 59, 59, 999);
         
-        query.followupDate = { $gte: startOfDay, $lte: endOfDay };
+        query.$or = [
+          { followupDate: { $gte: startOfDay, $lte: endOfDay } },
+          { meetingDate: { $gte: startOfDay, $lte: endOfDay } },
+        ];
       }
     }
     
@@ -55,7 +58,8 @@ export async function GET(req: NextRequest) {
         { country: { $regex: cleanSearch, $options: 'i' } },
         { notes: { $regex: cleanSearch, $options: 'i' } },
         { source: { $regex: cleanSearch, $options: 'i' } },
-        { otherSource: { $regex: cleanSearch, $options: 'i' } }
+        { otherSource: { $regex: cleanSearch, $options: 'i' } },
+        { adName: { $regex: cleanSearch, $options: 'i' } }
       ];
 
       if (digitsOnly.length >= 3) {
@@ -65,7 +69,9 @@ export async function GET(req: NextRequest) {
       query.$or = searchConditions;
     }
 
-    const clients = await Client.find(query).sort({ createdAt: -1 });
+    const clients = await Client.find(query)
+      .populate('lastUpdatedBy', 'name email avatarUrl')
+      .sort({ createdAt: -1 });
 
     return NextResponse.json(clients);
   } catch (error: any) {
@@ -90,6 +96,9 @@ export async function POST(req: NextRequest) {
     }
 
     const clientData = parseResult.data;
+    if (clientData.source !== "Ads") {
+      clientData.adName = "";
+    }
 
     // Uniqueness validation for Phone Number
     if (clientData.number && clientData.number.trim() !== "") {
@@ -113,8 +122,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const newClient = new Client(clientData);
+    const newClient = new Client({
+      ...clientData,
+      lastUpdatedBy: session.user.id,
+    });
     await newClient.save();
+    await newClient.populate('lastUpdatedBy', 'name email avatarUrl');
 
     await createActivityLog({
       user: session.user.id,

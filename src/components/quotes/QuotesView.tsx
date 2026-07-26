@@ -165,7 +165,7 @@ export default function QuotesView() {
             advanceType: "percentage",
             advanceValue: null,
             projectDuration: "",
-            paymentAccount: null,
+            paymentAccount: undefined,
             phases: [
                 { phaseName: "", description: "", minBudget: 0, maxBudget: 0 },
             ],
@@ -678,7 +678,7 @@ export default function QuotesView() {
                     />
                 </div>
                 <div className="w-full sm:w-48">
-                    <Select value={dateFilter} onValueChange={setDateFilter}>
+                    <Select value={dateFilter} onValueChange={(val: any) => setDateFilter(val)}>
                         <SelectTrigger className="w-full h-10! bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500">
                             <SelectValue placeholder="All Time" />
                         </SelectTrigger>
@@ -707,7 +707,7 @@ export default function QuotesView() {
                 <div className="w-full sm:w-48">
                     <Select
                         value={currencyFilter}
-                        onValueChange={setCurrencyFilter}
+                        onValueChange={(val: any) => setCurrencyFilter(val)}
                     >
                         <SelectTrigger className="w-full h-10! bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500">
                             <SelectValue placeholder="All Currencies" />
@@ -909,20 +909,14 @@ export default function QuotesView() {
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
-                                <Button
-                                    variant="default"
-                                    className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm rounded-lg px-6 h-10 font-medium transition-colors"
-                                    asChild
+                                <a
+                                    href={pdfPreviewUrl}
+                                    download={previewQuoteName}
+                                    className="inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm rounded-lg px-6 h-10 font-medium transition-colors"
                                 >
-                                    <a
-                                        href={pdfPreviewUrl}
-                                        download={previewQuoteName}
-                                        className="flex items-center"
-                                    >
-                                        <Download className="h-4 w-4 mr-2" />
-                                        Download PDF
-                                    </a>
-                                </Button>
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Download PDF
+                                </a>
                                 <Button
                                     variant="ghost"
                                     size="icon"
