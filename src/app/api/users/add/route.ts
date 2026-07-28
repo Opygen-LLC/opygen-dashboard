@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-        const { name, email, role, password, mobileNumber, status } = validation.data;
+        const { name, title, email, role, password, mobileNumber, status } = validation.data;
 
     await dbConnect();
 
@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
     // Create user with force-change-password requirement and pending status
     const newUser = await User.create({
       name,
+      title,
       email: email.toLowerCase().trim(),
       passwordHash,
       role,

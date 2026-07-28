@@ -201,6 +201,7 @@ export const profileSchema = z.object({
         .string()
         .min(1, "Name is required")
         .max(50, "Name cannot exceed 50 characters"),
+    title: z.string().optional().or(z.literal("")),
     password: z
         .string()
         .min(6, "Password must be at least 6 characters")
@@ -231,6 +232,10 @@ export const addUserSchema = z.object({
         .string()
         .min(1, "Name is required")
         .max(50, "Name cannot exceed 50 characters"),
+    title: z
+        .string()
+        .min(1, "Title is required")
+        .max(100, "Title cannot exceed 100 characters"),
     email: z
         .string()
         .min(1, "Email is required")
@@ -305,6 +310,7 @@ export const clientSchema = z
         followupDate: z.string().optional().nullable(),
         meetingDate: z.string().optional().nullable(),
         status: z.enum(["Pending", "Confirmed", "Follow-up", "Meeting Scheduled", "Blocked", "Declined"]).default("Pending"),
+        assignedTo: z.string().optional().nullable(),
         lastUpdatedBy: z.string().optional().nullable(),
     })
     .refine(
@@ -361,34 +367,81 @@ export const clientSchema = z
 
 export type ClientInput = z.infer<typeof clientSchema>;
 
+export const quoteFeatureSchema = z.object({
+    featureName: z.string().optional().default(""),
+    description: z.string().optional().default(""),
+});
+
+export const quoteFeatureSectionSchema = z.object({
+    title: z.string().optional().default(""),
+    description: z.string().optional().default(""),
+    features: z.array(quoteFeatureSchema).optional().default([]),
+});
+
 export const quotePhaseSchema = z.object({
     _id: z.string().optional(),
-    phaseName: z.string().min(1, "Phase name is required"),
+    phaseName: z.string().optional().default(""),
     description: z.string().optional().default(""),
-    minBudget: z.coerce.number().min(0, "Min budget must be a positive number"),
-    maxBudget: z.coerce.number().min(0, "Max budget must be a positive number"),
-}).refine(
-    (data) => data.maxBudget >= data.minBudget,
-    {
-        message: "Max budget cannot be less than min budget",
-        path: ["maxBudget"],
-    }
-);
+    phaseTag: z.string().optional(),
+    minBudget: z.coerce.number().optional().default(0),
+    maxBudget: z.coerce.number().optional().default(0),
+});
 
 export type QuotePhaseInput = z.infer<typeof quotePhaseSchema>;
 
+export const quotePaymentScheduleSchema = z.object({
+    pmtNo: z.coerce.number().optional().default(1),
+    milestone: z.string().optional().default(""),
+    calculation: z.string().optional().default(""),
+    amount: z.coerce.number().optional().default(0),
+});
+
+export const quoteTermSchema = z.object({
+    title: z.string().optional().default(""),
+    text: z.string().optional().default(""),
+});
+
+export const quotePaymentAccountSchema = z.object({
+    providerName: z.string().optional().or(z.literal("")),
+    accountName: z.string().optional().or(z.literal("")),
+    accountNumber: z.string().optional().or(z.literal("")),
+    routingNumber: z.string().optional().or(z.literal("")),
+    branch: z.string().optional().or(z.literal("")),
+    type: z.string().optional().or(z.literal("")),
+    userName: z.string().optional().or(z.literal("")),
+    userId: z.string().optional().or(z.literal("")),
+}).optional().nullable();
+
 export const quoteSchema = z
     .object({
+        quoteNumber: z.string().optional(),
         projectName: z.string().min(1, "Project name is required"),
+        proposalType: z.string().optional().default("SOFTWARE DEVELOPMENT PROPOSAL"),
+        proposalSubtitle: z.string().optional().default(""),
         projectDetails: z.string().optional(),
         clientName: z.string().min(1, "Client name is required"),
         clientPhone: z.string().optional().or(z.literal("")),
-        clientSocialLink: z
-            .string()
-            .url("Please enter a valid URL")
-            .optional()
-            .or(z.literal("")),
+        clientSocialLink: z.string().optional().or(z.literal("")),
+        billedBy: z.object({
+            name: z.string().optional(),
+            title: z.string().optional(),
+            country: z.string().optional(),
+            email: z.string().optional(),
+            phone: z.string().optional(),
+        }).optional(),
+        billedTo: z.object({
+            name: z.string().optional(),
+            company: z.string().optional(),
+            country: z.string().optional(),
+            email: z.string().optional(),
+            phone: z.string().optional(),
+            socialLink: z.string().optional(),
+        }).optional(),
+        projectOverview: z.string().optional(),
+        featureSections: z.array(quoteFeatureSectionSchema).optional().default([]),
         phases: z.array(quotePhaseSchema).optional().default([]),
+        paymentSchedule: z.array(quotePaymentScheduleSchema).optional().default([]),
+        termsAndConditions: z.array(quoteTermSchema).optional().default([]),
         currency: z.enum(["USD", "BDT", "EUR"]).default("USD"),
         advanceType: z.enum(["percentage", "fixed"]).default("percentage"),
         advanceValue: z.coerce
@@ -396,26 +449,20 @@ export const quoteSchema = z
             .min(0)
             .optional()
             .nullable(),
-        projectDuration: z.string().min(1, "Project duration is required"),
-        paymentAccount: z.object({
-            providerName: z.string().min(1),
-            accountName: z.string().min(1),
-            accountNumber: z.string().min(1),
-            routingNumber: z.string().optional(),
-            branch: z.string().optional(),
-        }, { message: "Payment account is required" }),
+        projectDuration: z.string().optional().default("6-8 Weeks"),
+        paymentAccount: quotePaymentAccountSchema,
+        billedBySignatory: z.object({
+            name: z.string().optional(),
+            title: z.string().optional(),
+            country: z.string().optional(),
+        }).optional(),
+        billedToSignatory: z.object({
+            name: z.string().optional(),
+            company: z.string().optional(),
+            country: z.string().optional(),
+        }).optional(),
+        footerNote: z.string().optional(),
     })
-    .refine(
-        (data) => {
-            const hasPhone = !!data.clientPhone?.trim();
-            const hasSocial = !!data.clientSocialLink?.trim();
-            return hasPhone || hasSocial;
-        },
-        {
-            message: "Either client phone or social link must be provided",
-            path: ["clientPhone"],
-        },
-    )
     .refine(
         (data) => {
             if (
@@ -434,3 +481,13 @@ export const quoteSchema = z
     );
 
 export type QuoteInput = z.infer<typeof quoteSchema>;
+
+export const demoWebsiteSchema = z.object({
+    title: z.string().min(1, "Website name is required"),
+    link: z.string().min(1, "Link is required").url("Must be a valid URL (e.g. https://example.com)"),
+    category: z.string().min(1, "Category is required"),
+    description: z.string().optional(),
+    thumbnailUrl: z.string().optional(),
+});
+
+export type DemoWebsiteInput = z.infer<typeof demoWebsiteSchema>;

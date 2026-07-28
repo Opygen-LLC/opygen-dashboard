@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get('search');
     const source = searchParams.get('source');
     const status = searchParams.get('status');
+    const adName = searchParams.get('adName');
     const followupFilter = searchParams.get('followupDate');
 
     const query: any = {};
@@ -29,6 +30,9 @@ export async function GET(req: NextRequest) {
     }
     if (status && status !== 'All') {
       query.status = status;
+    }
+    if (adName && adName !== 'All') {
+      query.adName = adName;
     }
     
     if (followupFilter) {
@@ -71,6 +75,7 @@ export async function GET(req: NextRequest) {
 
     const clients = await Client.find(query)
       .populate('lastUpdatedBy', 'name email avatarUrl')
+      .populate('assignedTo', 'name email avatarUrl')
       .sort({ createdAt: -1 });
 
     return NextResponse.json(clients);
@@ -128,6 +133,7 @@ export async function POST(req: NextRequest) {
     });
     await newClient.save();
     await newClient.populate('lastUpdatedBy', 'name email avatarUrl');
+    await newClient.populate('assignedTo', 'name email avatarUrl');
 
     await createActivityLog({
       user: session.user.id,

@@ -142,7 +142,6 @@ export default function GlobalNotFoundPage() {
                                 Go Back
                             </Button>
                             <Button
-                                asChild
                                 className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-2.5 h-11 rounded-md shadow-md gap-2 cursor-pointer"
                             >
                                 <Link href="/admin-dashboard" className="flex items-center gap-2">

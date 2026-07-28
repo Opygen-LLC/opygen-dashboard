@@ -776,7 +776,17 @@ export default function AdminDashboardPage() {
                                                     <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/20 mt-0.5">
                                                         <span className="flex items-center gap-1.5 text-xs font-medium">
                                                             <User className="h-3 w-3 text-purple-500/80" />
-                                                            <span className="text-muted-foreground">Updated by:</span>{" "}
+                                                            <span className="text-muted-foreground">Call Assigned:</span>{" "}
+                                                            <span className="text-purple-600 dark:text-purple-400 font-bold">
+                                                                {client.assignedTo
+                                                                    ? typeof client.assignedTo === "object"
+                                                                        ? client.assignedTo.name || "N/A"
+                                                                        : client.assignedTo
+                                                                    : "Unassigned"}
+                                                            </span>
+                                                        </span>
+                                                        <span className="flex items-center gap-1.5 text-xs font-medium">
+                                                            <span className="text-muted-foreground">By:</span>{" "}
                                                             <span className="text-foreground font-semibold">
                                                                 {typeof client.lastUpdatedBy === "object"
                                                                     ? client.lastUpdatedBy?.name || "N/A"
@@ -902,7 +912,17 @@ export default function AdminDashboardPage() {
                                                     <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/20 mt-0.5">
                                                         <span className="flex items-center gap-1.5 text-xs font-medium">
                                                             <User className="h-3 w-3 text-indigo-500/80" />
-                                                            <span className="text-muted-foreground">Updated by:</span>{" "}
+                                                            <span className="text-muted-foreground">Call Assigned:</span>{" "}
+                                                            <span className="text-indigo-600 dark:text-indigo-400 font-bold">
+                                                                {client.assignedTo
+                                                                    ? typeof client.assignedTo === "object"
+                                                                        ? client.assignedTo.name || "N/A"
+                                                                        : client.assignedTo
+                                                                    : "Unassigned"}
+                                                            </span>
+                                                        </span>
+                                                        <span className="flex items-center gap-1.5 text-xs font-medium">
+                                                            <span className="text-muted-foreground">By:</span>{" "}
                                                             <span className="text-foreground font-semibold">
                                                                 {typeof client.lastUpdatedBy === "object"
                                                                     ? client.lastUpdatedBy?.name || "N/A"

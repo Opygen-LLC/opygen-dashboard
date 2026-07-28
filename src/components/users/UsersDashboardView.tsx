@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,6 +19,17 @@ import {
     AlertTriangle,
     Activity,
     Phone,
+    Briefcase,
+    Edit,
+    Search,
+    Filter,
+    RotateCcw,
+    X,
+    Building2,
+    CreditCard,
+    Calendar,
+    BadgeCheck,
+    Globe,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loading } from "@/components/ui/Loading";
@@ -61,7 +72,6 @@ import {
 } from "@/components/ui/card";
 import { addUserSchema, AddUserInput } from "@/lib/validations";
 import { UserRole, UserStatus } from "@/types";
-import AdminDashboardView from "@/components/dashboard/AdminDashboardView";
 
 export default function UsersManagementPage() {
     const queryClient = useQueryClient();
@@ -70,6 +80,21 @@ export default function UsersManagementPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [deleteUserTarget, setDeleteUserTarget] = useState<any | null>(null);
     const [viewUserTarget, setViewUserTarget] = useState<any | null>(null);
+    const [editUserTarget, setEditUserTarget] = useState<any | null>(null);
+    const [editTitleValue, setEditTitleValue] = useState("");
+
+    // Search and Filter states
+    const [searchInput, setSearchInput] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [roleFilter, setRoleFilter] = useState("all");
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [titleFilter, setTitleFilter] = useState("all");
+
+    useEffect(() => {
+        if (editUserTarget) {
+            setEditTitleValue(editUserTarget.title || "");
+        }
+    }, [editUserTarget]);
 
     // Form setup for creating user
     const {
@@ -84,6 +109,7 @@ export default function UsersManagementPage() {
         resolver: zodResolver(addUserSchema),
         defaultValues: {
             name: "",
+            title: "",
             email: "",
             role: UserRole.MEMBER,
             password: "",
@@ -102,6 +128,53 @@ export default function UsersManagementPage() {
             return res.json();
         },
     });
+
+    const availableTitles = React.useMemo(() => {
+        const set = new Set<string>();
+        users.forEach((u: any) => {
+            if (u.title && u.title.trim()) {
+                set.add(u.title.trim());
+            }
+        });
+        return Array.from(set).sort();
+    }, [users]);
+
+    const filteredUsers = React.useMemo(() => {
+        return users.filter((u: any) => {
+            const matchesSearch =
+                !searchQuery.trim() ||
+                u.name?.toLowerCase().includes(searchQuery.toLowerCase().trim()) ||
+                u.email?.toLowerCase().includes(searchQuery.toLowerCase().trim());
+
+            const matchesRole =
+                roleFilter === "all" ||
+                u.role?.toLowerCase() === roleFilter.toLowerCase();
+
+            const matchesStatus =
+                statusFilter === "all" ||
+                u.status?.toLowerCase() === statusFilter.toLowerCase();
+
+            const matchesTitle =
+                titleFilter === "all" || u.title === titleFilter;
+
+            return matchesSearch && matchesRole && matchesStatus && matchesTitle;
+        });
+    }, [users, searchQuery, roleFilter, statusFilter, titleFilter]);
+
+    const isFilterActive =
+        searchInput.trim() !== "" ||
+        searchQuery.trim() !== "" ||
+        roleFilter !== "all" ||
+        statusFilter !== "all" ||
+        titleFilter !== "all";
+
+    const resetFilters = () => {
+        setSearchInput("");
+        setSearchQuery("");
+        setRoleFilter("all");
+        setStatusFilter("all");
+        setTitleFilter("all");
+    };
 
     const createUserMutation = useMutation({
         mutationFn: async (data: AddUserInput) => {
@@ -132,15 +205,17 @@ export default function UsersManagementPage() {
             id,
             role,
             status,
+            title,
         }: {
             id: string;
             role?: string;
             status?: string;
+            title?: string;
         }) => {
             const res = await fetch(`/api/users/${id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ role, status }),
+                body: JSON.stringify({ role, status, title }),
             });
             if (!res.ok) {
                 const errorData = await res.json();
@@ -238,7 +313,7 @@ export default function UsersManagementPage() {
             {/* Page Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent flex items-center gap-2">
+                    <h1 className="text-3xl font-extrabold tracking-tight bg-linear-to-r from-foreground to-foreground/80 bg-clip-text text-transparent flex items-center gap-2">
                         {/* <Users className="h-7 w-7 text-indigo-505 shrink-0" /> */}
                         Users
                     </h1>
@@ -259,11 +334,104 @@ export default function UsersManagementPage() {
 
             {/* Users List Table */}
             <Card className="border-border bg-card shadow-sm text-card-foreground">
-                <CardHeader className="border-b border-border/60 pb-4">
-                    <CardTitle className="text-base font-bold">
-                        Registered Members
-                    </CardTitle>
+                <CardHeader className="border-b border-border/60 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <CardTitle className="text-base font-bold">
+                            Registered Members ({filteredUsers.length})
+                        </CardTitle>
+                        <CardDescription className="text-xs text-muted-foreground">
+                            Manage team members, roles, statuses, and profiles.
+                        </CardDescription>
+                    </div>
                 </CardHeader>
+
+                {/* Search & Filter Toolbar */}
+                <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 p-4 bg-accent/20 border-b border-border/60">
+                    {/* Search Input Form (Matching Accounts / Quotes / Clients pattern) */}
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            setSearchQuery(searchInput);
+                        }}
+                        className="relative flex-1 min-w-60 flex items-center"
+                    >
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search by user name or email... (Press Enter)"
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    setSearchQuery(searchInput);
+                                }
+                            }}
+                            className="pl-9 pr-20 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 text-foreground h-10 transition-all w-full text-xs"
+                        />
+                        <button
+                            type="submit"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-md font-semibold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                            title="Search"
+                        >
+                            Search
+                        </button>
+                    </form>
+
+                    {/* Filter Dropdowns */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        {/* Role Filter */}
+                        <Select value={roleFilter} onValueChange={(val: any) => setRoleFilter(val as string)}>
+                            <SelectTrigger className="bg-background border-border text-xs h-10! w-31.25">
+                                <SelectValue placeholder="Role" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border text-xs">
+                                <SelectItem value="all" className={`h-10!`}>All Roles</SelectItem>
+                                <SelectItem value="admin" className={`h-10!`}>Admin</SelectItem>
+                                <SelectItem value="member" className={`h-10!`}>Member</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        {/* Status Filter */}
+                        <Select value={statusFilter} onValueChange={(val: any) => setStatusFilter(val as string)}>
+                            <SelectTrigger className="bg-background border-border text-xs h-10! w-31.25">
+                                <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border text-xs">
+                                <SelectItem value="all" className={`h-10!`}>All Statuses</SelectItem>
+                                <SelectItem value="active" className={`h-10!`}>Active</SelectItem>
+                                <SelectItem value="blocked" className={`h-10!`}>Blocked</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        {/* Title Filter */}
+                        <Select value={titleFilter} onValueChange={(val: any) => setTitleFilter(val as string)}>
+                            <SelectTrigger className="bg-background border-border text-xs h-10! w-60">
+                                <SelectValue placeholder="Title" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border text-xs max-h-56">
+                                <SelectItem value="all" className={`h-10!`}>All Titles</SelectItem>
+                                {availableTitles.map((title) => (
+                                    <SelectItem key={title} value={title} className={`h-10!`}>
+                                        {title}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        {isFilterActive && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={resetFilters}
+                                className="h-9 px-2 text-xs text-muted-foreground hover:text-destructive gap-1 cursor-pointer"
+                            >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                                <span>Reset</span>
+                            </Button>
+                        )}
+                    </div>
+                </div>
+
                 <CardContent className="p-0">
                     {isLoading ? (
                         <div className="p-4 space-y-4">
@@ -271,9 +439,27 @@ export default function UsersManagementPage() {
                                 <Skeleton key={i} className="h-12 w-full" />
                             ))}
                         </div>
-                    ) : users.length === 0 ? (
-                        <div className="text-center py-12 text-sm text-muted-foreground italic">
-                            No registered user profiles found.
+                    ) : filteredUsers.length === 0 ? (
+                        <div className="text-center py-12 px-4 space-y-3">
+                            <div className="mx-auto w-12 h-12 rounded-full bg-accent/40 flex items-center justify-center text-muted-foreground">
+                                <Users className="h-6 w-6" />
+                            </div>
+                            <p className="text-sm font-semibold text-foreground">
+                                {users.length === 0
+                                    ? "No registered user profiles found."
+                                    : "No users match your search or filter criteria."}
+                            </p>
+                            {isFilterActive && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={resetFilters}
+                                    className="text-xs h-8 gap-1.5 cursor-pointer"
+                                >
+                                    <RotateCcw className="h-3.5 w-3.5" />
+                                    Clear Filters
+                                </Button>
+                            )}
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -298,7 +484,7 @@ export default function UsersManagementPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {users.map((user) => {
+                                    {filteredUsers.map((user) => {
                                         const isSelf =
                                             currentSession?.user?.id ===
                                             user._id;
@@ -320,13 +506,20 @@ export default function UsersManagementPage() {
                                                         </AvatarFallback>
                                                     </Avatar>
                                                     <div>
-                                                        <span className="text-foreground">
-                                                            {user.name}
-                                                        </span>
-                                                        {isSelf && (
-                                                            <Badge className="ml-2 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-[9px] px-1 py-0">
-                                                                You
-                                                            </Badge>
+                                                        <div className="flex items-center">
+                                                            <span className="text-foreground font-semibold">
+                                                                {user.name}
+                                                            </span>
+                                                            {isSelf && (
+                                                                <Badge className="ml-2 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 text-[9px] px-1 py-0">
+                                                                    You
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        {user.title && (
+                                                            <div className="text-[11px] font-normal text-muted-foreground">
+                                                                {user.title}
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </TableCell>
@@ -415,6 +608,18 @@ export default function UsersManagementPage() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
+                                                        onClick={() => {
+                                                            setEditUserTarget(user);
+                                                            setEditTitleValue(user.title || "");
+                                                        }}
+                                                        className="h-10 w-10 text-muted-foreground hover:text-indigo-500 hover:bg-indigo-500/10 rounded-md cursor-pointer hover:scale-[1.05] active:scale-[0.95] transition-all"
+                                                        title="Edit user title"
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
                                                         onClick={() =>
                                                             setViewUserTarget(
                                                                 user,
@@ -478,7 +683,7 @@ export default function UsersManagementPage() {
                         className="space-y-4 pt-2"
                     >
                         <div className="space-y-1.5">
-                            <Label htmlFor="name">Full Name</Label>
+                            <Label htmlFor="name">Full Name *</Label>
                             <div className="relative">
                                 <UserIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                 <Input
@@ -496,7 +701,25 @@ export default function UsersManagementPage() {
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label htmlFor="email">Email Address</Label>
+                            <Label htmlFor="title">Title / Role Designation *</Label>
+                            <div className="relative">
+                                <Briefcase className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    id="title"
+                                    placeholder="e.g. Full Stack Developer, Project Manager"
+                                    {...register("title")}
+                                    className="pl-10 bg-background border-border text-foreground focus-visible:ring-indigo-500 h-10"
+                                />
+                            </div>
+                            {errors.title && (
+                                <p className="text-xs text-destructive">
+                                    {errors.title.message}
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="email">Email Address *</Label>
                             <div className="relative">
                                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                 <Input
@@ -609,7 +832,7 @@ export default function UsersManagementPage() {
                         <div className="space-y-1.5">
                             <div className="flex justify-between items-center">
                                 <Label htmlFor="password">
-                                    Temporary Password
+                                    Temporary Password *
                                 </Label>
                                 <Button
                                     type="button"
@@ -681,98 +904,198 @@ export default function UsersManagementPage() {
             {/* View User Information Modal */}
             <Dialog
                 open={!!viewUserTarget}
-                onOpenChange={(open) => !open && setViewUserTarget(null)}
+                onOpenChange={(open) => {
+                    if (!open) setViewUserTarget(null);
+                }}
             >
-                <DialogContent className="bg-card border-border text-foreground max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <UserIcon className="h-5 w-5 text-indigo-500" />
-                            User Profile Details
-                        </DialogTitle>
-                        <DialogDescription className="text-muted-foreground">
-                            Detailed account details for this co-founder
-                            profile.
-                        </DialogDescription>
-                    </DialogHeader>
-
+                <DialogContent className="sm:max-w-xl bg-card border-border shadow-2xl rounded-2xl p-0 overflow-hidden text-card-foreground">
                     {viewUserTarget && (
-                        <div className="space-y-4 pt-4 border-t border-border/60">
-                            <div className="flex flex-col items-center text-center pb-4">
-                                <Avatar className="h-20 w-20 border-2 border-indigo-500/20 ring-4 ring-indigo-500/10">
-                                    <AvatarImage
-                                        src={viewUserTarget.avatarUrl}
-                                        alt={viewUserTarget.name}
-                                    />
-                                    <AvatarFallback className="bg-accent text-xl font-bold text-indigo-600 dark:text-indigo-400">
-                                        {viewUserTarget.name
-                                            .substring(0, 2)
-                                            .toUpperCase()}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <h3 className="text-lg font-bold text-foreground mt-3">
-                                    {viewUserTarget.name}
-                                </h3>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                    {viewUserTarget.email}
-                                </p>
-                            </div>
-
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center text-sm border-b border-border/40 pb-2">
-                                    <span className="text-muted-foreground font-semibold">
-                                        Account Status
-                                    </span>
-                                    <Badge
-                                        className={`capitalize font-bold border ${
-                                            viewUserTarget.status === "blocked"
-                                                ? "bg-destructive/10 text-destructive border-destructive/20"
-                                                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                        }`}
-                                    >
-                                        {viewUserTarget.status || "Active"}
-                                    </Badge>
+                        <div>
+                            {/* Profile Header Banner */}
+                            <div className="relative bg-linear-to-r from-indigo-900 via-indigo-950 to-slate-900 px-6 pt-8 pb-6 text-white overflow-hidden">
+                                <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+                                    <UserIcon className="h-48 w-48 text-indigo-400" />
                                 </div>
+                                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 relative z-10">
+                                    <Avatar className="h-20 w-20 border-4 border-white/20 shadow-xl ring-4 ring-indigo-500/20 shrink-0">
+                                        <AvatarImage
+                                            src={viewUserTarget.avatarUrl}
+                                            alt={viewUserTarget.name}
+                                        />
+                                        <AvatarFallback className="bg-indigo-700 text-2xl font-bold text-white">
+                                            {viewUserTarget.name
+                                                .substring(0, 2)
+                                                .toUpperCase()}
+                                        </AvatarFallback>
+                                    </Avatar>
 
-                                <div className="flex justify-between items-center text-sm border-b border-border/40 pb-2">
-                                    <span className="text-muted-foreground font-semibold">
-                                        Account Role
-                                    </span>
-                                    <Badge className="capitalize bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-bold">
-                                        {viewUserTarget.role || "Member"}
-                                    </Badge>
-                                </div>
+                                    <div className="flex-1 text-center sm:text-left space-y-1">
+                                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                                            <h2 className="text-xl font-bold tracking-tight text-white">
+                                                {viewUserTarget.name}
+                                            </h2>
+                                            <Badge
+                                                className={`capitalize text-[10px] font-bold px-2 py-0.5 border ${
+                                                    viewUserTarget.role === UserRole.ADMIN
+                                                        ? "bg-indigo-500/20 text-indigo-200 border-indigo-400/30"
+                                                        : "bg-slate-500/20 text-slate-200 border-slate-400/30"
+                                                }`}
+                                            >
+                                                {viewUserTarget.role || "Member"}
+                                            </Badge>
+                                            <Badge
+                                                className={`capitalize text-[10px] font-bold px-2 py-0.5 border ${
+                                                    viewUserTarget.status === UserStatus.BLOCKED
+                                                        ? "bg-rose-500/20 text-rose-300 border-rose-400/30"
+                                                        : "bg-emerald-500/20 text-emerald-300 border-emerald-400/30"
+                                                }`}
+                                            >
+                                                {viewUserTarget.status || "Active"}
+                                            </Badge>
+                                        </div>
 
-                                <div className="flex justify-between items-center text-sm border-b border-border/40 pb-2">
-                                    <span className="text-muted-foreground font-semibold">
-                                        Mobile Number
-                                    </span>
-                                    <span className="text-foreground font-medium">
-                                        {viewUserTarget.mobileNumber || (
-                                            <span className="text-muted-foreground italic text-xs">
-                                                Not specified
-                                            </span>
+                                        {viewUserTarget.title && (
+                                            <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs text-indigo-200 font-medium">
+                                                <Briefcase className="h-3.5 w-3.5" />
+                                                <span>{viewUserTarget.title}</span>
+                                            </div>
                                         )}
-                                    </span>
-                                </div>
 
-                                <div className="flex justify-between items-center text-sm pb-1">
-                                    <span className="text-muted-foreground font-semibold">
-                                        Created At
-                                    </span>
-                                    <span className="text-foreground font-medium text-xs">
-                                        {viewUserTarget.createdAt
-                                            ? new Date(
-                                                  viewUserTarget.createdAt,
-                                              ).toLocaleString()
-                                            : "N/A"}
-                                    </span>
+                                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs text-slate-300 pt-1">
+                                            <div className="flex items-center gap-1.5">
+                                                <Mail className="h-3.5 w-3.5 text-indigo-300" />
+                                                <span>{viewUserTarget.email}</span>
+                                            </div>
+                                            {viewUserTarget.mobileNumber && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <Phone className="h-3.5 w-3.5 text-indigo-300" />
+                                                    <span>{viewUserTarget.mobileNumber}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="flex justify-end pt-4 border-t border-border mt-6">
+                            {/* Profile Details Sections */}
+                            <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+                                {/* Section 1: Overview Metadata */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="p-3.5 rounded-xl border border-border bg-accent/20 space-y-1">
+                                        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                            <Calendar className="h-3.5 w-3.5 text-indigo-500" />
+                                            Member Since
+                                        </span>
+                                        <p className="text-xs font-semibold text-foreground">
+                                            {viewUserTarget.createdAt
+                                                ? new Date(viewUserTarget.createdAt).toLocaleDateString("en-US", {
+                                                      year: "numeric",
+                                                      month: "long",
+                                                      day: "numeric",
+                                                  })
+                                                : "N/A"}
+                                        </p>
+                                    </div>
+
+                                    <div className="p-3.5 rounded-xl border border-border bg-accent/20 space-y-1">
+                                        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                            <BadgeCheck className="h-3.5 w-3.5 text-indigo-500" />
+                                            Account Status
+                                        </span>
+                                        <p className="text-xs font-semibold text-foreground capitalize">
+                                            {viewUserTarget.status || "Active"}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Section 2: Personal Information */}
+                                <div className="space-y-3">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                        <UserIcon className="h-4 w-4 text-indigo-500" />
+                                        Personal Information
+                                    </h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl border border-border/80 bg-card text-xs">
+                                        <div>
+                                            <span className="text-muted-foreground">Father's Name:</span>{" "}
+                                            <span className="font-semibold text-foreground">
+                                                {viewUserTarget.fathersName || "Not specified"}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-muted-foreground">Mother's Name:</span>{" "}
+                                            <span className="font-semibold text-foreground">
+                                                {viewUserTarget.mothersName || "Not specified"}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-muted-foreground">Gender:</span>{" "}
+                                            <span className="font-semibold text-foreground capitalize">
+                                                {viewUserTarget.gender || "Not specified"}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-muted-foreground">Blood Group:</span>{" "}
+                                            <span className="font-semibold text-foreground">
+                                                {viewUserTarget.bloodGroup || "Not specified"}
+                                            </span>
+                                        </div>
+                                        <div className="sm:col-span-2">
+                                            <span className="text-muted-foreground">Date of Birth:</span>{" "}
+                                            <span className="font-semibold text-foreground">
+                                                {viewUserTarget.dateOfBirth
+                                                    ? new Date(viewUserTarget.dateOfBirth).toLocaleDateString()
+                                                    : "Not specified"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Section 3: Payment Accounts */}
+                                <div className="space-y-3">
+                                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                                        <CreditCard className="h-4 w-4 text-indigo-500" />
+                                        Payment & Bank Accounts ({viewUserTarget.accounts?.length || 0})
+                                    </h3>
+                                    {viewUserTarget.accounts && viewUserTarget.accounts.length > 0 ? (
+                                        <div className="grid grid-cols-1 gap-3">
+                                            {viewUserTarget.accounts.map((acc: any, index: number) => (
+                                                <div
+                                                    key={index}
+                                                    className="p-3.5 rounded-xl border border-border bg-accent/15 space-y-1 text-xs"
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="font-bold text-foreground flex items-center gap-2">
+                                                            <Building2 className="h-4 w-4 text-indigo-500" />
+                                                            {acc.accountName || "Account"}
+                                                        </span>
+                                                        <Badge variant="outline" className="text-[10px] font-semibold">
+                                                            {acc.providerName || "Bank"}
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="text-muted-foreground font-mono pt-1">
+                                                        Acc #: {acc.accountNumber || "N/A"}
+                                                    </div>
+                                                    {acc.branchOrRouting && (
+                                                        <div className="text-[11px] text-muted-foreground italic">
+                                                            Branch/Routing: {acc.branchOrRouting}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="p-4 rounded-xl border border-dashed border-border text-center text-xs text-muted-foreground italic">
+                                            No payment accounts configured for this user.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Footer */}
+                            <div className="p-4 bg-accent/20 border-t border-border flex justify-end">
                                 <Button
                                     onClick={() => setViewUserTarget(null)}
-                                    className="bg-indigo-600 hover:bg-indigo-500 text-white h-10 cursor-pointer w-full"
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold h-9 px-6 text-xs cursor-pointer"
                                 >
                                     Close Details
                                 </Button>
@@ -845,6 +1168,66 @@ export default function UsersManagementPage() {
                     </div>
                 )}
             </AnimatePresence>
+
+            {/* Edit User Title Modal */}
+            <Dialog open={!!editUserTarget} onOpenChange={(open) => { if (!open) setEditUserTarget(null); }}>
+                <DialogContent className="sm:max-w-md bg-card border-border shadow-2xl rounded-2xl p-6">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold text-foreground flex items-center gap-2">
+                            <Edit className="h-5 w-5 text-indigo-600" />
+                            Edit Job Title / Designation
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            Update official job title for <span className="font-semibold text-foreground">{editUserTarget?.name}</span>.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 pt-3">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="edit-user-title">Job Title / Designation *</Label>
+                            <div className="relative">
+                                <Briefcase className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    id="edit-user-title"
+                                    value={editTitleValue}
+                                    onChange={(e) => setEditTitleValue(e.target.value)}
+                                    placeholder="e.g. Full Stack Developer, Project Manager"
+                                    className="pl-10 bg-background border-border text-foreground focus-visible:ring-indigo-500 h-10"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setEditUserTarget(null)}
+                                className="text-xs cursor-pointer"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={() => {
+                                    if (!editTitleValue.trim()) {
+                                        toast.error("Title cannot be empty");
+                                        return;
+                                    }
+                                    updateUserMutation.mutate({
+                                        id: editUserTarget._id,
+                                        title: editTitleValue.trim(),
+                                    });
+                                    setEditUserTarget(null);
+                                }}
+                                disabled={updateUserMutation.isPending}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold cursor-pointer"
+                            >
+                                {updateUserMutation.isPending ? <Loading variant="mini" /> : "Save Changes"}
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

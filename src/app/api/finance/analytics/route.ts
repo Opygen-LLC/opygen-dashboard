@@ -176,7 +176,7 @@ export async function GET(req: NextRequest) {
           inflow30 += q.advanceValue;
         } else {
           // percentage based on max budget in phases
-          const totalPhaseMax = (q.phases || []).reduce((acc, ph) => acc + (ph.maxBudget || 0), 0);
+          const totalPhaseMax = (q.phases || []).reduce((acc: number, ph: any) => acc + (ph.maxBudget || 0), 0);
           inflow30 += (totalPhaseMax * q.advanceValue) / 100;
         }
       }

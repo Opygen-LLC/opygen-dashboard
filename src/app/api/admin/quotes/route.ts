@@ -45,16 +45,26 @@ export async function POST(req: NextRequest) {
         const parseResult = quoteSchema.safeParse(body);
 
         if (!parseResult.success) {
+            const errorMessages = parseResult.error.issues
+                .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+                .join("; ");
+            console.error("POST Quote validation error:", errorMessages);
             return NextResponse.json(
                 {
-                    error: "Validation Error",
+                    error: `Validation Error (${errorMessages})`,
                     details: parseResult.error.flatten(),
                 },
                 { status: 400 },
             );
         }
 
-        const newQuote = await Quote.create(parseResult.data);
+        const quoteData = { ...parseResult.data };
+        if (!quoteData.quoteNumber || !quoteData.quoteNumber.trim()) {
+            const randomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            quoteData.quoteNumber = `PRJ-${new Date().getFullYear()}-${randomCode}`;
+        }
+
+        const newQuote = await Quote.create(quoteData);
 
         await createActivityLog({
             user: session.user.id,

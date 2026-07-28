@@ -13,6 +13,7 @@ export interface IUserAccount {
 
 export interface IUser extends Document {
     name: string;
+    title: string;
     email: string;
     passwordHash: string;
     avatarUrl?: string;
@@ -34,6 +35,7 @@ export interface IUser extends Document {
 
 const UserSchema = new Schema<IUser>({
     name: { type: String, required: true },
+    title: { type: String, trim: true },
     email: { type: String, required: true, unique: true, index: true },
     passwordHash: { type: String, required: true },
     avatarUrl: { type: String },

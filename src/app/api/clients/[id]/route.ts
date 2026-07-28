@@ -21,6 +21,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       status: z.enum(['Pending', 'Confirmed', 'Follow-up', 'Meeting Scheduled', 'Blocked', 'Declined']).optional(),
       followupDate: z.string().optional().nullable(),
       meetingDate: z.string().optional().nullable(),
+      assignedTo: z.string().optional().nullable(),
     });
 
     const parseResult = patchSchema.safeParse(body);
@@ -32,7 +33,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       id,
       { $set: { ...parseResult.data, lastUpdatedBy: session.user.id } },
       { new: true, runValidators: true }
-    ).populate('lastUpdatedBy', 'name email avatarUrl');
+    )
+      .populate('lastUpdatedBy', 'name email avatarUrl')
+      .populate('assignedTo', 'name email avatarUrl');
 
     if (!updatedClient) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });
@@ -98,7 +101,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       id,
       { ...clientData, lastUpdatedBy: session.user.id },
       { new: true, runValidators: true }
-    ).populate('lastUpdatedBy', 'name email avatarUrl');
+    )
+      .populate('lastUpdatedBy', 'name email avatarUrl')
+      .populate('assignedTo', 'name email avatarUrl');
 
     if (!updatedClient) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 });

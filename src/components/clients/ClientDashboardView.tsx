@@ -20,6 +20,7 @@ import {
     Download,
     FileText,
     Users,
+    User,
     Clock,
     CheckCircle2,
     Calendar as CalendarIcon,
@@ -59,6 +60,7 @@ export default function ClientDashboardView() {
     const [convertingQuoteClient, setConvertingQuoteClient] = useState<any>(null);
     const [filterSource, setFilterSource] = useState<string>("All");
     const [filterStatus, setFilterStatus] = useState<string>("All");
+    const [filterAdName, setFilterAdName] = useState<string>("All");
     const [filterDate, setFilterDate] = useState<string>("");
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [searchInput, setSearchInput] = useState<string>("");
@@ -75,21 +77,20 @@ export default function ClientDashboardView() {
 
     useEffect(() => setMounted(true), []);
 
-    // Debounce search input
-    useEffect(() => {
-        const handler = setTimeout(() => {
-            setSearchQuery(searchInput);
-        }, 1000);
-
-        return () => {
-            clearTimeout(handler);
-        };
-    }, [searchInput]);
+    // Fetch existing ad names for filter dropdown
+    const { data: existingAdNames = [] } = useQuery<string[]>({
+        queryKey: ["ad-names"],
+        queryFn: async () => {
+            const res = await fetch("/api/clients/ad-names");
+            if (!res.ok) return [];
+            return res.json();
+        },
+    });
 
     // Reset pagination when filter or search changes
     useEffect(() => {
         setCurrentPage(1);
-    }, [filterSource, filterStatus, filterDate, searchQuery]);
+    }, [filterSource, filterStatus, filterAdName, filterDate, searchQuery]);
 
     // Fetch clients
     const {
@@ -97,11 +98,12 @@ export default function ClientDashboardView() {
         isLoading: isClientsLoading,
         refetch: refetchClients,
     } = useQuery({
-        queryKey: ["clients", filterSource, filterStatus, filterDate, searchQuery],
+        queryKey: ["clients", filterSource, filterStatus, filterAdName, filterDate, searchQuery],
         queryFn: async () => {
             const params = new URLSearchParams();
             if (filterSource !== "All") params.append("source", filterSource);
             if (filterStatus !== "All") params.append("status", filterStatus);
+            if (filterAdName !== "All") params.append("adName", filterAdName);
             if (filterDate) params.append("followupDate", filterDate);
             if (searchQuery) params.append("search", searchQuery);
 
@@ -421,15 +423,34 @@ export default function ClientDashboardView() {
 
             {/* Redesigned Filters Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 bg-card/60 backdrop-blur-md p-4 rounded-xl border border-border shadow-xs mb-6">
-                <div className="relative sm:col-span-2">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        setSearchQuery(searchInput);
+                    }}
+                    className="relative sm:col-span-2 flex items-center"
+                >
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Search by name, phone number, company..."
-                        className="pl-9 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 text-foreground h-10 transition-all w-full"
+                        placeholder="Search by name, phone number, company... (Press Enter)"
+                        className="pl-9 pr-20 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 text-foreground h-10 transition-all w-full"
                         value={searchInput}
                         onChange={(e) => setSearchInput(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.preventDefault();
+                                setSearchQuery(searchInput);
+                            }
+                        }}
                     />
-                </div>
+                    <button
+                        type="submit"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-2.5 py-1.5 rounded-md font-semibold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                        title="Search"
+                    >
+                        Search
+                    </button>
+                </form>
 
                 <div>
                     <Select
@@ -439,7 +460,7 @@ export default function ClientDashboardView() {
                         <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                             <SelectValue placeholder="Status" />
                         </SelectTrigger>
-                        <SelectContent className="bg-card border-border text-foreground">
+                        <SelectContent className="bg-card border-border text-foreground z-[150]">
                             <SelectItem value="All" className="h-10!">
                                 All Statuses
                             </SelectItem>
@@ -473,7 +494,7 @@ export default function ClientDashboardView() {
                         <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
                             <SelectValue placeholder="Source" />
                         </SelectTrigger>
-                        <SelectContent className="bg-card border-border text-foreground">
+                        <SelectContent className="bg-card border-border text-foreground z-[150]">
                             <SelectItem value="All" className="h-10!">
                                 All Sources
                             </SelectItem>
@@ -498,6 +519,27 @@ export default function ClientDashboardView() {
                             <SelectItem value="Other" className="h-10!">
                                 Other
                             </SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div>
+                    <Select
+                        value={filterAdName}
+                        onValueChange={(val: any) => setFilterAdName(typeof val === "string" ? val : "All")}
+                    >
+                        <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
+                            <SelectValue placeholder="Ad Name" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border text-foreground z-[150]">
+                            <SelectItem value="All" className="h-10!">
+                                All Ad Names
+                            </SelectItem>
+                            {existingAdNames.map((adName) => (
+                                <SelectItem key={adName} value={adName} className="h-10!">
+                                    {adName}
+                                </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -532,6 +574,9 @@ export default function ClientDashboardView() {
                                         Status
                                     </th>
                                     <th className="px-6 py-4 font-semibold">
+                                        Call Assigned To
+                                    </th>
+                                    <th className="px-6 py-4 font-semibold">
                                         Source
                                     </th>
                                     <th className="px-6 py-4 font-semibold text-right">
@@ -543,7 +588,7 @@ export default function ClientDashboardView() {
                                 {clients.length === 0 ? (
                                     <tr>
                                         <td
-                                            colSpan={5}
+                                            colSpan={7}
                                             className="px-6 py-10 text-center text-muted-foreground"
                                         >
                                             No clients found.
@@ -720,21 +765,35 @@ export default function ClientDashboardView() {
                                                     </Select>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <div className="font-medium text-foreground">
-                                                        {client.source}
-                                                    </div>
-                                                    {client.source ===
-                                                        "Other" &&
-                                                        client.otherSource && (
-                                                            <div className="text-xs text-muted-foreground">
-                                                                (
-                                                                {
-                                                                    client.otherSource
-                                                                }
-                                                                )
-                                                            </div>
-                                                        )}
+                                                    {client.assignedTo ? (
+                                                        <div className="inline-flex items-center gap-1.5 font-semibold text-xs text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-md border border-purple-500/20">
+                                                            <User className="h-3.5 w-3.5" />
+                                                            {typeof client.assignedTo === "object"
+                                                                ? client.assignedTo.name
+                                                                : client.assignedTo}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground italic">Unassigned</span>
+                                                    )}
                                                 </td>
+                                                <td className="px-6 py-4">
+                                                     <div className="font-medium text-foreground">
+                                                         {client.source === "Ads" && client.adName
+                                                             ? `Ads(${client.adName})`
+                                                             : client.source}
+                                                     </div>
+                                                     {client.source ===
+                                                         "Other" &&
+                                                         client.otherSource && (
+                                                             <div className="text-xs text-muted-foreground">
+                                                                 (
+                                                                 {
+                                                                     client.otherSource
+                                                                 }
+                                                                 )
+                                                             </div>
+                                                         )}
+                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex justify-end gap-2">
                                                         <Button

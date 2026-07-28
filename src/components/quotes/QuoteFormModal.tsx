@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +11,14 @@ import {
     Plus,
     Loader2,
     UserCircle2,
+    RefreshCw,
+    DollarSign,
+    FileText,
+    ShieldCheck,
+    CreditCard,
+    Info,
+    ListChecks,
+    User,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -23,7 +32,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
 
 interface QuoteFormModalProps {
     isOpen: boolean;
@@ -34,6 +49,37 @@ interface QuoteFormModalProps {
     mode: "create" | "edit" | "convert";
 }
 
+const DEFAULT_TERMS = [
+    {
+        title: "Project Timeline",
+        text: "The estimated project timeline is 6–8 weeks from the date of advance payment receipt. Timeline may be adjusted based on mutual agreement and client feedback cycles.",
+    },
+    {
+        title: "Revisions",
+        text: "Each phase includes up to 3 rounds of revisions at no additional cost. Additional revisions beyond this limit will be billed at an hourly rate agreed upon in writing.",
+    },
+    {
+        title: "Intellectual Property",
+        text: "Upon final payment, the client shall own all custom code, design assets, and deliverables produced under this agreement. Developer retains rights to use the work for portfolio purposes only.",
+    },
+    {
+        title: "Confidentiality",
+        text: "Both parties agree to keep all project details, communications, and business information strictly confidential and not to disclose to any third party without prior written consent.",
+    },
+    {
+        title: "Payment Terms",
+        text: "All payments are non-refundable once work on that phase has commenced. Late payments beyond 7 days of due date may result in a pause in project delivery.",
+    },
+    {
+        title: "Support & Warranty",
+        text: "Developer provides 30 days of post-delivery bug fixes at no charge. Feature additions or third-party integration issues are outside this warranty scope.",
+    },
+    {
+        title: "Dispute Resolution",
+        text: "Any disputes arising from this agreement shall first be attempted to be resolved amicably through written communication. Both parties agree to act in good faith.",
+    },
+];
+
 export default function QuoteFormModal({
     isOpen,
     onClose,
@@ -42,6 +88,10 @@ export default function QuoteFormModal({
     isSubmitting = false,
     mode,
 }: QuoteFormModalProps) {
+    const [activeTab, setActiveTab] = useState<
+        "general" | "features" | "pricing" | "payment" | "terms"
+    >("general");
+
     // Fetch Accounts for PDF Payment Details
     const { data: accountsData } = useQuery<any>({
         queryKey: ["adminAccountsList"],
@@ -54,27 +104,137 @@ export default function QuoteFormModal({
     });
     const accountsList = accountsData?.accounts || [];
 
-    const defaultFormValues: QuoteInput = {
-        projectName: "",
-        projectDetails: "",
-        clientName: "",
-        clientPhone: "",
-        clientSocialLink: "",
-        currency: "USD",
-        advanceType: "percentage",
-        advanceValue: null,
-        projectDuration: "",
-        phases: [
-            { phaseName: "", description: "", minBudget: 0, maxBudget: 0 },
-        ],
-        paymentAccount: {
-            providerName: "",
-            accountName: "",
-            accountNumber: "",
-            routingNumber: "",
-            branch: "",
+    // Fetch Users List for BILLED BY developer selection
+    const { data: usersList = [] } = useQuery<any[]>({
+        queryKey: ["users"],
+        queryFn: async () => {
+            const res = await fetch("/api/users");
+            if (!res.ok) return [];
+            return res.json();
         },
-        ...initialData,
+        enabled: isOpen,
+    });
+
+    const generateUniqueQuoteNumber = () => {
+        const randomCode = Math.random()
+            .toString(36)
+            .substring(2, 8)
+            .toUpperCase();
+        return `PRJ-${new Date().getFullYear()}-${randomCode}`;
+    };
+
+    const defaultFormValues: QuoteInput = {
+        quoteNumber: initialData?.quoteNumber || generateUniqueQuoteNumber(),
+        projectName: initialData?.projectName || "Software Development Proposal",
+        proposalType:
+            initialData?.proposalType || "SOFTWARE DEVELOPMENT PROPOSAL",
+        proposalSubtitle:
+            initialData?.proposalSubtitle ||
+            "Mobile Application — Inventory Management System",
+        projectDetails: initialData?.projectDetails || "",
+        clientName: initialData?.clientName || "",
+        clientPhone: initialData?.clientPhone || "",
+        clientSocialLink: initialData?.clientSocialLink || "",
+        billedBy: {
+            name: initialData?.billedBy?.name || "MD. Faysal Mridha",
+            title: initialData?.billedBy?.title || "Full Stack Developer",
+            email: initialData?.billedBy?.email || "",
+            phone: initialData?.billedBy?.phone || "",
+        },
+        billedTo: {
+            name: initialData?.billedTo?.name || initialData?.clientName || "",
+            company: initialData?.billedTo?.company || "",
+            country: initialData?.billedTo?.country || "",
+            email: initialData?.billedTo?.email || "",
+            phone:
+                initialData?.billedTo?.phone || initialData?.clientPhone || "",
+            socialLink:
+                initialData?.billedTo?.socialLink ||
+                initialData?.clientSocialLink ||
+                "",
+        },
+        projectOverview:
+            initialData?.projectOverview || initialData?.projectDetails || "",
+        featureSections:
+            initialData?.featureSections &&
+            initialData.featureSections.length > 0
+                ? initialData.featureSections
+                : [
+                      {
+                          title: "CLIENT-FACING APP FEATURES",
+                          description:
+                              "The following features will be developed and delivered as part of the mobile application:",
+                          features: [
+                              {
+                                  featureName: "App Icon & Animations",
+                                  description:
+                                      "Custom branded app icon with smooth launch and transition animations for a polished user experience.",
+                              },
+                              {
+                                  featureName: "Home Screen — Inventory Feed",
+                                  description:
+                                      "Central dashboard displaying all available inventory items in a clean, scrollable card-based layout.",
+                              },
+                          ],
+                      },
+                  ],
+        currency: initialData?.currency || "USD",
+        advanceType: initialData?.advanceType || "percentage",
+        advanceValue: initialData?.advanceValue ?? null,
+        projectDuration: initialData?.projectDuration || "6-8 Weeks",
+        phases:
+            initialData?.phases && initialData.phases.length > 0
+                ? initialData.phases
+                : [
+                      {
+                          phaseName: "Frontend Development",
+                          description: "UI/UX Design & Implementation",
+                          phaseTag: "Phase 1",
+                          minBudget: 1000,
+                          maxBudget: 1000,
+                      },
+                      {
+                          phaseName: "Backend Development & Deployment",
+                          description:
+                              "Server-side logic, API integration, hosting",
+                          phaseTag: "Phase 2",
+                          minBudget: 700,
+                          maxBudget: 700,
+                      },
+                  ],
+        paymentSchedule:
+            initialData?.paymentSchedule &&
+            initialData.paymentSchedule.length > 0
+                ? initialData.paymentSchedule
+                : [
+                      {
+                          pmtNo: 1,
+                          milestone: "Advance Payment",
+                          calculation: "30% of Total",
+                          amount: 510,
+                      },
+                      {
+                          pmtNo: 2,
+                          milestone: "After Frontend Delivery",
+                          calculation: "Frontend ($1,000) - Advance ($510)",
+                          amount: 490,
+                      },
+                      {
+                          pmtNo: 3,
+                          milestone: "After Backend & Deployment",
+                          calculation: "Full Backend Cost",
+                          amount: 700,
+                      },
+                  ],
+        paymentAccount: initialData?.paymentAccount || null,
+        termsAndConditions:
+            initialData?.termsAndConditions &&
+            initialData.termsAndConditions.length > 0
+                ? initialData.termsAndConditions
+                : DEFAULT_TERMS,
+        footerNote:
+            initialData?.footerNote ||
+            "Thank you for the opportunity. We look forward to building something great together. | Opygen",
     };
 
     const {
@@ -82,40 +242,72 @@ export default function QuoteFormModal({
         control,
         handleSubmit,
         reset,
+        setValue,
         formState: { errors },
     } = useForm<any>({
         resolver: zodResolver(quoteSchema),
         defaultValues: defaultFormValues,
     });
 
-    const { fields, append, remove } = useFieldArray({
+    const {
+        fields: phaseFields,
+        append: appendPhase,
+        remove: removePhase,
+    } = useFieldArray({
         control,
         name: "phases",
     });
 
-    // Reset form when modal opens/closes or initialData changes
+    const {
+        fields: pmtFields,
+        append: appendPmt,
+        remove: removePmt,
+    } = useFieldArray({
+        control,
+        name: "paymentSchedule",
+    });
+
+    const {
+        fields: termFields,
+        append: appendTerm,
+        remove: removeTerm,
+    } = useFieldArray({
+        control,
+        name: "termsAndConditions",
+    });
+
+    const {
+        fields: featureSectionFields,
+        append: appendSection,
+        remove: removeSection,
+    } = useFieldArray({
+        control,
+        name: "featureSections",
+    });
+
     useEffect(() => {
         if (isOpen) {
             reset(defaultFormValues);
+            setActiveTab("general");
         }
     }, [isOpen, initialData, reset]);
 
     const titleMap = {
-        create: "Create New Quote",
-        edit: "Edit Quote",
-        convert: "Convert Client to Quote",
+        create: "Create Proposal Quote",
+        edit: "Edit Proposal Quote",
+        convert: "Convert Client to Proposal Quote",
     };
 
-    const descriptionMap = {
-        create: "Fill in the details below to generate a new proposal.",
-        edit: "Update the proposal details.",
-        convert: "Review and complete the quote details for this client.",
+    const handleGenerateNewRef = () => {
+        setValue("quoteNumber", generateUniqueQuoteNumber());
     };
 
-    const submitLabelMap = {
-        create: "Create Quote",
-        edit: "Update Quote",
-        convert: "Create Quote",
+    const onFormError = (formErrors: any) => {
+        console.error("Quote Form Validation Errors:", formErrors);
+        const errorMessages = Object.entries(formErrors)
+            .map(([key, err]: any) => `${key}: ${err?.message || "Invalid value"}`)
+            .join("; ");
+        toast.error(`Form error: ${errorMessages || "Please check invalid fields"}`);
     };
 
     return (
@@ -125,354 +317,1107 @@ export default function QuoteFormModal({
                 if (!open) onClose();
             }}
         >
-            <DialogContent className="w-[95vw] sm:max-w-4xl max-w-4xl bg-card border-border shadow-2xl rounded-2xl p-0 overflow-hidden max-h-[90vh] flex flex-col">
-                <DialogHeader className="px-6 py-5 border-b border-border bg-muted/20 shrink-0">
-                    <DialogTitle className="text-2xl font-bold bg-linear-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">
-                        {titleMap[mode]}
-                    </DialogTitle>
-                    <DialogDescription className="text-muted-foreground mt-1">
-                        {descriptionMap[mode]}
-                    </DialogDescription>
+            <DialogContent className="w-[95vw] sm:max-w-5xl max-w-5xl bg-card border-border shadow-2xl rounded-2xl p-0 overflow-hidden max-h-[92vh] flex flex-col">
+                <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 shrink-0 flex flex-row items-center justify-between">
+                    <div>
+                        <DialogTitle className="text-xl font-bold bg-linear-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent flex items-center gap-2">
+                            <FileText className="h-5 w-5 text-indigo-600" />
+                            {titleMap[mode]}
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                            Customize proposal parameters, feature tables,
+                            deliverables, user payment account, and terms.
+                        </DialogDescription>
+                    </div>
                 </DialogHeader>
 
-                <div className="overflow-y-auto p-6">
-                    <form
-                        onSubmit={handleSubmit(onSubmit)}
-                        className="space-y-6"
-                        id="quote-form"
+                {/* Tab Navigation */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 border-b border-border bg-muted/10 px-2 sm:px-4">
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab("general")}
+                        className={`flex items-center justify-center gap-1.5 px-2 sm:px-3 py-3 text-[11px] sm:text-xs font-semibold border-b-2 transition-colors cursor-pointer text-center ${
+                            activeTab === "general"
+                                ? "border-indigo-600 text-indigo-600 bg-background/50"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
                     >
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">
-                                    Project Name *
-                                </label>
-                                <Input
-                                    {...register("projectName")}
-                                    className="bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500"
-                                />
-                                {errors.projectName && (
-                                    <p className="text-xs text-red-500">
-                                        {(errors.projectName as any).message}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">
-                                    Client Name *
-                                </label>
-                                <Input
-                                    {...register("clientName")}
-                                    className="bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500"
-                                />
-                                {errors.clientName && (
-                                    <p className="text-xs text-red-500">
-                                        {(errors.clientName as any).message}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">
-                                    Client Phone
-                                </label>
-                                <Controller
-                                    control={control}
-                                    name="clientPhone"
-                                    render={({
-                                        field: { onChange, value },
-                                    }) => (
-                                        <PhoneInput
-                                            value={value || ""}
-                                            onChange={onChange}
+                        <Info className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">General & Billed Info</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab("features")}
+                        className={`flex items-center justify-center gap-1.5 px-2 sm:px-3 py-3 text-[11px] sm:text-xs font-semibold border-b-2 transition-colors cursor-pointer text-center ${
+                            activeTab === "features"
+                                ? "border-indigo-600 text-indigo-600 bg-background/50"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
+                    >
+                        <ListChecks className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Feature Tables</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab("pricing")}
+                        className={`flex items-center justify-center gap-1.5 px-2 sm:px-3 py-3 text-[11px] sm:text-xs font-semibold border-b-2 transition-colors cursor-pointer text-center ${
+                            activeTab === "pricing"
+                                ? "border-indigo-600 text-indigo-600 bg-background/50"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
+                    >
+                        <DollarSign className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Scope & Pricing</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab("payment")}
+                        className={`flex items-center justify-center gap-1.5 px-2 sm:px-3 py-3 text-[11px] sm:text-xs font-semibold border-b-2 transition-colors cursor-pointer text-center ${
+                            activeTab === "payment"
+                                ? "border-indigo-600 text-indigo-600 bg-background/50"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
+                    >
+                        <CreditCard className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Payment Account</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab("terms")}
+                        className={`flex items-center justify-center gap-1.5 px-2 sm:px-3 py-3 text-[11px] sm:text-xs font-semibold border-b-2 transition-colors cursor-pointer text-center ${
+                            activeTab === "terms"
+                                ? "border-indigo-600 text-indigo-600 bg-background/50"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
+                    >
+                        <ShieldCheck className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Terms & Footer</span>
+                    </button>
+                </div>
+
+                {/* Form Content */}
+                <div className="overflow-y-auto p-6 flex-1">
+                    <form
+                        id="quote-form"
+                        onSubmit={handleSubmit(onSubmit, onFormError)}
+                        className="space-y-6"
+                    >
+                        {/* TAB 1: GENERAL & BILLED INFO */}
+                        {activeTab === "general" && (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-accent/20 border border-border">
+                                    <div className="space-y-1 sm:col-span-3">
+                                        <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                                            <span>
+                                                Project Name <span className="text-red-500">*</span>
+                                            </span>
+                                        </label>
+                                        <Input
+                                            {...register("projectName")}
+                                            placeholder="e.g. E-Commerce Mobile App & Admin Dashboard"
+                                            className="bg-background border-border font-semibold text-sm h-10"
                                         />
-                                    )}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">
-                                    Client Social Link
-                                </label>
-                                <Input
-                                    {...register("clientSocialLink")}
-                                    className="bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500"
-                                />
-                            </div>
-                            <div className="space-y-2 sm:col-span-2">
-                                <label className="text-sm font-medium text-foreground">
-                                    Project Details (Optional)
-                                </label>
-                                <Textarea
-                                    {...register("projectDetails")}
-                                    className="bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 min-h-[80px]"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">
-                                    Currency
-                                </label>
-                                <div className="flex gap-2">
-                                    <Controller
-                                        name="currency"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <Select
-                                                value={field.value}
-                                                onValueChange={field.onChange}
-                                            >
-                                                <SelectTrigger className="w-32 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 h-10! flex-1">
-                                                    <SelectValue placeholder="Type" />
-                                                </SelectTrigger>
-                                                <SelectContent className="z-[150]">
-                                                    <SelectItem value="USD" className="h-10!">USD</SelectItem>
-                                                    <SelectItem value="BDT" className="h-10!">BDT</SelectItem>
-                                                    <SelectItem value="EUR" className="h-10!">EUR</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                        {errors.projectName && (
+                                            <p className="text-xs text-red-500">
+                                                {
+                                                    (
+                                                        errors.projectName as any
+                                                    ).message
+                                                }
+                                            </p>
                                         )}
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium text-foreground">
-                                        Advance Amount (Optional)
-                                    </label>
-                                    <div className="flex gap-2">
+                                    </div>
+
+                                    <div className="space-y-1 sm:col-span-2">
+                                        <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                                            <span>
+                                                Quote Reference Number (Unique
+                                                String)
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={handleGenerateNewRef}
+                                                className="text-indigo-600 hover:text-indigo-700 flex items-center gap-1 text-[11px] font-normal cursor-pointer"
+                                            >
+                                                <RefreshCw className="h-3 w-3" />{" "}
+                                                Regenerate
+                                            </button>
+                                        </label>
+                                        <Input
+                                            {...register("quoteNumber")}
+                                            placeholder="e.g. PRJ-2025-001"
+                                            className="bg-background border-border font-mono text-sm"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-semibold text-foreground">
+                                            Currency
+                                        </label>
                                         <Controller
-                                            name="advanceType"
+                                            name="currency"
                                             control={control}
                                             render={({ field }) => (
                                                 <Select
                                                     value={field.value}
-                                                    onValueChange={field.onChange}
+                                                    onValueChange={
+                                                        field.onChange
+                                                    }
                                                 >
-                                                    <SelectTrigger className="w-32 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 h-10! flex-1">
-                                                        <SelectValue placeholder="Type" />
+                                                    <SelectTrigger className="bg-background border-border h-10! w-full">
+                                                        <SelectValue placeholder="Currency" />
                                                     </SelectTrigger>
-                                                    <SelectContent className="z-[150]">
-                                                        <SelectItem value="percentage" className="h-10!">Percent (%)</SelectItem>
-                                                        <SelectItem value="fixed" className="h-10!">Fixed</SelectItem>
+                                                    <SelectContent>
+                                                        <SelectItem value="USD">
+                                                            USD ($)
+                                                        </SelectItem>
+                                                        <SelectItem value="BDT">
+                                                            BDT (৳)
+                                                        </SelectItem>
+                                                        <SelectItem value="EUR">
+                                                            EUR (€)
+                                                        </SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             )}
                                         />
+                                    </div>
+                                    <div className="space-y-1 sm:col-span-2">
+                                        <label className="text-xs font-semibold text-foreground">
+                                            Proposal Header Title
+                                        </label>
                                         <Input
-                                            type="number"
-                                            {...register("advanceValue", { valueAsNumber: true })}
-                                            placeholder="e.g. 50"
-                                            className="bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 h-10 flex-1"
+                                            {...register("proposalType")}
+                                            placeholder="e.g. SOFTWARE DEVELOPMENT PROPOSAL"
                                         />
                                     </div>
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground">
-                                    Project Duration *
-                                </label>
-                                <Input
-                                    {...register("projectDuration")}
-                                    placeholder="e.g. 2 Weeks, 1 Month"
-                                    className="bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500"
-                                />
-                            </div>
-                        </div>
-                        <div className="space-y-2 mb-4">
-                            <label className="text-sm font-medium text-foreground">
-                                Receiving Payment Account *
-                            </label>
-                            <Controller
-                                name="paymentAccount"
-                                control={control}
-                                render={({ field }) => (
                                     <div className="space-y-1">
-                                        <Select
-                                            onValueChange={(val: any) => {
-                                                if (typeof val === "string" && val) {
-                                                    try {
-                                                        field.onChange(JSON.parse(val));
-                                                    } catch (e) {}
-                                                }
-                                            }}
-                                            value={field.value ? JSON.stringify(field.value) : undefined}
-                                        >
-                                            <SelectTrigger className="bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 h-10! w-full text-left">
-                                                <SelectValue placeholder="Select an account to display on PDF" />
-                                            </SelectTrigger>
-                                            <SelectContent className="z-[150]">
-                                                {accountsList.map((accItem: any, idx: number) => {
-                                                    const valStr = JSON.stringify({
-                                                        providerName: accItem.account.providerName,
-                                                        accountName: accItem.account.accountName,
-                                                        accountNumber: accItem.account.accountNumber,
-                                                        routingNumber: accItem.account.routingNumber,
-                                                        branch: accItem.account.branch,
-                                                    });
-
-                                                    const userName = accItem.user?.name || accItem.userName || "Unknown";
-                                                    const hash = userName.split("").reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-                                                    const colors = [
-                                                        "bg-blue-50/80 hover:bg-blue-100 text-blue-900 border-l-4 border-blue-500",
-                                                        "bg-green-50/80 hover:bg-green-100 text-green-900 border-l-4 border-green-500",
-                                                        "bg-purple-50/80 hover:bg-purple-100 text-purple-900 border-l-4 border-purple-500",
-                                                        "bg-amber-50/80 hover:bg-amber-100 text-amber-900 border-l-4 border-amber-500",
-                                                        "bg-pink-50/80 hover:bg-pink-100 text-pink-900 border-l-4 border-pink-500",
-                                                        "bg-teal-50/80 hover:bg-teal-100 text-teal-900 border-l-4 border-teal-500",
-                                                    ];
-                                                    const colorClass = colors[hash % colors.length];
-
-                                                    return (
-                                                        <SelectItem
-                                                            key={idx}
-                                                            value={valStr}
-                                                            className={`mb-2 mx-1 rounded-md transition-colors ${colorClass}`}
-                                                        >
-                                                            <div className="flex flex-col gap-1 py-1">
-                                                                <div className="font-semibold text-sm">
-                                                                    {accItem.account.providerName} - {accItem.account.accountNumber}
-                                                                </div>
-                                                                <div className="text-xs opacity-80 flex items-center gap-1">
-                                                                    <UserCircle2 className="h-3 w-3" />
-                                                                    {userName}
-                                                                </div>
-                                                            </div>
-                                                        </SelectItem>
-                                                    );
-                                                })}
-                                            </SelectContent>
-                                        </Select>
-                                        {errors.paymentAccount && (
+                                        <label className="text-xs font-semibold text-foreground">
+                                            Project Duration *
+                                        </label>
+                                        <Input
+                                            {...register("projectDuration")}
+                                            placeholder="e.g. 6–8 Weeks"
+                                        />
+                                        {errors.projectDuration && (
                                             <p className="text-xs text-red-500">
-                                                {errors.paymentAccount.message as string}
+                                                {
+                                                    (
+                                                        errors.projectDuration as any
+                                                    ).message
+                                                }
                                             </p>
                                         )}
                                     </div>
-                                )}
-                            />
-                        </div>
+                                    <div className="space-y-1 sm:col-span-3">
+                                        <label className="text-xs font-semibold text-foreground">
+                                            Proposal Subtitle / App Type
+                                        </label>
+                                        <Input
+                                            {...register("proposalSubtitle")}
+                                            placeholder="e.g. Mobile Application — Inventory Management System"
+                                        />
+                                    </div>
+                                </div>
 
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <label className="text-sm font-medium text-foreground">
-                                    Project Phases
-                                </label>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                        append({
-                                            phaseName: "",
-                                            description: "",
-                                            minBudget: 0,
-                                            maxBudget: 0,
-                                        })
-                                    }
-                                    className="h-8 cursor-pointer border-indigo-500 text-indigo-600 hover:bg-indigo-500 group hover:text-white transition-colors"
-                                >
-                                    <Plus className="mr-1 h-3 w-3 group-hover:text-white" /> Add Phase
-                                </Button>
-                            </div>
-                            {fields.map((field, index) => (
-                                <div
-                                    key={field.id}
-                                    className="relative rounded-lg border border-border bg-accent/30 p-4 pt-8"
-                                >
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => remove(index)}
-                                        className="absolute right-2 top-2 h-6 w-6 text-muted-foreground hover:text-red-500 cursor-pointer"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {/* BILLED BY & BILLED TO */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* BILLED BY CARD */}
+                                    <div className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <h3 className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
+                                                BILLED BY (Developer / Agency)
+                                            </h3>
+                                            <User className="h-4 w-4 text-indigo-600" />
+                                        </div>
+
+                                        {/* User Selector Dropdown */}
                                         <div className="space-y-1">
-                                            <label className="text-xs font-medium text-muted-foreground">
-                                                Phase Name
-                                            </label>
+                                            <Select
+                                                onValueChange={(
+                                                    userId: any,
+                                                ) => {
+                                                    if (userId === "custom")
+                                                        return;
+                                                    const foundUser =
+                                                        usersList.find(
+                                                            (u: any) =>
+                                                                u._id ===
+                                                                userId,
+                                                        );
+                                                    if (foundUser) {
+                                                        setValue(
+                                                            "billedBy.name",
+                                                            foundUser.name ||
+                                                                "",
+                                                        );
+                                                        setValue(
+                                                            "billedBy.title",
+                                                            foundUser.title ||
+                                                                foundUser.role ||
+                                                                "Full Stack Developer",
+                                                        );
+                                                        setValue(
+                                                            "billedBy.email",
+                                                            foundUser.email ||
+                                                                "",
+                                                        );
+                                                        setValue(
+                                                            "billedBy.phone",
+                                                            foundUser.mobileNumber ||
+                                                                "",
+                                                        );
+                                                    }
+                                                }}
+                                            >
+                                                <SelectTrigger className="bg-background border-border text-xs h-10! w-full">
+                                                    <SelectValue placeholder="-- Select User to Populate Fields --" />
+                                                </SelectTrigger>
+                                                <SelectContent className="z-200">
+                                                    <SelectItem
+                                                        value="custom"
+                                                        className="text-xs h-10!"
+                                                    >
+                                                        -- Custom / Manual Entry
+                                                        --
+                                                    </SelectItem>
+                                                    {usersList.map(
+                                                        (user: any) => (
+                                                            <SelectItem
+                                                                key={user._id}
+                                                                value={user._id}
+                                                                className="text-xs h-10!"
+                                                            >
+                                                                {user.name} (
+                                                                {user.email})
+                                                            </SelectItem>
+                                                        ),
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="space-y-2">
                                             <Input
-                                                {...register(`phases.${index}.phaseName`)}
-                                                placeholder="e.g. Frontend"
-                                                className="h-10 text-sm bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500"
+                                                {...register("billedBy.name")}
+                                                placeholder="Developer Name"
+                                                className="bg-background text-sm"
                                             />
-                                            {errors.phases?.[index]?.phaseName && (
+                                            <Input
+                                                {...register("billedBy.title")}
+                                                placeholder="Role / Title"
+                                                className="bg-background text-sm"
+                                            />
+                                            <Input
+                                                {...register("billedBy.email")}
+                                                placeholder="Email (Optional)"
+                                                className="bg-background text-sm"
+                                            />
+                                            <Controller
+                                                control={control}
+                                                name="billedBy.phone"
+                                                render={({
+                                                    field: { onChange, value },
+                                                }) => (
+                                                    <PhoneInput
+                                                        value={value || ""}
+                                                        onChange={onChange}
+                                                    />
+                                                )}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* BILLED TO CARD */}
+                                    <div className="p-4 rounded-xl border border-purple-500/20 bg-purple-500/5 space-y-3">
+                                        <h3 className="text-xs font-bold text-purple-600 uppercase tracking-wider">
+                                            BILLED TO (Client Info)
+                                        </h3>
+                                        <div className="space-y-2">
+                                            <Input
+                                                {...register("clientName")}
+                                                placeholder="Client Name * (e.g. Abdul Azeez)"
+                                                className="bg-background text-sm"
+                                            />
+                                            {errors.clientName && (
                                                 <p className="text-xs text-red-500">
-                                                    {errors.phases?.[index]?.phaseName?.message}
+                                                    {
+                                                        (
+                                                            errors.clientName as any
+                                                        ).message
+                                                    }
                                                 </p>
                                             )}
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-medium text-muted-foreground">
-                                                    Min Budget
-                                                </label>
-                                                <Input
-                                                    type="number"
-                                                    {...register(`phases.${index}.minBudget`, { valueAsNumber: true })}
-                                                    placeholder="Min"
-                                                    className="h-10 text-sm bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500"
-                                                />
-                                                {errors.phases?.[index]?.minBudget && (
-                                                    <p className="text-xs text-red-500">
-                                                        {errors.phases?.[index]?.minBudget?.message}
-                                                    </p>
+                                            <Input
+                                                {...register(
+                                                    "billedTo.company",
                                                 )}
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs font-medium text-muted-foreground">
-                                                    Max Budget
-                                                </label>
-                                                <Input
-                                                    type="number"
-                                                    {...register(`phases.${index}.maxBudget`, { valueAsNumber: true })}
-                                                    placeholder="Max"
-                                                    className="h-10 text-sm bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500"
-                                                />
-                                                {errors.phases?.[index]?.maxBudget && (
-                                                    <p className="text-xs text-red-500">
-                                                        {errors.phases?.[index]?.maxBudget?.message}
-                                                    </p>
+                                                placeholder="Company Name (e.g. AB & Abroz Machinery Inc.)"
+                                                className="bg-background text-sm"
+                                            />
+                                            <Input
+                                                {...register(
+                                                    "billedTo.country",
                                                 )}
-                                            </div>
-                                        </div>
-                                        <div className="sm:col-span-2 space-y-1">
-                                            <label className="text-xs font-medium text-muted-foreground">
-                                                Description
-                                            </label>
-                                            <Textarea
-                                                {...register(`phases.${index}.description`)}
-                                                className="min-h-20 text-sm bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500"
+                                                placeholder="Country / Location (e.g. Philippines)"
+                                                className="bg-background text-sm"
+                                            />
+                                            <Controller
+                                                control={control}
+                                                name="clientPhone"
+                                                render={({
+                                                    field: { onChange, value },
+                                                }) => (
+                                                    <PhoneInput
+                                                        value={value || ""}
+                                                        onChange={onChange}
+                                                    />
+                                                )}
+                                            />
+                                            <Input
+                                                {...register(
+                                                    "clientSocialLink",
+                                                )}
+                                                placeholder="Social / Website URL"
+                                                className="bg-background text-sm"
                                             />
                                         </div>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
+
+                                {/* PROJECT OVERVIEW */}
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-foreground">
+                                        Project Overview / Scope Description
+                                        (Optional)
+                                    </label>
+                                    <Textarea
+                                        {...register("projectOverview")}
+                                        placeholder="This proposal outlines the scope, deliverables, milestones, and payment structure..."
+                                        className="min-h-22.5 text-sm bg-background border-border"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB 2: DYNAMIC FEATURE TABLES */}
+                        {activeTab === "features" && (
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-sm font-bold text-foreground">
+                                            Feature Tables (Dynamic PDF
+                                            Sections)
+                                        </h3>
+                                        <p className="text-xs text-muted-foreground">
+                                            Add customizable feature tables
+                                            (e.g. Client-Facing App Features,
+                                            Admin Panel Features).
+                                        </p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                            appendSection({
+                                                title: "NEW FEATURE SECTION",
+                                                description: "",
+                                                features: [
+                                                    {
+                                                        featureName: "",
+                                                        description: "",
+                                                    },
+                                                ],
+                                            })
+                                        }
+                                        className="border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white"
+                                    >
+                                        <Plus className="mr-1 h-3.5 w-3.5" />{" "}
+                                        Add Section Table
+                                    </Button>
+                                </div>
+
+                                {featureSectionFields.map(
+                                    (sectionField, sIdx) => (
+                                        <div
+                                            key={sectionField.id}
+                                            className="p-4 rounded-xl border border-border bg-accent/20 space-y-4 relative"
+                                        >
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() =>
+                                                    removeSection(sIdx)
+                                                }
+                                                className="absolute right-3 top-3 h-7 w-7 text-muted-foreground hover:text-red-500"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pr-8">
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-semibold text-muted-foreground">
+                                                        Section Title
+                                                    </label>
+                                                    <Input
+                                                        {...register(
+                                                            `featureSections.${sIdx}.title`,
+                                                        )}
+                                                        placeholder="e.g. CLIENT-FACING APP FEATURES"
+                                                        className="font-semibold text-sm bg-background"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-semibold text-muted-foreground">
+                                                        Section Subtitle /
+                                                        Description
+                                                    </label>
+                                                    <Input
+                                                        {...register(
+                                                            `featureSections.${sIdx}.description`,
+                                                        )}
+                                                        placeholder="e.g. The following features will be delivered..."
+                                                        className="text-sm bg-background"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Nested Features List */}
+                                            <FeatureListArray
+                                                sIdx={sIdx}
+                                                control={control}
+                                                register={register}
+                                            />
+                                        </div>
+                                    ),
+                                )}
+                            </div>
+                        )}
+
+                        {/* TAB 3: SCOPE & PRICING */}
+                        {activeTab === "pricing" && (
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-sm font-bold text-foreground">
+                                            Project Deliverables & Scope Pricing
+                                        </h3>
+                                        <p className="text-xs text-muted-foreground">
+                                            Define key deliverables, phase tags,
+                                            and estimated budget.
+                                        </p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                            appendPhase({
+                                                phaseName: "",
+                                                description: "",
+                                                phaseTag: `Phase ${phaseFields.length + 1}`,
+                                                minBudget: 0,
+                                                maxBudget: 0,
+                                            })
+                                        }
+                                        className="border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white"
+                                    >
+                                        <Plus className="mr-1 h-3.5 w-3.5" />{" "}
+                                        Add Deliverable
+                                    </Button>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {phaseFields.map((field, index) => (
+                                        <div
+                                            key={field.id}
+                                            className="p-4 rounded-xl border border-border bg-accent/20 relative space-y-3"
+                                        >
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() =>
+                                                    removePhase(index)
+                                                }
+                                                className="absolute right-2 top-2 h-6 w-6 text-muted-foreground hover:text-red-500"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pr-6">
+                                                <div className="space-y-1 sm:col-span-2">
+                                                    <label className="text-xs font-medium text-muted-foreground">
+                                                        Deliverable Title *
+                                                    </label>
+                                                    <Input
+                                                        {...register(
+                                                            `phases.${index}.phaseName`,
+                                                        )}
+                                                        placeholder="e.g. Frontend Development"
+                                                        className="bg-background text-sm"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-medium text-muted-foreground">
+                                                        Phase Tag
+                                                    </label>
+                                                    <Input
+                                                        {...register(
+                                                            `phases.${index}.phaseTag`,
+                                                        )}
+                                                        placeholder="e.g. Phase 1"
+                                                        className="bg-background text-sm"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-medium text-muted-foreground">
+                                                        Budget Amount
+                                                    </label>
+                                                    <Input
+                                                        type="number"
+                                                        {...register(
+                                                            `phases.${index}.maxBudget`,
+                                                            {
+                                                                valueAsNumber: true,
+                                                            },
+                                                        )}
+                                                        placeholder="Amount"
+                                                        className="bg-background text-sm"
+                                                    />
+                                                </div>
+                                                <div className="sm:col-span-4 space-y-1">
+                                                    <label className="text-xs font-medium text-muted-foreground">
+                                                        Description / Technical
+                                                        Details
+                                                    </label>
+                                                    <Input
+                                                        {...register(
+                                                            `phases.${index}.description`,
+                                                        )}
+                                                        placeholder="e.g. UI/UX Design & Implementation..."
+                                                        className="bg-background text-xs"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB 4: USER PAYMENT ACCOUNT */}
+                        {activeTab === "payment" && (
+                            <div className="space-y-6">
+                                <div className="p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 space-y-3">
+                                    <h3 className="text-sm font-bold text-indigo-700 dark:text-indigo-400 flex items-center gap-2">
+                                        <CreditCard className="h-4 w-4" />{" "}
+                                        Select Receiving Payment Account (From
+                                        User Model)
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground">
+                                        Select which user account the client
+                                        should transfer project funds to. All
+                                        details will render in a dedicated block
+                                        on the proposal PDF.
+                                    </p>
+
+                                    <Controller
+                                        name="paymentAccount"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <div className="space-y-2">
+                                                <Select
+                                                    onValueChange={(
+                                                        val: any,
+                                                    ) => {
+                                                        if (val === "none") {
+                                                            field.onChange(
+                                                                null,
+                                                            );
+                                                            return;
+                                                        }
+                                                        try {
+                                                            field.onChange(
+                                                                JSON.parse(val),
+                                                            );
+                                                        } catch (e) {}
+                                                    }}
+                                                    value={
+                                                        field.value
+                                                            ? JSON.stringify(
+                                                                  field.value,
+                                                              )
+                                                            : "none"
+                                                    }
+                                                >
+                                                    <SelectTrigger className="bg-background border-border h-10! w-full text-left">
+                                                        <SelectValue placeholder="Select a User Account" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="max-h-72">
+                                                        <SelectItem value="none">
+                                                            -- None (Do not
+                                                            print account
+                                                            details on PDF) --
+                                                        </SelectItem>
+                                                        {accountsList.map(
+                                                            (
+                                                                accItem: any,
+                                                                idx: number,
+                                                            ) => {
+                                                                const valObj = {
+                                                                    providerName:
+                                                                        accItem
+                                                                            .account
+                                                                            .providerName,
+                                                                    accountName:
+                                                                        accItem
+                                                                            .account
+                                                                            .accountName,
+                                                                    accountNumber:
+                                                                        accItem
+                                                                            .account
+                                                                            .accountNumber,
+                                                                    routingNumber:
+                                                                        accItem
+                                                                            .account
+                                                                            .routingNumber ||
+                                                                        "",
+                                                                    branch:
+                                                                        accItem
+                                                                            .account
+                                                                            .branch ||
+                                                                        "",
+                                                                    type:
+                                                                        accItem
+                                                                            .account
+                                                                            .type ||
+                                                                        "bank",
+                                                                    userName:
+                                                                        accItem.userName ||
+                                                                        accItem
+                                                                            .user
+                                                                            ?.name ||
+                                                                        "User",
+                                                                    userId:
+                                                                        accItem.userId ||
+                                                                        accItem
+                                                                            .user
+                                                                            ?._id ||
+                                                                        "",
+                                                                };
+                                                                const valStr =
+                                                                    JSON.stringify(
+                                                                        valObj,
+                                                                    );
+                                                                const userName =
+                                                                    accItem.userName ||
+                                                                    accItem.user
+                                                                        ?.name ||
+                                                                    "User";
+
+                                                                return (
+                                                                    <SelectItem
+                                                                        key={
+                                                                            idx
+                                                                        }
+                                                                        value={
+                                                                            valStr
+                                                                        }
+                                                                        className="py-2"
+                                                                    >
+                                                                        <div className="flex flex-col gap-0.5">
+                                                                            <div className="font-semibold text-xs text-foreground">
+                                                                                {
+                                                                                    accItem
+                                                                                        .account
+                                                                                        .providerName
+                                                                                }{" "}
+                                                                                -{" "}
+                                                                                {
+                                                                                    accItem
+                                                                                        .account
+                                                                                        .accountNumber
+                                                                                }{" "}
+                                                                                (
+                                                                                {
+                                                                                    accItem
+                                                                                        .account
+                                                                                        .accountName
+                                                                                }
+
+                                                                                )
+                                                                            </div>
+                                                                            <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                                                                <UserCircle2 className="h-3 w-3 text-indigo-600" />{" "}
+                                                                                Owner:{" "}
+                                                                                {
+                                                                                    userName
+                                                                                }
+                                                                            </div>
+                                                                        </div>
+                                                                    </SelectItem>
+                                                                );
+                                                            },
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
+
+                                                {/* Edit account details directly if selected */}
+                                                {field.value && (
+                                                    <div className="p-3 rounded-lg border border-border bg-background space-y-2 mt-3">
+                                                        <p className="text-xs font-semibold text-indigo-600">
+                                                            Selected Account
+                                                            Details (Optional
+                                                            overrides):
+                                                        </p>
+                                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                                            <Input
+                                                                value={
+                                                                    field.value
+                                                                        .providerName ||
+                                                                    ""
+                                                                }
+                                                                onChange={(e) =>
+                                                                    field.onChange(
+                                                                        {
+                                                                            ...field.value,
+                                                                            providerName:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                    )
+                                                                }
+                                                                placeholder="Provider / Bank Name"
+                                                            />
+                                                            <Input
+                                                                value={
+                                                                    field.value
+                                                                        .accountName ||
+                                                                    ""
+                                                                }
+                                                                onChange={(e) =>
+                                                                    field.onChange(
+                                                                        {
+                                                                            ...field.value,
+                                                                            accountName:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                    )
+                                                                }
+                                                                placeholder="Account Name"
+                                                            />
+                                                            <Input
+                                                                value={
+                                                                    field.value
+                                                                        .accountNumber ||
+                                                                    ""
+                                                                }
+                                                                onChange={(e) =>
+                                                                    field.onChange(
+                                                                        {
+                                                                            ...field.value,
+                                                                            accountNumber:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                    )
+                                                                }
+                                                                placeholder="Account Number"
+                                                            />
+                                                            <Input
+                                                                value={
+                                                                    field.value
+                                                                        .routingNumber ||
+                                                                    ""
+                                                                }
+                                                                onChange={(e) =>
+                                                                    field.onChange(
+                                                                        {
+                                                                            ...field.value,
+                                                                            routingNumber:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                    )
+                                                                }
+                                                                placeholder="Routing No / Branch (Optional)"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    />
+                                </div>
+
+                                {/* PAYMENT SCHEDULE BUILDER */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h3 className="text-sm font-bold text-foreground">
+                                                Payment Schedule Milestones
+                                            </h3>
+                                            <p className="text-xs text-muted-foreground">
+                                                Milestones breakdown for the
+                                                payment table on PDF.
+                                            </p>
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() =>
+                                                appendPmt({
+                                                    pmtNo: pmtFields.length + 1,
+                                                    milestone: "",
+                                                    calculation: "",
+                                                    amount: 0,
+                                                })
+                                            }
+                                            className="border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white"
+                                        >
+                                            <Plus className="mr-1 h-3.5 w-3.5" />{" "}
+                                            Add Milestone
+                                        </Button>
+                                    </div>
+
+                                    {pmtFields.map((field, idx) => (
+                                        <div
+                                            key={field.id}
+                                            className="p-3 rounded-lg border border-border bg-accent/20 grid grid-cols-1 sm:grid-cols-4 gap-3 relative items-center"
+                                        >
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => removePmt(idx)}
+                                                className="absolute right-2 top-2 h-5 w-5 text-muted-foreground hover:text-red-500"
+                                            >
+                                                <X className="h-3.5 w-3.5" />
+                                            </Button>
+
+                                            <div className="space-y-1 sm:col-span-2">
+                                                <label className="text-[11px] font-medium text-muted-foreground">
+                                                    Milestone / Trigger
+                                                </label>
+                                                <Input
+                                                    {...register(
+                                                        `paymentSchedule.${idx}.milestone`,
+                                                    )}
+                                                    placeholder="e.g. Advance Payment"
+                                                    className="bg-background text-xs h-9"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[11px] font-medium text-muted-foreground">
+                                                    Calculation Formula
+                                                </label>
+                                                <Input
+                                                    {...register(
+                                                        `paymentSchedule.${idx}.calculation`,
+                                                    )}
+                                                    placeholder="e.g. 30% of Total"
+                                                    className="bg-background text-xs h-9"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[11px] font-medium text-muted-foreground">
+                                                    Amount
+                                                </label>
+                                                <Input
+                                                    type="number"
+                                                    {...register(
+                                                        `paymentSchedule.${idx}.amount`,
+                                                        { valueAsNumber: true },
+                                                    )}
+                                                    placeholder="Amount"
+                                                    className="bg-background text-xs h-9"
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB 5: TERMS & FOOTER */}
+                        {activeTab === "terms" && (
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-sm font-bold text-foreground">
+                                            Terms & Conditions
+                                        </h3>
+                                        <p className="text-xs text-muted-foreground">
+                                            Numbered list of terms included on
+                                            the proposal agreement.
+                                        </p>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                            appendTerm({ title: "", text: "" })
+                                        }
+                                        className="border-indigo-600 text-indigo-600 hover:bg-indigo-600 hover:text-white"
+                                    >
+                                        <Plus className="mr-1 h-3.5 w-3.5" />{" "}
+                                        Add Term
+                                    </Button>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {termFields.map((field, idx) => (
+                                        <div
+                                            key={field.id}
+                                            className="p-3 rounded-lg border border-border bg-accent/20 space-y-2 relative"
+                                        >
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => removeTerm(idx)}
+                                                className="absolute right-2 top-2 h-5 w-5 text-muted-foreground hover:text-red-500"
+                                            >
+                                                <X className="h-3.5 w-3.5" />
+                                            </Button>
+
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold text-indigo-600">
+                                                    {idx + 1}.
+                                                </span>
+                                                <Input
+                                                    {...register(
+                                                        `termsAndConditions.${idx}.title`,
+                                                    )}
+                                                    placeholder="Term Title (e.g. Revisions)"
+                                                    className="font-semibold text-xs bg-background h-8"
+                                                />
+                                            </div>
+                                            <Textarea
+                                                {...register(
+                                                    `termsAndConditions.${idx}.text`,
+                                                )}
+                                                placeholder="Term description..."
+                                                className="min-h-12.5 text-xs bg-background"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-3">
+                                    <h4 className="text-xs font-bold text-foreground">
+                                        PDF Footer Note
+                                    </h4>
+                                    <Input
+                                        {...register("footerNote")}
+                                        placeholder="e.g. Thank you for the opportunity... | Opygen"
+                                        className="bg-background text-xs"
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </form>
                 </div>
 
-                <div className="flex justify-end gap-3 px-6 py-4 border-t border-border bg-muted/20 shrink-0">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={onClose}
-                        className="cursor-pointer"
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        type="submit"
-                        form="quote-form"
-                        disabled={isSubmitting}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer min-w-[120px]"
-                    >
-                        {isSubmitting ? (
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : null}
-                        {submitLabelMap[mode]}
-                    </Button>
+                {/* Footer Buttons */}
+                <div className="flex justify-between items-center px-6 py-3 border-t border-border bg-muted/20 shrink-0">
+                    <p className="text-xs text-muted-foreground">
+                        Note: All sections and account details are optional.
+                    </p>
+                    <div className="flex gap-3">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={onClose}
+                            className="cursor-pointer text-xs"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            form="quote-form"
+                            disabled={isSubmitting}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer min-w-32.5 text-xs font-semibold"
+                        >
+                            {isSubmitting ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : null}
+                            {mode === "edit" ? "Update Quote" : "Create Quote"}
+                        </Button>
+                    </div>
                 </div>
             </DialogContent>
         </Dialog>
+    );
+}
+
+// Sub-component for features list inside section
+function FeatureListArray({
+    sIdx,
+    control,
+    register,
+}: {
+    sIdx: number;
+    control: any;
+    register: any;
+}) {
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: `featureSections.${sIdx}.features`,
+    });
+
+    return (
+        <div className="space-y-2 pt-2 border-t border-border/50">
+            <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-indigo-600">
+                    Features List
+                </span>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => append({ featureName: "", description: "" })}
+                    className="h-7 text-xs text-indigo-600 hover:bg-indigo-50"
+                >
+                    <Plus className="h-3 w-3 mr-1" /> Add Feature Item
+                </Button>
+            </div>
+
+            {fields.map((fItem, fIdx) => (
+                <div
+                    key={fItem.id}
+                    className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center bg-background p-2 rounded-lg border border-border relative pr-8"
+                >
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => remove(fIdx)}
+                        className="absolute right-1 top-2 h-5 w-5 text-muted-foreground hover:text-red-500"
+                    >
+                        <X className="h-3 w-3" />
+                    </Button>
+
+                    <Input
+                        {...register(
+                            `featureSections.${sIdx}.features.${fIdx}.featureName`,
+                        )}
+                        placeholder="Feature Name"
+                        className="text-xs h-8 font-medium"
+                    />
+                    <Input
+                        {...register(
+                            `featureSections.${sIdx}.features.${fIdx}.description`,
+                        )}
+                        placeholder="Feature Description..."
+                        className="text-xs h-8 sm:col-span-2"
+                    />
+                </div>
+            ))}
+        </div>
     );
 }

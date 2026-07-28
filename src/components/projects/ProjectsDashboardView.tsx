@@ -77,6 +77,11 @@ export default function ProjectsDashboardView() {
 
     const { projects, isLoading, filters } = useAppSelector((state) => state.projects);
     const { search, status, priority, assignee, sortBy, sortOrder, currentPage } = filters;
+    const [searchInput, setSearchInput] = useState(search);
+
+    useEffect(() => {
+        setSearchInput(search);
+    }, [search]);
 
     const { data: users } = useQuery<ProjectUser[]>({
         queryKey: ["users"],
@@ -209,15 +214,34 @@ export default function ProjectsDashboardView() {
 
             {/* Redesigned Filters Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 bg-card/60 backdrop-blur-md p-4 rounded-xl border border-border shadow-xs">
-                <div className="relative sm:col-span-2">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        dispatch(setSearchFilter(searchInput));
+                    }}
+                    className="relative sm:col-span-2 flex items-center"
+                >
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                        value={search}
-                        onChange={(e) => dispatch(setSearchFilter(e.target.value))}
-                        placeholder="Search by title or description..."
-                        className="pl-9 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 text-foreground h-10 transition-all"
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.preventDefault();
+                                dispatch(setSearchFilter(searchInput));
+                            }
+                        }}
+                        placeholder="Search by title or description... (Press Enter)"
+                        className="pl-9 pr-20 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 text-foreground h-10 transition-all w-full"
                     />
-                </div>
+                    <button
+                        type="submit"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-2.5 py-1.5 rounded-md font-semibold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                        title="Search"
+                    >
+                        Search
+                    </button>
+                </form>
 
                 <div>
                     <Select

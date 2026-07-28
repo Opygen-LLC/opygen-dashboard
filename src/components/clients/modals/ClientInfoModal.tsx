@@ -150,7 +150,15 @@ export function ClientInfoModal({ isOpen, onClose, client, onEdit }: ClientInfoM
                                                 )}
                                             </div>
                                         </div>
-                                        {client.status === "Follow-up" && client.followupDate && (
+                                         {client.assignedTo && (
+                                            <div>
+                                                <p className="text-xs text-muted-foreground mb-1">Call Assigned To</p>
+                                                <p className="text-sm font-semibold text-purple-600 dark:text-purple-400 bg-purple-500/10 w-fit px-2.5 py-0.5 rounded-md border border-purple-500/20">
+                                                    {typeof client.assignedTo === "object" ? client.assignedTo.name : client.assignedTo}
+                                                </p>
+                                            </div>
+                                         )}
+                                         {client.status === "Follow-up" && client.followupDate && (
                                             <div>
                                                 <p className="text-xs text-muted-foreground mb-1">Scheduled Follow-up</p>
                                                 <p className="text-sm font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 w-fit px-2 py-0.5 rounded-md">

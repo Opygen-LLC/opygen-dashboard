@@ -28,6 +28,7 @@ import {
     Plus,
     X,
     CreditCard,
+    Briefcase,
 } from "lucide-react";
 import { Loading } from "@/components/ui/Loading";
 import { useForm, Controller } from "react-hook-form";
@@ -976,29 +977,56 @@ export default function UserProfileView() {
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-1.5">
-                                                <Label
-                                                    htmlFor="email"
-                                                    className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                                                >
-                                                    Email Address
-                                                </Label>
-                                                <div className="relative">
-                                                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                                    <Input
-                                                        id="email"
-                                                        value={
-                                                            session?.user
-                                                                ?.email || ""
-                                                        }
-                                                        disabled
-                                                        className="pl-10 bg-accent/40 border-border text-muted-foreground cursor-not-allowed h-10 w-full"
-                                                    />
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="space-y-1.5">
+                                                    <Label
+                                                        htmlFor="email"
+                                                        className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                                                    >
+                                                        Email Address
+                                                    </Label>
+                                                    <div className="relative">
+                                                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                                        <Input
+                                                            id="email"
+                                                            value={
+                                                                session?.user
+                                                                    ?.email || ""
+                                                            }
+                                                            disabled
+                                                            className="pl-10 bg-accent/40 border-border text-muted-foreground cursor-not-allowed h-10 w-full"
+                                                        />
+                                                    </div>
+                                                    <p className="text-[11px] text-muted-foreground italic mt-1">
+                                                        Email addresses are unique
+                                                        and locked to this account.
+                                                    </p>
                                                 </div>
-                                                <p className="text-[11px] text-muted-foreground italic mt-1">
-                                                    Email addresses are unique
-                                                    and locked to this account.
-                                                </p>
+
+                                                <div className="space-y-1.5">
+                                                    <Label
+                                                        htmlFor="title"
+                                                        className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                                                    >
+                                                        Job Title / Designation
+                                                    </Label>
+                                                    <div className="relative">
+                                                        <Briefcase className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                                        <Input
+                                                            id="title"
+                                                            value={
+                                                                userProfile?.title ||
+                                                                session?.user?.title ||
+                                                                "Not assigned"
+                                                            }
+                                                            disabled
+                                                            className="pl-10 bg-accent/40 border-border text-muted-foreground cursor-not-allowed h-10 w-full font-medium"
+                                                        />
+                                                    </div>
+                                                    <p className="text-[11px] text-muted-foreground italic mt-1">
+                                                        Job title is managed by administrator via users menu.
+                                                    </p>
+                                                </div>
                                             </div>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 <div className="space-y-1.5">

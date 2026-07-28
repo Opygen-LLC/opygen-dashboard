@@ -125,7 +125,7 @@ function AdNameSelect({ value, onChange, existingAdNames, error }: AdNameSelectP
             ) : (
                 <Select
                     value={existingAdNames.includes(value) ? value : ""}
-                    onValueChange={handleSelectChange}
+                    onValueChange={(val: any) => handleSelectChange(val)}
                 >
                     <SelectTrigger
                         className={cn(
@@ -297,7 +297,7 @@ export function ClientFormModal({
             companyName: "",
             number: "",
             socialMediaLink: "",
-            country: "",
+            country: "Bangladesh",
             minAmount: 0,
             maxAmount: 0,
             notes: "",
@@ -323,6 +323,16 @@ export function ClientFormModal({
         enabled: isOpen,
     });
 
+    const { data: usersList = [] } = useQuery<any[]>({
+        queryKey: ["users"],
+        queryFn: async () => {
+            const res = await fetch("/api/users");
+            if (!res.ok) return [];
+            return res.json();
+        },
+        enabled: isOpen,
+    });
+
     useEffect(() => {
         if (isOpen) {
             if (editingClient) {
@@ -331,7 +341,7 @@ export function ClientFormModal({
                     companyName: editingClient.companyName || "",
                     number: editingClient.number || "",
                     socialMediaLink: editingClient.socialMediaLink || "",
-                    country: editingClient.country,
+                    country: editingClient.country || "Bangladesh",
                     minAmount: editingClient.minAmount || 0,
                     maxAmount: editingClient.maxAmount || 0,
                     notes: editingClient.notes || "",
@@ -339,6 +349,11 @@ export function ClientFormModal({
                     otherSource: editingClient.otherSource || "",
                     adName: editingClient.adName || "",
                     status: editingClient.status || "Pending",
+                    assignedTo: editingClient.assignedTo
+                        ? typeof editingClient.assignedTo === "object"
+                            ? editingClient.assignedTo._id
+                            : editingClient.assignedTo
+                        : null,
                     followupDate: editingClient.followupDate
                         ? new Date(editingClient.followupDate)
                               .toISOString()
@@ -356,7 +371,7 @@ export function ClientFormModal({
                     companyName: "",
                     number: "",
                     socialMediaLink: "",
-                    country: "",
+                    country: "Bangladesh",
                     minAmount: 0,
                     maxAmount: 0,
                     notes: "",
@@ -364,6 +379,7 @@ export function ClientFormModal({
                     otherSource: "",
                     adName: "",
                     status: "Pending",
+                    assignedTo: null,
                     followupDate: "",
                     meetingDate: "",
                 });
@@ -592,6 +608,43 @@ export function ClientFormModal({
                                                 }
                                             </p>
                                         )}
+                                    </div>
+
+                                    {/* Call Assigned To */}
+                                    <div className="space-y-2 md:col-span-1">
+                                        <label className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1">
+                                            Call Assigned To (User)
+                                        </label>
+                                        <Controller
+                                            name="assignedTo"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select
+                                                    value={field.value || "unassigned"}
+                                                    onValueChange={(val: any) =>
+                                                        field.onChange(val === "unassigned" ? null : val)
+                                                    }
+                                                >
+                                                    <SelectTrigger className="w-full h-10! bg-background/50 border-border">
+                                                        <SelectValue placeholder="Select assigned user" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="z-[200]">
+                                                        <SelectItem value="unassigned" className="h-10!">
+                                                            -- Unassigned --
+                                                        </SelectItem>
+                                                        {usersList.map((user: any) => (
+                                                            <SelectItem
+                                                                key={user._id}
+                                                                value={user._id}
+                                                                className="h-10!"
+                                                            >
+                                                                {user.name} ({user.role})
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        />
                                     </div>
 
                                     {statusWatch === "Follow-up" && (

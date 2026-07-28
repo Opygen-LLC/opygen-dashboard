@@ -24,10 +24,10 @@ import {
     Settings,
     Landmark,
     FileText,
+    Globe,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import NotificationBellDrawer from "@/components/notifications/NotificationBellDrawer";
 
 export default function AdminDashboardLayout({
     children,
@@ -60,6 +60,7 @@ export default function AdminDashboardLayout({
         },
         { name: "Quotes", href: "/admin-dashboard/quotes", icon: FileText },
         { name: "Clients", href: "/admin-dashboard/clients", icon: Briefcase },
+        { name: "Demo Websites", href: "/admin-dashboard/demo-websites", icon: Globe },
         { name: "Users", href: "/admin-dashboard/users", icon: Users },
         { name: "Accounts", href: "/admin-dashboard/accounts", icon: Landmark },
         { name: "Profile", href: "/admin-dashboard/profile", icon: UserIcon },
@@ -137,7 +138,6 @@ export default function AdminDashboardLayout({
                                 {session?.user?.email}
                             </p>
                         </div>
-                        <NotificationBellDrawer />
                         <Button
                             variant="ghost"
                             size="icon"
@@ -171,7 +171,6 @@ export default function AdminDashboardLayout({
                         </span>
                     </Link>
                     <div className="flex items-center gap-2">
-                        <NotificationBellDrawer />
                         <Button
                             variant="ghost"
                             size="icon"

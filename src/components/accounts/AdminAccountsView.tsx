@@ -39,14 +39,11 @@ export default function AdminAccountsView() {
     const [type, setType] = useState("all");
     const [debouncedSearch, setDebouncedSearch] = useState("");
 
-    // Debounce search input
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearch(search);
-            setPage(1); // Reset to first page on new search
-        }, 500);
-        return () => clearTimeout(timer);
-    }, [search]);
+    // Controlled search trigger handler
+    const handleSearchSubmit = () => {
+        setDebouncedSearch(search);
+        setPage(1);
+    };
 
     const { data, isLoading, error } = useQuery({
         queryKey: ["adminAccounts", page, limit, debouncedSearch, type],
@@ -90,20 +87,39 @@ export default function AdminAccountsView() {
             </div>
 
             <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-card p-4 rounded-xl shadow-sm border border-border">
-                <div className="relative w-full md:max-w-md">
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        handleSearchSubmit();
+                    }}
+                    className="relative w-full md:max-w-md flex items-center"
+                >
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                        placeholder="Search by User Name, Email, or Provider..."
+                        placeholder="Search by User Name, Email, or Provider... (Press Enter)"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="pl-9 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 text-foreground h-10 transition-all w-full"
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleSearchSubmit();
+                            }
+                        }}
+                        className="pl-9 pr-20 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 text-foreground h-10 transition-all w-full"
                     />
-                </div>
+                    <button
+                        type="submit"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-2.5 py-1.5 rounded-md font-semibold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                        title="Search"
+                    >
+                        Search
+                    </button>
+                </form>
                 <div className="w-full md:w-auto">
                     <Select
                         value={type}
-                        onValueChange={(val) => {
-                            setType(val);
+                        onValueChange={(val: any) => {
+                            setType(typeof val === "string" ? val : "all");
                             setPage(1);
                         }}
                     >

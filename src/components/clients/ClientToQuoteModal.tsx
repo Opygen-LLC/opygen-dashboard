@@ -185,7 +185,7 @@ export default function ClientToQuoteModal({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">Currency</label>
-                            <Select value={currency} onValueChange={setCurrency}>
+                            <Select value={currency} onValueChange={(val: any) => setCurrency(typeof val === "string" ? val : "USD")}>
                                 <SelectTrigger className="w-full h-10 border-border focus-visible:ring-indigo-500">
                                     <SelectValue placeholder="Select Currency" />
                                 </SelectTrigger>

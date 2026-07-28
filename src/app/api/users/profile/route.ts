@@ -25,7 +25,7 @@ export async function PATCH(req: NextRequest) {
             );
         }
 
-        const { name, avatarUrl, password, mobileNumber, balance, accounts, fathersName, mothersName, gender, dateOfBirth, bloodGroup } =
+        const { name, title, avatarUrl, password, mobileNumber, balance, accounts, fathersName, mothersName, gender, dateOfBirth, bloodGroup } =
             parseResult.data;
 
         const user = await User.findById(session.user.id);
@@ -37,6 +37,9 @@ export async function PATCH(req: NextRequest) {
         }
         if (name !== undefined) {
             user.name = name;
+        }
+        if (title !== undefined && session.user.role === "admin") {
+            user.title = title;
         }
 
         if (avatarUrl !== undefined && avatarUrl !== user.avatarUrl) {

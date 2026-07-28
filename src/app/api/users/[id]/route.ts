@@ -25,8 +25,16 @@ export async function PATCH(
       return NextResponse.json({ error: 'Cannot demote or block your own administrator account.' }, { status: 400 });
     }
 
-    const { role, status, mobileNumber } = await req.json();
+    const { name, title, role, status, mobileNumber } = await req.json();
     const updateData: any = {};
+
+    if (name !== undefined) {
+      updateData.name = name;
+    }
+
+    if (title !== undefined) {
+      updateData.title = title;
+    }
 
     if (role !== undefined) {
       if (!Object.values(UserRole).includes(role as UserRole)) {

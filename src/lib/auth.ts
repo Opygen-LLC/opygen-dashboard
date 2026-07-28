@@ -76,6 +76,7 @@ export const authOptions: NextAuthOptions = {
                     status: user.status,
                     needPasswordChange: user.needPasswordChange,
                     mobileNumber: user.mobileNumber || "",
+                    title: user.title || "",
                     sessionToken,
                 };
             },
@@ -91,6 +92,7 @@ export const authOptions: NextAuthOptions = {
                 token.needPasswordChange = user.needPasswordChange;
                 token.sessionToken = user.sessionToken;
                 token.mobileNumber = user.mobileNumber;
+                token.title = user.title;
             }
             if (trigger === "update" && session) {
                 token.name = session.name || token.name;
@@ -108,6 +110,9 @@ export const authOptions: NextAuthOptions = {
                 }
                 if (session.mobileNumber !== undefined) {
                     token.mobileNumber = session.mobileNumber;
+                }
+                if (session.title !== undefined) {
+                    token.title = session.title;
                 }
             }
             return token;
@@ -136,6 +141,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.needPasswordChange = token.needPasswordChange;
                 session.user.sessionToken = token.sessionToken;
                 session.user.mobileNumber = token.mobileNumber;
+                session.user.title = token.title;
             }
             return session;
         },
