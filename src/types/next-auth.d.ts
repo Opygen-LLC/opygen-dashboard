@@ -11,7 +11,7 @@ declare module "next-auth" {
       needPasswordChange?: boolean;
       sessionToken?: string;
       mobileNumber?: string;
-      title?: string;
+      title?: string[] | string;
     } & DefaultSession["user"];
   }
 
@@ -22,7 +22,7 @@ declare module "next-auth" {
     needPasswordChange?: boolean;
     sessionToken?: string;
     mobileNumber?: string;
-    title?: string;
+    title?: string[] | string;
   }
 }
 
@@ -35,6 +35,6 @@ declare module "next-auth/jwt" {
     needPasswordChange?: boolean;
     sessionToken?: string;
     mobileNumber?: string;
-    title?: string;
+    title?: string[] | string;
   }
 }

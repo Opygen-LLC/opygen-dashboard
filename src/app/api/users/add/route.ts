@@ -7,6 +7,7 @@ import { authOptions } from '@/lib/auth';
 import { addUserSchema } from '@/lib/validations';
 import { UserRole, UserStatus } from '@/types';
 import { sendEmail } from '@/lib/email';
+import { parseUserTitle } from '@/lib/utils';
 
 export async function POST(req: NextRequest) {
   try {
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
     // Create user with force-change-password requirement and pending status
     const newUser = await User.create({
       name,
-      title,
+      title: parseUserTitle(title),
       email: email.toLowerCase().trim(),
       passwordHash,
       role,

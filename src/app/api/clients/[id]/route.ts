@@ -19,6 +19,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const patchSchema = z.object({
       status: z.enum(['Pending', 'Confirmed', 'Follow-up', 'Meeting Scheduled', 'Blocked', 'Declined']).optional(),
+      priority: z.enum(['low', 'medium', 'high']).optional(),
       followupDate: z.string().optional().nullable(),
       meetingDate: z.string().optional().nullable(),
       assignedTo: z.string().optional().nullable(),

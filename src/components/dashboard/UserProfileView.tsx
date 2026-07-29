@@ -48,7 +48,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "../../lib/utils";
+import { cn, formatUserTitle } from "../../lib/utils";
 import { useAppSelector, useAppDispatch } from "@/store";
 import { setUserProfile, updateAvatar } from "@/store/userSlice";
 import User from "../../models/User";
@@ -225,6 +225,8 @@ export default function UserProfileView() {
                 ? new Date(reduxUser.dateOfBirth).toISOString().split("T")[0]
                 : "",
             bloodGroup: reduxUser.bloodGroup || "",
+            nidNumber: reduxUser.nidNumber || "",
+            passportNumber: reduxUser.passportNumber || "",
         },
     });
 
@@ -378,6 +380,8 @@ export default function UserProfileView() {
                     gender: userProfile.gender,
                     dateOfBirth: userProfile.dateOfBirth,
                     bloodGroup: userProfile.bloodGroup,
+                    nidNumber: userProfile.nidNumber,
+                    passportNumber: userProfile.passportNumber,
                     accounts: userProfile.accounts || [],
                 }),
             );
@@ -622,18 +626,6 @@ export default function UserProfileView() {
             description: "Name & contact",
         },
         {
-            id: "security",
-            name: "Security",
-            icon: KeyRound,
-            description: "Password",
-        },
-        {
-            id: "sessions",
-            name: "Active Sessions",
-            icon: Laptop,
-            description: `${sessions.length} device${sessions.length === 1 ? "" : "s"}`,
-        },
-        {
             id: "statement",
             name: "Salary & Balance",
             icon: Wallet,
@@ -644,6 +636,18 @@ export default function UserProfileView() {
             name: "Linked Accounts",
             icon: Landmark,
             description: "Bank & Mobile",
+        },
+        {
+            id: "security",
+            name: "Security",
+            icon: KeyRound,
+            description: "Password",
+        },
+        {
+            id: "sessions",
+            name: "Active Sessions",
+            icon: Laptop,
+            description: `${sessions.length} device${sessions.length === 1 ? "" : "s"}`,
         },
     ] as const;
 
@@ -705,13 +709,30 @@ export default function UserProfileView() {
                                     {nameValue}
                                 </h2>
                                 <div className="flex flex-wrap gap-1.5 justify-center sm:justify-start">
-                                    <Badge className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 px-2.5 py-0.5 font-bold text-xs capitalize">
+                                    {/* <Badge className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 px-2.5 py-0.5 font-bold text-xs capitalize">
                                         {session?.user?.role || "Member"}
                                     </Badge>
                                     <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 font-bold text-xs flex items-center gap-1">
                                         <CheckCircle className="h-3 w-3 shrink-0" />
                                         {session?.user?.status || "Active"}
-                                    </Badge>
+                                    </Badge> */}
+                                    {(() => {
+                                        const titleData = userProfile?.title || session?.user?.title;
+                                        const titleArr = Array.isArray(titleData)
+                                            ? titleData.filter(Boolean)
+                                            : titleData
+                                            ? [String(titleData)]
+                                            : [];
+                                        return titleArr.map((t: string, idx: number) => (
+                                            <Badge
+                                                key={idx}
+                                                className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 px-2.5 py-0.5 font-bold text-xs flex items-center gap-1"
+                                            >
+                                                <Briefcase className="h-3 w-3 shrink-0" />
+                                                {t}
+                                            </Badge>
+                                        ));
+                                    })()}
                                 </div>
                                 <p className="text-sm font-medium text-muted-foreground flex items-center justify-center sm:justify-start gap-1.5">
                                     <Mail className="h-4 w-4 text-muted-foreground/80" />
@@ -980,57 +1001,6 @@ export default function UserProfileView() {
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 <div className="space-y-1.5">
                                                     <Label
-                                                        htmlFor="email"
-                                                        className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                                                    >
-                                                        Email Address
-                                                    </Label>
-                                                    <div className="relative">
-                                                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                                        <Input
-                                                            id="email"
-                                                            value={
-                                                                session?.user
-                                                                    ?.email || ""
-                                                            }
-                                                            disabled
-                                                            className="pl-10 bg-accent/40 border-border text-muted-foreground cursor-not-allowed h-10 w-full"
-                                                        />
-                                                    </div>
-                                                    <p className="text-[11px] text-muted-foreground italic mt-1">
-                                                        Email addresses are unique
-                                                        and locked to this account.
-                                                    </p>
-                                                </div>
-
-                                                <div className="space-y-1.5">
-                                                    <Label
-                                                        htmlFor="title"
-                                                        className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
-                                                    >
-                                                        Job Title / Designation
-                                                    </Label>
-                                                    <div className="relative">
-                                                        <Briefcase className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                                        <Input
-                                                            id="title"
-                                                            value={
-                                                                userProfile?.title ||
-                                                                session?.user?.title ||
-                                                                "Not assigned"
-                                                            }
-                                                            disabled
-                                                            className="pl-10 bg-accent/40 border-border text-muted-foreground cursor-not-allowed h-10 w-full font-medium"
-                                                        />
-                                                    </div>
-                                                    <p className="text-[11px] text-muted-foreground italic mt-1">
-                                                        Job title is managed by administrator via users menu.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <div className="space-y-1.5">
-                                                    <Label
                                                         htmlFor="fathersName"
                                                         className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
                                                     >
@@ -1184,6 +1154,42 @@ export default function UserProfileView() {
                                                                 </SelectContent>
                                                             </Select>
                                                         )}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="space-y-1.5">
+                                                    <Label
+                                                        htmlFor="nidNumber"
+                                                        className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                                                    >
+                                                        NID Number
+                                                    </Label>
+                                                    <Input
+                                                        id="nidNumber"
+                                                        placeholder="e.g. 1990123456789"
+                                                        {...registerProfile(
+                                                            "nidNumber",
+                                                        )}
+                                                        className="bg-background border-border text-foreground focus-visible:ring-indigo-500 h-10 w-full"
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-1.5">
+                                                    <Label
+                                                        htmlFor="passportNumber"
+                                                        className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+                                                    >
+                                                        Passport Number
+                                                    </Label>
+                                                    <Input
+                                                        id="passportNumber"
+                                                        placeholder="e.g. A01234567"
+                                                        {...registerProfile(
+                                                            "passportNumber",
+                                                        )}
+                                                        className="bg-background border-border text-foreground focus-visible:ring-indigo-500 h-10 w-full"
                                                     />
                                                 </div>
                                             </div>

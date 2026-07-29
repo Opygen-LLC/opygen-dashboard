@@ -25,7 +25,9 @@ import {
     CheckCircle2,
     Calendar as CalendarIcon,
     List,
+    Filter,
 } from "lucide-react";
+import { FilterDrawer } from "@/components/ui/FilterDrawer";
 import { ClientCalendarView } from "./ClientCalendarView";
 import { StatsGrid } from "@/components/dashboard/stats/StatsGrid";
 import { StatsCard } from "@/components/dashboard/stats/StatsCard";
@@ -58,10 +60,55 @@ export default function ClientDashboardView() {
     const [editingClient, setEditingClient] = useState<any>(null);
     const [convertingClient, setConvertingClient] = useState<any>(null);
     const [convertingQuoteClient, setConvertingQuoteClient] = useState<any>(null);
+    const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
     const [filterSource, setFilterSource] = useState<string>("All");
     const [filterStatus, setFilterStatus] = useState<string>("All");
     const [filterAdName, setFilterAdName] = useState<string>("All");
+    const [filterPriority, setFilterPriority] = useState<string>("All");
     const [filterDate, setFilterDate] = useState<string>("");
+    const [tempFilterSource, setTempFilterSource] = useState<string>("All");
+    const [tempFilterStatus, setTempFilterStatus] = useState<string>("All");
+    const [tempFilterAdName, setTempFilterAdName] = useState<string>("All");
+    const [tempFilterPriority, setTempFilterPriority] = useState<string>("All");
+    const [tempFilterDate, setTempFilterDate] = useState<string>("");
+
+    const openFilterDrawer = () => {
+        setTempFilterSource(filterSource);
+        setTempFilterStatus(filterStatus);
+        setTempFilterAdName(filterAdName);
+        setTempFilterPriority(filterPriority);
+        setTempFilterDate(filterDate);
+        setIsFilterOpen(true);
+    };
+
+    const handleApplyFilters = () => {
+        setFilterSource(tempFilterSource);
+        setFilterStatus(tempFilterStatus);
+        setFilterAdName(tempFilterAdName);
+        setFilterPriority(tempFilterPriority);
+        setFilterDate(tempFilterDate);
+    };
+
+    const handleResetFilters = () => {
+        setTempFilterSource("All");
+        setTempFilterStatus("All");
+        setTempFilterAdName("All");
+        setTempFilterPriority("All");
+        setTempFilterDate("");
+        setFilterSource("All");
+        setFilterStatus("All");
+        setFilterAdName("All");
+        setFilterPriority("All");
+        setFilterDate("");
+    };
+
+    const activeFilterCount = [
+        filterSource !== "All",
+        filterStatus !== "All",
+        filterAdName !== "All",
+        filterPriority !== "All",
+        filterDate !== "",
+    ].filter(Boolean).length;
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [searchInput, setSearchInput] = useState<string>("");
     const [currentPage, setCurrentPage] = useState<number>(1);
@@ -90,7 +137,7 @@ export default function ClientDashboardView() {
     // Reset pagination when filter or search changes
     useEffect(() => {
         setCurrentPage(1);
-    }, [filterSource, filterStatus, filterAdName, filterDate, searchQuery]);
+    }, [filterSource, filterStatus, filterAdName, filterPriority, filterDate, searchQuery]);
 
     // Fetch clients
     const {
@@ -98,12 +145,13 @@ export default function ClientDashboardView() {
         isLoading: isClientsLoading,
         refetch: refetchClients,
     } = useQuery({
-        queryKey: ["clients", filterSource, filterStatus, filterAdName, filterDate, searchQuery],
+        queryKey: ["clients", filterSource, filterStatus, filterAdName, filterPriority, filterDate, searchQuery],
         queryFn: async () => {
             const params = new URLSearchParams();
             if (filterSource !== "All") params.append("source", filterSource);
             if (filterStatus !== "All") params.append("status", filterStatus);
             if (filterAdName !== "All") params.append("adName", filterAdName);
+            if (filterPriority !== "All") params.append("priority", filterPriority);
             if (filterDate) params.append("followupDate", filterDate);
             if (searchQuery) params.append("search", searchQuery);
 
@@ -421,19 +469,19 @@ export default function ClientDashboardView() {
             ) : (
                 <>
 
-            {/* Redesigned Filters Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 bg-card/60 backdrop-blur-md p-4 rounded-xl border border-border shadow-xs mb-6">
+            {/* Controls Bar: Search Left, Filter Button Right */}
+            <div className="flex items-center justify-between gap-3 bg-card/60 backdrop-blur-md p-4 rounded-xl border border-border shadow-xs mb-6">
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
                         setSearchQuery(searchInput);
                     }}
-                    className="relative sm:col-span-2 flex items-center"
+                    className="relative w-full sm:max-w-md flex items-center flex-1"
                 >
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Search by name, phone number, company... (Press Enter)"
-                        className="pl-9 pr-20 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 text-foreground h-10 transition-all w-full"
+                        className="pl-9 pr-20 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 text-foreground h-10 transition-all w-full"
                         value={searchInput}
                         onChange={(e) => setSearchInput(e.target.value)}
                         onKeyDown={(e) => {
@@ -452,107 +500,129 @@ export default function ClientDashboardView() {
                     </button>
                 </form>
 
-                <div>
-                    <Select
-                        value={filterStatus}
-                        onValueChange={(val: any) => setFilterStatus(typeof val === "string" ? val : "All")}
+                <div className="flex items-center gap-2 sm:w-auto justify-end">
+                    <Button
+                        onClick={openFilterDrawer}
+                        variant="outline"
+                        className="bg-background/50 border-border hover:bg-accent text-foreground h-10 gap-2 cursor-pointer relative font-semibold text-xs"
                     >
-                        <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
-                            <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border text-foreground z-[150]">
-                            <SelectItem value="All" className="h-10!">
-                                All Statuses
-                            </SelectItem>
-                            <SelectItem value="Pending" className="h-10!">
-                                Pending
-                            </SelectItem>
-                            <SelectItem value="Confirmed" className="h-10!">
-                                Confirmed
-                            </SelectItem>
-                            <SelectItem value="Follow-up" className="h-10!">
-                                Follow-up
-                            </SelectItem>
-                            <SelectItem value="Meeting Scheduled" className="h-10!">
-                                Meeting Scheduled
-                            </SelectItem>
-                            <SelectItem value="Blocked" className="h-10!">
-                                Blocked
-                            </SelectItem>
-                            <SelectItem value="Declined" className="h-10!">
-                                Declined
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <div>
-                    <Select
-                        value={filterSource}
-                        onValueChange={(val: any) => setFilterSource(typeof val === "string" ? val : "All")}
-                    >
-                        <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
-                            <SelectValue placeholder="Source" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border text-foreground z-[150]">
-                            <SelectItem value="All" className="h-10!">
-                                All Sources
-                            </SelectItem>
-                            <SelectItem value="Social Media" className="h-10!">
-                                Social Media
-                            </SelectItem>
-                            <SelectItem value="Ads" className="h-10!">
-                                Ads
-                            </SelectItem>
-                            <SelectItem value="Referral" className="h-10!">
-                                Referral
-                            </SelectItem>
-                            <SelectItem value="Cold Outreach" className="h-10!">
-                                Cold Outreach
-                            </SelectItem>
-                            <SelectItem
-                                value="Organic Search"
-                                className="h-10!"
-                            >
-                                Organic Search
-                            </SelectItem>
-                            <SelectItem value="Other" className="h-10!">
-                                Other
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <div>
-                    <Select
-                        value={filterAdName}
-                        onValueChange={(val: any) => setFilterAdName(typeof val === "string" ? val : "All")}
-                    >
-                        <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
-                            <SelectValue placeholder="Ad Name" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border text-foreground z-[150]">
-                            <SelectItem value="All" className="h-10!">
-                                All Ad Names
-                            </SelectItem>
-                            {existingAdNames.map((adName) => (
-                                <SelectItem key={adName} value={adName} className="h-10!">
-                                    {adName}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <div>
-                    <Input
-                        type="date"
-                        value={filterDate}
-                        onChange={(e) => setFilterDate(e.target.value)}
-                        className="bg-background/50 border-border text-foreground h-10! focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 transition-all w-full"
-                    />
+                        <Filter className="h-4 w-4 text-indigo-500" />
+                        <span>Filter</span>
+                        {activeFilterCount > 0 && (
+                            <Badge className="ml-1 bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                                {activeFilterCount}
+                            </Badge>
+                        )}
+                    </Button>
                 </div>
             </div>
+
+            {/* Filter Drawer Sidebar */}
+            <FilterDrawer
+                isOpen={isFilterOpen}
+                onClose={() => setIsFilterOpen(false)}
+                onApply={handleApplyFilters}
+                onReset={handleResetFilters}
+                activeFilterCount={activeFilterCount}
+                title="Client Filters"
+                description="Filter client records by status, lead source, ad campaign, or date."
+            >
+                <div className="space-y-4">
+                    <div className="flex gap-2">
+                        <div className="space-y-1.5 flex-1">
+                            <Label className="text-xs font-semibold text-muted-foreground">Status</Label>
+                            <Select
+                                value={tempFilterStatus}
+                                onValueChange={(val: any) => setTempFilterStatus(typeof val === "string" ? val : "All")}
+                            >
+                                <SelectTrigger className="bg-background border-border text-foreground h-10! cursor-pointer w-full">
+                                    <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-border text-foreground z-[160]">
+                                    <SelectItem value="All" className="h-10">All Statuses</SelectItem>
+                                    <SelectItem value="Pending" className="h-10">Pending</SelectItem>
+                                    <SelectItem value="Confirmed" className="h-10">Confirmed</SelectItem>
+                                    <SelectItem value="Follow-up" className="h-10">Follow-up</SelectItem>
+                                    <SelectItem value="Meeting Scheduled" className="h-10">Meeting Scheduled</SelectItem>
+                                    <SelectItem value="Blocked" className="h-10">Blocked</SelectItem>
+                                    <SelectItem value="Declined" className="h-10">Declined</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1.5 flex-1">
+                            <Label className="text-xs font-semibold text-muted-foreground">Source</Label>
+                            <Select
+                                value={tempFilterSource}
+                                onValueChange={(val: any) => setTempFilterSource(typeof val === "string" ? val : "All")}
+                            >
+                                <SelectTrigger className="bg-background border-border text-foreground h-10! cursor-pointer w-full">
+                                    <SelectValue placeholder="Source" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-border text-foreground z-[160]">
+                                    <SelectItem value="All" className="h-10">All Sources</SelectItem>
+                                    <SelectItem value="Social Media" className="h-10">Social Media</SelectItem>
+                                    <SelectItem value="Ads" className="h-10">Ads</SelectItem>
+                                    <SelectItem value="Referral" className="h-10">Referral</SelectItem>
+                                    <SelectItem value="Cold Outreach" className="h-10">Cold Outreach</SelectItem>
+                                    <SelectItem value="Organic Search" className="h-10">Organic Search</SelectItem>
+                                    <SelectItem value="Other" className="h-10">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                        <div className="space-y-1.5 flex-1">
+                            <Label className="text-xs font-semibold text-muted-foreground">Priority</Label>
+                            <Select
+                                value={tempFilterPriority}
+                                onValueChange={(val: any) => setTempFilterPriority(typeof val === "string" ? val : "All")}
+                            >
+                                <SelectTrigger className="bg-background border-border text-foreground h-10! cursor-pointer w-full">
+                                    <SelectValue placeholder="Priority" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-border text-foreground z-[160]">
+                                    <SelectItem value="All" className="h-10">All Priorities</SelectItem>
+                                    <SelectItem value="low" className="h-10">Low</SelectItem>
+                                    <SelectItem value="medium" className="h-10">Medium</SelectItem>
+                                    <SelectItem value="high" className="h-10">High</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1.5 flex-1">
+                            <Label className="text-xs font-semibold text-muted-foreground">Ad Name</Label>
+                            <Select
+                                value={tempFilterAdName}
+                                onValueChange={(val: any) => setTempFilterAdName(typeof val === "string" ? val : "All")}
+                            >
+                                <SelectTrigger className="bg-background border-border text-foreground h-10! cursor-pointer w-full">
+                                    <SelectValue placeholder="Ad Name" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-border text-foreground z-[160]">
+                                    <SelectItem value="All" className="h-10">All Ad Names</SelectItem>
+                                    {existingAdNames.map((adName) => (
+                                        <SelectItem key={adName} value={adName} className="h-10">
+                                            {adName}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-muted-foreground">Follow-up / Event Date</Label>
+                        <Input
+                            type="date"
+                            value={tempFilterDate}
+                            onChange={(e) => setTempFilterDate(e.target.value)}
+                            className="bg-background border-border text-foreground h-10! w-full"
+                        />
+                    </div>
+                </div>
+            </FilterDrawer>
 
             {/* Clients Table */}
             <Card className="border-border bg-card shadow-sm">
@@ -569,6 +639,9 @@ export default function ClientDashboardView() {
                                     </th>
                                     <th className="px-6 py-4 font-semibold">
                                         Est. Amount
+                                    </th>
+                                    <th className="px-6 py-4 font-semibold">
+                                        Priority
                                     </th>
                                     <th className="px-6 py-4 font-semibold">
                                         Status
@@ -588,7 +661,7 @@ export default function ClientDashboardView() {
                                 {clients.length === 0 ? (
                                     <tr>
                                         <td
-                                            colSpan={7}
+                                            colSpan={8}
                                             className="px-6 py-10 text-center text-muted-foreground"
                                         >
                                             No clients found.
@@ -680,6 +753,20 @@ export default function ClientDashboardView() {
                                                         {formatCurrency(
                                                             client.maxAmount,
                                                         )}
+                                                    </Badge>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={`capitalize font-semibold border text-xs px-2.5 py-0.5 ${
+                                                            (client.priority || "low") === "high"
+                                                                ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+                                                                : (client.priority || "low") === "medium"
+                                                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                                                : "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20"
+                                                        }`}
+                                                    >
+                                                        {client.priority || "low"}
                                                     </Badge>
                                                 </td>
                                                 <td className="px-6 py-4">

@@ -90,6 +90,14 @@ export interface IQuote extends Document {
         company?: string;
         country?: string;
     };
+    quoteDate?: string;
+    projectPrice?: string;
+    showBilledInfo?: boolean;
+    showFeatureSections?: boolean;
+    showScopePricing?: boolean;
+    showPaymentAccount?: boolean;
+    showTerms?: boolean;
+    showAgreement?: boolean;
     footerNote?: string;
     createdAt: Date;
     updatedAt: Date;
@@ -200,6 +208,14 @@ const QuoteSchema = new Schema<IQuote>(
             company: { type: String },
             country: { type: String },
         },
+        quoteDate: { type: String },
+        projectPrice: { type: String, default: "" },
+        showBilledInfo: { type: Boolean, default: true },
+        showFeatureSections: { type: Boolean, default: true },
+        showScopePricing: { type: Boolean, default: true },
+        showPaymentAccount: { type: Boolean, default: true },
+        showTerms: { type: Boolean, default: true },
+        showAgreement: { type: Boolean, default: true },
         footerNote: { type: String },
     },
     { timestamps: true },

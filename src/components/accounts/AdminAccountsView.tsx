@@ -10,9 +10,13 @@ import {
     Smartphone,
     User as UserIcon,
     AlertCircle,
+    Filter,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { FilterDrawer } from "@/components/ui/FilterDrawer";
 import {
     Table,
     TableBody,
@@ -35,9 +39,29 @@ export default function AdminAccountsView() {
     const { data: session } = useSession();
     const [page, setPage] = useState(1);
     const [limit] = useState(10);
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [type, setType] = useState("all");
+    const [tempType, setTempType] = useState("all");
     const [debouncedSearch, setDebouncedSearch] = useState("");
+
+    const openFilterDrawer = () => {
+        setTempType(type);
+        setIsFilterOpen(true);
+    };
+
+    const handleApplyFilters = () => {
+        setType(tempType);
+        setPage(1);
+    };
+
+    const handleResetFilters = () => {
+        setTempType("all");
+        setType("all");
+        setPage(1);
+    };
+
+    const activeFilterCount = type !== "all" ? 1 : 0;
 
     // Controlled search trigger handler
     const handleSearchSubmit = () => {
@@ -86,13 +110,14 @@ export default function AdminAccountsView() {
                 </div>
             </div>
 
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-card p-4 rounded-xl shadow-sm border border-border">
+            {/* Controls Bar: Search Left, Filter Button Right */}
+            <div className="flex items-center justify-between gap-3 bg-card p-4 rounded-xl shadow-sm border border-border">
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
                         handleSearchSubmit();
                     }}
-                    className="relative w-full md:max-w-md flex items-center"
+                    className="relative w-full sm:max-w-md flex items-center flex-1"
                 >
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -115,31 +140,53 @@ export default function AdminAccountsView() {
                         Search
                     </button>
                 </form>
-                <div className="w-full md:w-auto">
-                    <Select
-                        value={type}
-                        onValueChange={(val: any) => {
-                            setType(typeof val === "string" ? val : "all");
-                            setPage(1);
-                        }}
+
+                <div className="flex items-center gap-2 sm:w-auto justify-end">
+                    <Button
+                        onClick={openFilterDrawer}
+                        variant="outline"
+                        className="bg-background/50 border-border hover:bg-accent text-foreground h-10! gap-2 cursor-pointer relative font-semibold text-xs"
                     >
-                        <SelectTrigger className="w-full md:w-[180px] bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 text-foreground h-10! transition-all">
-                            <SelectValue placeholder="Account Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all" className="h-10!">
-                                All Accounts
-                            </SelectItem>
-                            <SelectItem value="bank" className="h-10!">
-                                Bank Accounts
-                            </SelectItem>
-                            <SelectItem value="mobile_banking" className="h-10!">
-                                Mobile Banking
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
+                        <Filter className="h-4 w-4 text-indigo-500" />
+                        <span>Filter</span>
+                        {activeFilterCount > 0 && (
+                            <Badge className="ml-1 bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                                {activeFilterCount}
+                            </Badge>
+                        )}
+                    </Button>
                 </div>
             </div>
+
+            {/* Filter Drawer Sidebar */}
+            <FilterDrawer
+                isOpen={isFilterOpen}
+                onClose={() => setIsFilterOpen(false)}
+                onApply={handleApplyFilters}
+                onReset={handleResetFilters}
+                activeFilterCount={activeFilterCount}
+                title="Account Filters"
+                description="Filter linked payment accounts by bank or mobile banking type."
+            >
+                <div className="space-y-4">
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-muted-foreground">Account Type</Label>
+                        <Select
+                            value={tempType}
+                            onValueChange={(val: any) => setTempType(typeof val === "string" ? val : "all")}
+                        >
+                            <SelectTrigger className="w-full bg-background border-border text-foreground h-10! cursor-pointer">
+                                <SelectValue placeholder="Account Type" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border text-foreground z-[160]">
+                                <SelectItem value="all" className="h-10">All Accounts</SelectItem>
+                                <SelectItem value="bank" className="h-10">Bank Accounts</SelectItem>
+                                <SelectItem value="mobile_banking" className="h-10">Mobile Banking</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            </FilterDrawer>
 
             <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">

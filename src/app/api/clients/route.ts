@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
     const source = searchParams.get('source');
     const status = searchParams.get('status');
     const adName = searchParams.get('adName');
+    const priority = searchParams.get('priority');
     const followupFilter = searchParams.get('followupDate');
 
     const query: any = {};
@@ -33,6 +34,13 @@ export async function GET(req: NextRequest) {
     }
     if (adName && adName !== 'All') {
       query.adName = adName;
+    }
+    if (priority && priority !== 'All') {
+      if (priority === 'low') {
+        query.priority = { $in: ['low', null] };
+      } else {
+        query.priority = priority;
+      }
     }
     
     if (followupFilter) {

@@ -76,7 +76,7 @@ export const authOptions: NextAuthOptions = {
                     status: user.status,
                     needPasswordChange: user.needPasswordChange,
                     mobileNumber: user.mobileNumber || "",
-                    title: user.title || "",
+                    title: user.title || [],
                     sessionToken,
                 };
             },

@@ -16,11 +16,15 @@ import {
     CreditCard,
     Eye,
     Tag,
+    Filter,
 } from "lucide-react";
 import { generateQuotePDF } from "@/lib/pdf/quotePdfGenerator";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { FilterDrawer } from "@/components/ui/FilterDrawer";
 import {
     Select,
     SelectContent,
@@ -37,8 +41,31 @@ export default function QuotesView() {
     const [quoteToDelete, setQuoteToDelete] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [searchInput, setSearchInput] = useState("");
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [currencyFilter, setCurrencyFilter] = useState("all");
     const [dateFilter, setDateFilter] = useState("all");
+    const [tempCurrencyFilter, setTempCurrencyFilter] = useState("all");
+    const [tempDateFilter, setTempDateFilter] = useState("all");
+
+    const openFilterDrawer = () => {
+        setTempCurrencyFilter(currencyFilter);
+        setTempDateFilter(dateFilter);
+        setIsFilterOpen(true);
+    };
+
+    const handleApplyFilters = () => {
+        setCurrencyFilter(tempCurrencyFilter);
+        setDateFilter(tempDateFilter);
+    };
+
+    const handleResetFilters = () => {
+        setTempCurrencyFilter("all");
+        setTempDateFilter("all");
+        setCurrencyFilter("all");
+        setDateFilter("all");
+    };
+
+    const activeFilterCount = (currencyFilter !== "all" ? 1 : 0) + (dateFilter !== "all" ? 1 : 0);
     const [editingQuoteId, setEditingQuoteId] = useState<string | null>(null);
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
     const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
@@ -282,14 +309,14 @@ export default function QuotesView() {
                 </Button>
             </div>
 
-            {/* Filters & Search */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center">
+            {/* Controls Bar: Search Left, Filter Button Right */}
+            <div className="flex items-center justify-between gap-3 bg-card/60 backdrop-blur-md p-4 rounded-xl border border-border shadow-xs">
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
                         setSearchQuery(searchInput);
                     }}
-                    className="relative w-full sm:max-w-md flex items-center"
+                    className="relative w-full sm:max-w-md flex items-center flex-1"
                 >
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -305,40 +332,73 @@ export default function QuotesView() {
                         Search
                     </button>
                 </form>
-                <div className="w-full sm:w-48">
-                    <Select value={dateFilter} onValueChange={(val: any) => setDateFilter(val)}>
-                        <SelectTrigger className="w-full h-10! bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-600">
-                            <SelectValue placeholder="All Time" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all" className={`h-10!`}>All Time</SelectItem>
-                            <SelectItem value="7days" className={`h-10!`}>Last 7 Days</SelectItem>
-                            <SelectItem value="30days" className={`h-10!`}>Last 30 Days</SelectItem>
-                            <SelectItem value="thisMonth" className={`h-10!`}>This Month</SelectItem>
-                            <SelectItem value="lastMonth" className={`h-10!`}>Last Month</SelectItem>
-                            <SelectItem value="thisYear" className={`h-10!`}>This Year</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="w-full sm:w-48">
-                    <Select
-                        value={currencyFilter}
-                        onValueChange={(val: any) => setCurrencyFilter(val)}
+
+                <div className="flex items-center gap-2 sm:w-auto justify-end">
+                    <Button
+                        onClick={openFilterDrawer}
+                        variant="outline"
+                        className="bg-background/50 border-border hover:bg-accent text-foreground h-10 gap-2 cursor-pointer relative font-semibold text-xs"
                     >
-                        <SelectTrigger className="w-full h-10! bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-teal-600">
-                            <SelectValue placeholder="All Currencies" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all" className={`h-10!`}>All Currencies</SelectItem>
-                            {uniqueCurrencies.map((currency) => (
-                                <SelectItem key={currency} value={currency} className={`h-10!`}>
-                                    {currency}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                        <Filter className="h-4 w-4 text-indigo-500" />
+                        <span>Filter</span>
+                        {activeFilterCount > 0 && (
+                            <Badge className="ml-1 bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                                {activeFilterCount}
+                            </Badge>
+                        )}
+                    </Button>
                 </div>
             </div>
+
+            {/* Filter Drawer Sidebar */}
+            <FilterDrawer
+                isOpen={isFilterOpen}
+                onClose={() => setIsFilterOpen(false)}
+                onApply={handleApplyFilters}
+                onReset={handleResetFilters}
+                activeFilterCount={activeFilterCount}
+                title="Quote & Proposal Filters"
+                description="Filter quotes by creation date range or payment currency."
+            >
+                <div className="space-y-4 flex gap-2">
+                    <div className="space-y-1.5 flex-1">
+                        <Label className="text-xs font-semibold text-muted-foreground">Date Range</Label>
+                        <Select value={tempDateFilter} onValueChange={(val: any) => setTempDateFilter(val)}>
+                            <SelectTrigger className="w-full h-10! bg-background border-border text-foreground">
+                                <SelectValue placeholder="All Time" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border text-foreground z-[160]">
+                                <SelectItem value="all" className="h-10">All Time</SelectItem>
+                                <SelectItem value="7days" className="h-10">Last 7 Days</SelectItem>
+                                <SelectItem value="30days" className="h-10">Last 30 Days</SelectItem>
+                                <SelectItem value="thisMonth" className="h-10">This Month</SelectItem>
+                                <SelectItem value="lastMonth" className="h-10">Last Month</SelectItem>
+                                <SelectItem value="thisYear" className="h-10">This Year</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-1.5 flex-1">
+                        <Label className="text-xs font-semibold text-muted-foreground">Currency</Label>
+                        <Select
+                            value={tempCurrencyFilter}
+                            onValueChange={(val: any) => setTempCurrencyFilter(val)}
+                        >
+                            <SelectTrigger className="w-full h-10! bg-background border-border text-foreground">
+                                <SelectValue placeholder="All Currencies" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border text-foreground z-[160]">
+                                <SelectItem value="all" className="h-10">All Currencies</SelectItem>
+                                {uniqueCurrencies.map((currency) => (
+                                    <SelectItem key={currency} value={currency} className="h-10">
+                                        {currency}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            </FilterDrawer>
 
             {/* Table */}
             <div className="rounded-xl border border-border bg-card overflow-hidden shadow-xs">

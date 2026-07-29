@@ -13,7 +13,7 @@ export interface IUserAccount {
 
 export interface IUser extends Document {
     name: string;
-    title: string;
+    title: string[];
     email: string;
     passwordHash: string;
     avatarUrl?: string;
@@ -29,13 +29,15 @@ export interface IUser extends Document {
     gender?: string;
     dateOfBirth?: string;
     bloodGroup?: string;
+    nidNumber?: string;
+    passportNumber?: string;
     accounts?: IUserAccount[];
     createdAt: Date;
 }
 
 const UserSchema = new Schema<IUser>({
     name: { type: String, required: true },
-    title: { type: String, trim: true },
+    title: { type: [String], default: [] },
     email: { type: String, required: true, unique: true, index: true },
     passwordHash: { type: String, required: true },
     avatarUrl: { type: String },
@@ -59,6 +61,8 @@ const UserSchema = new Schema<IUser>({
     gender: { type: String, enum: ["Male", "Female", "Other"] },
     dateOfBirth: { type: String },
     bloodGroup: { type: String, enum: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] },
+    nidNumber: { type: String, trim: true },
+    passportNumber: { type: String, trim: true },
     accounts: [
         {
             type: { type: String, enum: ["bank", "mobile_banking"], required: true },

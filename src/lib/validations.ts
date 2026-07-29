@@ -201,7 +201,7 @@ export const profileSchema = z.object({
         .string()
         .min(1, "Name is required")
         .max(50, "Name cannot exceed 50 characters"),
-    title: z.string().optional().or(z.literal("")),
+    title: z.union([z.array(z.string()), z.string()]).optional(),
     password: z
         .string()
         .min(6, "Password must be at least 6 characters")
@@ -222,6 +222,8 @@ export const profileSchema = z.object({
     gender: z.string().optional().or(z.literal("")),
     dateOfBirth: z.string().optional().or(z.literal("")),
     bloodGroup: z.string().optional().or(z.literal("")),
+    nidNumber: z.string().optional().or(z.literal("")),
+    passportNumber: z.string().optional().or(z.literal("")),
     accounts: z.array(userAccountSchema).optional(),
 });
 
@@ -232,10 +234,7 @@ export const addUserSchema = z.object({
         .string()
         .min(1, "Name is required")
         .max(50, "Name cannot exceed 50 characters"),
-    title: z
-        .string()
-        .min(1, "Title is required")
-        .max(100, "Title cannot exceed 100 characters"),
+    title: z.union([z.array(z.string()), z.string()]).optional(),
     email: z
         .string()
         .min(1, "Email is required")
@@ -310,6 +309,7 @@ export const clientSchema = z
         followupDate: z.string().optional().nullable(),
         meetingDate: z.string().optional().nullable(),
         status: z.enum(["Pending", "Confirmed", "Follow-up", "Meeting Scheduled", "Blocked", "Declined"]).default("Pending"),
+        priority: z.enum(["low", "medium", "high"]).default("low").optional(),
         assignedTo: z.string().optional().nullable(),
         lastUpdatedBy: z.string().optional().nullable(),
     })
@@ -461,6 +461,14 @@ export const quoteSchema = z
             company: z.string().optional(),
             country: z.string().optional(),
         }).optional(),
+        quoteDate: z.string().optional().default(() => new Date().toISOString().split("T")[0]),
+        projectPrice: z.string().optional().default(""),
+        showBilledInfo: z.boolean().optional().default(true),
+        showFeatureSections: z.boolean().optional().default(true),
+        showScopePricing: z.boolean().optional().default(true),
+        showPaymentAccount: z.boolean().optional().default(true),
+        showTerms: z.boolean().optional().default(true),
+        showAgreement: z.boolean().optional().default(true),
         footerNote: z.string().optional(),
     })
     .refine(

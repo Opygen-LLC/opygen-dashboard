@@ -305,6 +305,7 @@ export function ClientFormModal({
             otherSource: "",
             adName: "",
             status: "Pending",
+            priority: "low",
             followupDate: "",
             meetingDate: "",
         },
@@ -349,6 +350,7 @@ export function ClientFormModal({
                     otherSource: editingClient.otherSource || "",
                     adName: editingClient.adName || "",
                     status: editingClient.status || "Pending",
+                    priority: editingClient.priority || "low",
                     assignedTo: editingClient.assignedTo
                         ? typeof editingClient.assignedTo === "object"
                             ? editingClient.assignedTo._id
@@ -379,6 +381,7 @@ export function ClientFormModal({
                     otherSource: "",
                     adName: "",
                     status: "Pending",
+                    priority: "low",
                     assignedTo: null,
                     followupDate: "",
                     meetingDate: "",
@@ -608,6 +611,53 @@ export function ClientFormModal({
                                                 }
                                             </p>
                                         )}
+                                    </div>
+
+                                    {/* Priority */}
+                                    <div className="space-y-2 md:col-span-1">
+                                        <label className="text-xs font-semibold text-muted-foreground uppercase">
+                                            Priority
+                                        </label>
+                                        <Controller
+                                            name="priority"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select
+                                                    value={field.value || "low"}
+                                                    onValueChange={
+                                                        field.onChange
+                                                    }
+                                                >
+                                                    <SelectTrigger
+                                                        className={cn(
+                                                            "w-full bg-background h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none border-input",
+                                                        )}
+                                                    >
+                                                        <SelectValue placeholder="Select priority" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="z-[150]">
+                                                        <SelectItem
+                                                            value="low"
+                                                            className="h-10!"
+                                                        >
+                                                            Low
+                                                        </SelectItem>
+                                                        <SelectItem
+                                                            value="medium"
+                                                            className="h-10!"
+                                                        >
+                                                            Medium
+                                                        </SelectItem>
+                                                        <SelectItem
+                                                            value="high"
+                                                            className="h-10!"
+                                                        >
+                                                            High
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        />
                                     </div>
 
                                     {/* Call Assigned To */}

@@ -134,9 +134,26 @@ export function ClientInfoModal({ isOpen, onClose, client, onEdit }: ClientInfoM
                                         <Edit className="h-3.5 w-3.5" /> Pipeline Status
                                     </h4>
                                     <div className="space-y-3">
-                                        <div>
-                                            <p className="text-xs text-muted-foreground mb-1">Current Status</p>
-                                            <Badge variant="secondary" className="font-semibold">{client.status}</Badge>
+                                        <div className="flex items-center gap-4">
+                                            <div>
+                                                <p className="text-xs text-muted-foreground mb-1">Current Status</p>
+                                                <Badge variant="secondary" className="font-semibold">{client.status}</Badge>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground mb-1">Priority</p>
+                                                <Badge
+                                                    variant="outline"
+                                                    className={`capitalize font-semibold border ${
+                                                        (client.priority || "low") === "high"
+                                                            ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+                                                            : (client.priority || "low") === "medium"
+                                                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                                            : "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20"
+                                                    }`}
+                                                >
+                                                    {client.priority || "low"}
+                                                </Badge>
+                                            </div>
                                         </div>
                                         <div>
                                             <p className="text-xs text-muted-foreground mb-1">Acquisition Source</p>

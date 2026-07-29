@@ -5,6 +5,8 @@ import User from '@/models/User';
 import { authOptions } from '@/lib/auth';
 import { UserRole, UserStatus } from '@/types';
 
+import { parseUserTitle } from '@/lib/utils';
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -21,10 +23,6 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden. Admin access required.' }, { status: 403 });
     }
 
-    if (session.user.id === id) {
-      return NextResponse.json({ error: 'Cannot demote or block your own administrator account.' }, { status: 400 });
-    }
-
     const { name, title, role, status, mobileNumber } = await req.json();
     const updateData: any = {};
 
@@ -33,10 +31,13 @@ export async function PATCH(
     }
 
     if (title !== undefined) {
-      updateData.title = title;
+      updateData.title = parseUserTitle(title);
     }
 
     if (role !== undefined) {
+      if (session.user.id === id && role !== UserRole.ADMIN) {
+        return NextResponse.json({ error: 'Cannot demote your own administrator account.' }, { status: 400 });
+      }
       if (!Object.values(UserRole).includes(role as UserRole)) {
         return NextResponse.json({ error: 'Valid role is required.' }, { status: 400 });
       }
@@ -44,6 +45,9 @@ export async function PATCH(
     }
 
     if (status !== undefined) {
+      if (session.user.id === id && status !== UserStatus.ACTIVE) {
+        return NextResponse.json({ error: 'Cannot block your own administrator account.' }, { status: 400 });
+      }
       if (!Object.values(UserStatus).includes(status as UserStatus)) {
         return NextResponse.json({ error: 'Valid status is required.' }, { status: 400 });
       }
@@ -77,6 +81,7 @@ export async function PATCH(
         name: updatedUser.name,
         role: updatedUser.role,
         status: updatedUser.status,
+        title: updatedUser.title,
       },
     });
   } catch (error: any) {

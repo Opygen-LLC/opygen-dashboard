@@ -15,6 +15,7 @@ export interface IClient extends Document {
     followupDate?: Date;
     meetingDate?: Date;
     status: string;
+    priority?: "low" | "medium" | "high";
     assignedTo?: Schema.Types.ObjectId | string | any;
     lastUpdatedBy?: Schema.Types.ObjectId | string | any;
     createdAt: Date;
@@ -82,6 +83,11 @@ const ClientSchema = new Schema<IClient>(
             type: String,
             enum: ["Pending", "Confirmed", "Follow-up", "Meeting Scheduled", "Blocked", "Declined"],
             default: "Pending",
+        },
+        priority: {
+            type: String,
+            enum: ["low", "medium", "high"],
+            default: "low",
         },
         assignedTo: {
             type: Schema.Types.ObjectId,

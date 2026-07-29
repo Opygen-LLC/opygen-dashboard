@@ -26,6 +26,14 @@ export enum ProjectPriority {
     URGENT = "urgent",
 }
 
+export enum ClientPriority {
+    LOW = "low",
+    MEDIUM = "medium",
+    HIGH = "high",
+}
+
+export type ClientPriorityType = "low" | "medium" | "high";
+
 export type UserRoleType = "admin" | "member";
 export type UserStatusType = "pending" | "active" | "blocked";
 export type ProjectStatusType =

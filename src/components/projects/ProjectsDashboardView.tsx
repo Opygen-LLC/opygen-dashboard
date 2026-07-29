@@ -14,7 +14,10 @@ import {
     ChevronLeft,
     ChevronRight,
     Download,
+    Filter,
 } from "lucide-react";
+import { FilterDrawer } from "@/components/ui/FilterDrawer";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loading } from "@/components/ui/Loading";
 import { cn } from "@/lib/utils";
@@ -78,6 +81,49 @@ export default function ProjectsDashboardView() {
     const { projects, isLoading, filters } = useAppSelector((state) => state.projects);
     const { search, status, priority, assignee, sortBy, sortOrder, currentPage } = filters;
     const [searchInput, setSearchInput] = useState(search);
+
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [draftStatus, setDraftStatus] = useState(status);
+    const [draftPriority, setDraftPriority] = useState(priority);
+    const [draftAssignee, setDraftAssignee] = useState(assignee);
+    const [draftSortBy, setDraftSortBy] = useState(sortBy);
+    const [draftSortOrder, setDraftSortOrder] = useState(sortOrder);
+
+    const openFilterDrawer = () => {
+        setDraftStatus(status);
+        setDraftPriority(priority);
+        setDraftAssignee(assignee);
+        setDraftSortBy(sortBy);
+        setDraftSortOrder(sortOrder);
+        setIsFilterOpen(true);
+    };
+
+    const handleApplyFilters = () => {
+        dispatch(setStatusFilter(draftStatus));
+        dispatch(setPriorityFilter(draftPriority));
+        dispatch(setAssigneeFilter(draftAssignee));
+        dispatch(setSortByFilter(draftSortBy));
+        if (draftSortOrder !== sortOrder) {
+            dispatch(toggleSortOrder());
+        }
+    };
+
+    const handleResetFilters = () => {
+        setDraftStatus("all");
+        setDraftPriority("all");
+        setDraftAssignee("all");
+        setDraftSortBy("updatedAt");
+        setDraftSortOrder("desc");
+        dispatch(resetFilters());
+    };
+
+    const activeFilterCount = [
+        status !== "all",
+        priority !== "all",
+        assignee !== "all",
+        sortBy !== "updatedAt",
+        sortOrder !== "desc",
+    ].filter(Boolean).length;
 
     useEffect(() => {
         setSearchInput(search);
@@ -212,14 +258,14 @@ export default function ProjectsDashboardView() {
                 </div>
             </div>
 
-            {/* Redesigned Filters Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 bg-card/60 backdrop-blur-md p-4 rounded-xl border border-border shadow-xs">
+            {/* Controls Bar: Search Left, Filter Button Right */}
+            <div className="flex items-center justify-between gap-3 bg-card/60 backdrop-blur-md p-4 rounded-xl border border-border shadow-xs">
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
                         dispatch(setSearchFilter(searchInput));
                     }}
-                    className="relative sm:col-span-2 flex items-center"
+                    className="relative w-full sm:max-w-md flex items-center flex-1"
                 >
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -243,125 +289,126 @@ export default function ProjectsDashboardView() {
                     </button>
                 </form>
 
-                <div>
-                    <Select
-                        value={status}
-                        onValueChange={(val: any) => dispatch(setStatusFilter(typeof val === "string" ? val : "all"))}
-                    >
-                        <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
-                            <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border text-foreground">
-                            <SelectItem value="all" className="h-10!">
-                                All Statuses
-                            </SelectItem>
-                            <SelectItem value="potential" className="h-10!">
-                                Potential
-                            </SelectItem>
-                            <SelectItem value="future" className="h-10!">
-                                Future
-                            </SelectItem>
-                            <SelectItem value="todo" className="h-10!">
-                                To Do
-                            </SelectItem>
-                            <SelectItem value="in_progress" className="h-10!">
-                                In Progress
-                            </SelectItem>
-                            <SelectItem value="in_review" className="h-10!">
-                                In Review
-                            </SelectItem>
-                            <SelectItem value="completed" className="h-10!">
-                                Completed
-                            </SelectItem>
-                            <SelectItem value="on_hold" className="h-10!">
-                                On Hold
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <div>
-                    <Select
-                        value={priority}
-                        onValueChange={(val: any) => dispatch(setPriorityFilter(typeof val === "string" ? val : "all"))}
-                    >
-                        <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
-                            <SelectValue placeholder="Priority" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border text-foreground">
-                            <SelectItem value="all" className="h-10!">
-                                All Priorities
-                            </SelectItem>
-                            <SelectItem value="low" className="h-10!">
-                                Low
-                            </SelectItem>
-                            <SelectItem value="medium" className="h-10!">
-                                Medium
-                            </SelectItem>
-                            <SelectItem value="high" className="h-10!">
-                                High
-                            </SelectItem>
-                            <SelectItem value="urgent" className="h-10!">
-                                Urgent
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <div>
-                    <Select
-                        value={assignee}
-                        onValueChange={(val: any) => dispatch(setAssigneeFilter(typeof val === "string" ? val : "all"))}
-                    >
-                        <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
-                            <SelectValue placeholder="Assignee" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border text-foreground">
-                            <SelectItem value="all" className="h-10!">
-                                All Assignees
-                            </SelectItem>
-                            {users?.map((user) => (
-                                <SelectItem key={user._id} value={user._id} className="h-10!">
-                                    {user.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                <div className="flex gap-2">
-                    <Select
-                        value={sortBy}
-                        onValueChange={(val: any) => dispatch(setSortByFilter(typeof val === "string" ? val : "updatedAt"))}
-                    >
-                        <SelectTrigger className="bg-background/50 border-border text-foreground h-10! flex-1 cursor-pointer focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all">
-                            <SelectValue placeholder="Sort by" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border text-foreground">
-                            <SelectItem value="updatedAt" className="h-10!">
-                                Recently Updated
-                            </SelectItem>
-                            <SelectItem value="dueDate" className="h-10!">
-                                Due Date
-                            </SelectItem>
-                            <SelectItem value="createdAt" className="h-10!">
-                                Date Created
-                            </SelectItem>
-                            <SelectItem value="title" className="h-10!">
-                                Alphabetical
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
+                <div className="flex items-center gap-2 sm:w-auto justify-end">
                     <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => dispatch(toggleSortOrder())}
-                        className="h-10 w-10 border border-border bg-background/50 text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer hover:scale-[1.05] active:scale-[0.95] transition-all shrink-0"
+                        onClick={openFilterDrawer}
+                        variant="outline"
+                        className="bg-background/50 border-border hover:bg-accent text-foreground h-10 gap-2 cursor-pointer relative font-semibold text-xs"
                     >
-                        <ArrowUpDown className="h-4.5 w-4.5" />
+                        <Filter className="h-4 w-4 text-indigo-500" />
+                        <span>Filter</span>
+                        {activeFilterCount > 0 && (
+                            <Badge className="ml-1 bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                                {activeFilterCount}
+                            </Badge>
+                        )}
                     </Button>
                 </div>
             </div>
+
+            {/* Filter Drawer Sidebar */}
+            <FilterDrawer
+                isOpen={isFilterOpen}
+                onClose={() => setIsFilterOpen(false)}
+                onApply={handleApplyFilters}
+                onReset={handleResetFilters}
+                activeFilterCount={activeFilterCount}
+                title="Project Filters"
+                description="Filter projects by status, priority, assignee, or sorting order."
+            >
+                <div className="space-y-4">
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-muted-foreground">Status</Label>
+                        <Select
+                            value={draftStatus}
+                            onValueChange={(val: any) => setDraftStatus(typeof val === "string" ? val : "all")}
+                        >
+                            <SelectTrigger className="bg-background border-border text-foreground h-10! cursor-pointer w-full">
+                                <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border text-foreground">
+                                <SelectItem value="all" className="h-10">All Statuses</SelectItem>
+                                <SelectItem value="potential" className="h-10">Potential</SelectItem>
+                                <SelectItem value="future" className="h-10">Future</SelectItem>
+                                <SelectItem value="todo" className="h-10">To Do</SelectItem>
+                                <SelectItem value="in_progress" className="h-10">In Progress</SelectItem>
+                                <SelectItem value="in_review" className="h-10">In Review</SelectItem>
+                                <SelectItem value="completed" className="h-10">Completed</SelectItem>
+                                <SelectItem value="on_hold" className="h-10">On Hold</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-muted-foreground">Priority</Label>
+                        <Select
+                            value={draftPriority}
+                            onValueChange={(val: any) => setDraftPriority(typeof val === "string" ? val : "all")}
+                        >
+                            <SelectTrigger className="bg-background border-border text-foreground h-10! cursor-pointer w-full">
+                                <SelectValue placeholder="Priority" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border text-foreground">
+                                <SelectItem value="all" className="h-10">All Priorities</SelectItem>
+                                <SelectItem value="low" className="h-10">Low</SelectItem>
+                                <SelectItem value="medium" className="h-10">Medium</SelectItem>
+                                <SelectItem value="high" className="h-10">High</SelectItem>
+                                <SelectItem value="urgent" className="h-10">Urgent</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-muted-foreground">Assignee</Label>
+                        <Select
+                            value={draftAssignee}
+                            onValueChange={(val: any) => setDraftAssignee(typeof val === "string" ? val : "all")}
+                        >
+                            <SelectTrigger className="bg-background border-border text-foreground h-10! cursor-pointer w-full">
+                                <SelectValue placeholder="Assignee" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border text-foreground">
+                                <SelectItem value="all" className="h-10">All Assignees</SelectItem>
+                                {users?.map((user) => (
+                                    <SelectItem key={user._id} value={user._id} className="h-10">
+                                        {user.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-muted-foreground">Sort By</Label>
+                        <div className="flex gap-2">
+                            <Select
+                                value={draftSortBy}
+                                onValueChange={(val: any) => setDraftSortBy(typeof val === "string" ? val : "updatedAt")}
+                            >
+                                <SelectTrigger className="bg-background border-border text-foreground h-10! flex-1 cursor-pointer">
+                                    <SelectValue placeholder="Sort by" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-border text-foreground">
+                                    <SelectItem value="updatedAt" className="h-10">Recently Updated</SelectItem>
+                                    <SelectItem value="dueDate" className="h-10">Due Date</SelectItem>
+                                    <SelectItem value="createdAt" className="h-10">Date Created</SelectItem>
+                                    <SelectItem value="title" className="h-10">Alphabetical</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Button
+                                variant="outline"
+                                type="button"
+                                size="icon"
+                                onClick={() => setDraftSortOrder((prev: any) => (prev === "asc" ? "desc" : "asc"))}
+                                className="h-10 w-10 border border-border bg-background text-foreground hover:bg-accent cursor-pointer shrink-0"
+                                title={`Sort order: ${draftSortOrder.toUpperCase()}`}
+                            >
+                                <ArrowUpDown className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </FilterDrawer>
 
             {/* Projects Display Content */}
             <div className="flex-1 overflow-y-auto">

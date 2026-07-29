@@ -7,6 +7,7 @@ export interface UserState {
   avatarUrl: string | null;
   mobileNumber: string | null;
   role: string | null;
+  title?: string[] | string | null;
   balance: number;
   status: string | null;
   fathersName?: string | null;
@@ -14,6 +15,8 @@ export interface UserState {
   gender?: string | null;
   dateOfBirth?: string | null;
   bloodGroup?: string | null;
+  nidNumber?: string | null;
+  passportNumber?: string | null;
   accounts: any[];
   isInitialized: boolean;
 }
@@ -32,6 +35,8 @@ const initialState: UserState = {
   gender: null,
   dateOfBirth: null,
   bloodGroup: null,
+  nidNumber: null,
+  passportNumber: null,
   accounts: [],
   isInitialized: false,
 };

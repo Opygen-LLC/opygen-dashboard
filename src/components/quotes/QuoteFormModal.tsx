@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { quoteSchema, QuoteInput } from "@/lib/validations";
+import { formatUserTitle } from "@/lib/utils";
 import {
     X,
     Plus,
@@ -232,6 +233,14 @@ export default function QuoteFormModal({
             initialData.termsAndConditions.length > 0
                 ? initialData.termsAndConditions
                 : DEFAULT_TERMS,
+        quoteDate: initialData?.quoteDate || new Date().toISOString().split("T")[0],
+        projectPrice: initialData?.projectPrice || "",
+        showBilledInfo: initialData?.showBilledInfo ?? true,
+        showFeatureSections: initialData?.showFeatureSections ?? true,
+        showScopePricing: initialData?.showScopePricing ?? true,
+        showPaymentAccount: initialData?.showPaymentAccount ?? true,
+        showTerms: initialData?.showTerms ?? true,
+        showAgreement: initialData?.showAgreement ?? true,
         footerNote:
             initialData?.footerNote ||
             "Thank you for the opportunity. We look forward to building something great together. | Opygen",
@@ -243,6 +252,7 @@ export default function QuoteFormModal({
         handleSubmit,
         reset,
         setValue,
+        watch,
         formState: { errors },
     } = useForm<any>({
         resolver: zodResolver(quoteSchema),
@@ -285,10 +295,35 @@ export default function QuoteFormModal({
         name: "featureSections",
     });
 
+    const [projectPriceMode, setProjectPriceMode] = useState<"fixed" | "range">(
+        initialData?.projectPrice && initialData.projectPrice.includes("-") ? "range" : "fixed"
+    );
+    const [projectPriceMin, setProjectPriceMin] = useState(
+        initialData?.projectPrice && initialData.projectPrice.includes("-")
+            ? initialData.projectPrice.split("-")[0].trim()
+            : ""
+    );
+    const [projectPriceMax, setProjectPriceMax] = useState(
+        initialData?.projectPrice && initialData.projectPrice.includes("-")
+            ? initialData.projectPrice.split("-")[1].trim()
+            : initialData?.projectPrice || ""
+    );
+
     useEffect(() => {
         if (isOpen) {
             reset(defaultFormValues);
             setActiveTab("general");
+            const priceStr = initialData?.projectPrice || "";
+            if (priceStr.includes("-")) {
+                setProjectPriceMode("range");
+                const parts = priceStr.split("-");
+                setProjectPriceMin(parts[0].trim());
+                setProjectPriceMax(parts[1].trim());
+            } else {
+                setProjectPriceMode("fixed");
+                setProjectPriceMin(priceStr);
+                setProjectPriceMax(priceStr);
+            }
         }
     }, [isOpen, initialData, reset]);
 
@@ -400,8 +435,128 @@ export default function QuoteFormModal({
                         {/* TAB 1: GENERAL & BILLED INFO */}
                         {activeTab === "general" && (
                             <div className="space-y-6">
+                                {/* SECTION VISIBILITY TOGGLES CARD */}
+                                <div className="p-4 rounded-xl bg-accent/30 border border-border/80 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-bold text-foreground flex items-center gap-1.5 uppercase tracking-wider">
+                                            <span>PDF Section Visibility Controls (On / Off)</span>
+                                        </label>
+                                        <span className="text-[11px] text-muted-foreground">Toggle sections to include or omit in generated PDF</span>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                                        <Controller
+                                            name="showBilledInfo"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => field.onChange(!field.value)}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                                                        field.value
+                                                            ? "bg-indigo-600/10 border-indigo-500/40 text-indigo-600 dark:text-indigo-400"
+                                                            : "bg-muted/40 border-border text-muted-foreground opacity-60"
+                                                    }`}
+                                                >
+                                                    <span className={`w-2 h-2 rounded-full ${field.value ? "bg-indigo-600" : "bg-muted-foreground/40"}`} />
+                                                    Billed Info (BY & TO) {field.value ? "(ON)" : "(OFF)"}
+                                                </button>
+                                            )}
+                                        />
+                                        <Controller
+                                            name="showFeatureSections"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => field.onChange(!field.value)}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                                                        field.value
+                                                            ? "bg-indigo-600/10 border-indigo-500/40 text-indigo-600 dark:text-indigo-400"
+                                                            : "bg-muted/40 border-border text-muted-foreground opacity-60"
+                                                    }`}
+                                                >
+                                                    <span className={`w-2 h-2 rounded-full ${field.value ? "bg-indigo-600" : "bg-muted-foreground/40"}`} />
+                                                    Feature Tables {field.value ? "(ON)" : "(OFF)"}
+                                                </button>
+                                            )}
+                                        />
+                                        <Controller
+                                            name="showScopePricing"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => field.onChange(!field.value)}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                                                        field.value
+                                                            ? "bg-indigo-600/10 border-indigo-500/40 text-indigo-600 dark:text-indigo-400"
+                                                            : "bg-muted/40 border-border text-muted-foreground opacity-60"
+                                                    }`}
+                                                >
+                                                    <span className={`w-2 h-2 rounded-full ${field.value ? "bg-indigo-600" : "bg-muted-foreground/40"}`} />
+                                                    Scope & Pricing {field.value ? "(ON)" : "(OFF)"}
+                                                </button>
+                                            )}
+                                        />
+                                        <Controller
+                                            name="showPaymentAccount"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => field.onChange(!field.value)}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                                                        field.value
+                                                            ? "bg-indigo-600/10 border-indigo-500/40 text-indigo-600 dark:text-indigo-400"
+                                                            : "bg-muted/40 border-border text-muted-foreground opacity-60"
+                                                    }`}
+                                                >
+                                                    <span className={`w-2 h-2 rounded-full ${field.value ? "bg-indigo-600" : "bg-muted-foreground/40"}`} />
+                                                    Payment Account {field.value ? "(ON)" : "(OFF)"}
+                                                </button>
+                                            )}
+                                        />
+                                        <Controller
+                                            name="showTerms"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => field.onChange(!field.value)}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                                                        field.value
+                                                            ? "bg-indigo-600/10 border-indigo-500/40 text-indigo-600 dark:text-indigo-400"
+                                                            : "bg-muted/40 border-border text-muted-foreground opacity-60"
+                                                    }`}
+                                                >
+                                                    <span className={`w-2 h-2 rounded-full ${field.value ? "bg-indigo-600" : "bg-muted-foreground/40"}`} />
+                                                    Terms & Conditions {field.value ? "(ON)" : "(OFF)"}
+                                                </button>
+                                            )}
+                                        />
+                                        <Controller
+                                            name="showAgreement"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => field.onChange(!field.value)}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                                                        field.value
+                                                            ? "bg-indigo-600/10 border-indigo-500/40 text-indigo-600 dark:text-indigo-400"
+                                                            : "bg-muted/40 border-border text-muted-foreground opacity-60"
+                                                    }`}
+                                                >
+                                                    <span className={`w-2 h-2 rounded-full ${field.value ? "bg-indigo-600" : "bg-muted-foreground/40"}`} />
+                                                    Agreement & Signatures {field.value ? "(ON)" : "(OFF)"}
+                                                </button>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-accent/20 border border-border">
-                                    <div className="space-y-1 sm:col-span-3">
+                                    <div className="space-y-1 sm:col-span-2">
                                         <label className="text-xs font-semibold text-foreground flex items-center justify-between">
                                             <span>
                                                 Project Name <span className="text-red-500">*</span>
@@ -417,6 +572,26 @@ export default function QuoteFormModal({
                                                 {
                                                     (
                                                         errors.projectName as any
+                                                    ).message
+                                                }
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-semibold text-foreground">
+                                            Proposal Date <span className="text-red-500">*</span>
+                                        </label>
+                                        <Input
+                                            type="date"
+                                            {...register("quoteDate")}
+                                            className="bg-background border-border text-xs h-10"
+                                        />
+                                        {errors.quoteDate && (
+                                            <p className="text-xs text-red-500">
+                                                {
+                                                    (
+                                                        errors.quoteDate as any
                                                     ).message
                                                 }
                                             </p>
@@ -441,7 +616,7 @@ export default function QuoteFormModal({
                                         <Input
                                             {...register("quoteNumber")}
                                             placeholder="e.g. PRJ-2025-001"
-                                            className="bg-background border-border font-mono text-sm"
+                                            className="bg-background border-border font-mono text-sm h-10"
                                         />
                                     </div>
                                     <div className="space-y-1">
@@ -476,6 +651,96 @@ export default function QuoteFormModal({
                                             )}
                                         />
                                     </div>
+
+                                    <div className="space-y-1 sm:col-span-2">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-xs font-semibold text-foreground">
+                                                Project Price ({projectPriceMode === "fixed" ? "Fixed Number" : "Price Range"})
+                                            </label>
+                                            <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded border border-border">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setProjectPriceMode("fixed");
+                                                        const fixedVal = projectPriceMin || projectPriceMax || "";
+                                                        setValue("projectPrice", fixedVal);
+                                                    }}
+                                                    className={`px-2 py-0.5 text-[10px] font-bold rounded transition-colors cursor-pointer ${
+                                                        projectPriceMode === "fixed"
+                                                            ? "bg-indigo-600 text-white shadow-xs"
+                                                            : "text-muted-foreground hover:text-foreground"
+                                                    }`}
+                                                >
+                                                    Fixed
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setProjectPriceMode("range");
+                                                        if (projectPriceMin && projectPriceMax) {
+                                                            setValue("projectPrice", `${projectPriceMin} - ${projectPriceMax}`);
+                                                        }
+                                                    }}
+                                                    className={`px-2 py-0.5 text-[10px] font-bold rounded transition-colors cursor-pointer ${
+                                                        projectPriceMode === "range"
+                                                            ? "bg-indigo-600 text-white shadow-xs"
+                                                            : "text-muted-foreground hover:text-foreground"
+                                                    }`}
+                                                >
+                                                    Range
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {projectPriceMode === "fixed" ? (
+                                            <Input
+                                                value={watch("projectPrice") || ""}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setValue("projectPrice", val);
+                                                    setProjectPriceMin(val);
+                                                    setProjectPriceMax(val);
+                                                }}
+                                                placeholder="e.g. 1500"
+                                                className="bg-background border-border text-xs h-10"
+                                            />
+                                        ) : (
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <Input
+                                                    value={projectPriceMin}
+                                                    onChange={(e) => {
+                                                        const minV = e.target.value;
+                                                        setProjectPriceMin(minV);
+                                                        setValue("projectPrice", `${minV} - ${projectPriceMax}`);
+                                                    }}
+                                                    placeholder="Min Price (e.g. 1500)"
+                                                    className="bg-background border-border text-xs h-10"
+                                                />
+                                                <Input
+                                                    value={projectPriceMax}
+                                                    onChange={(e) => {
+                                                        const maxV = e.target.value;
+                                                        setProjectPriceMax(maxV);
+                                                        setValue("projectPrice", `${projectPriceMin} - ${maxV}`);
+                                                    }}
+                                                    placeholder="Max Price (e.g. 2500)"
+                                                    className="bg-background border-border text-xs h-10"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-semibold text-foreground">
+                                            Project Duration
+                                        </label>
+                                        <Input
+                                            {...register("projectDuration")}
+                                            placeholder="e.g. 6–8 Weeks"
+                                            className="bg-background border-border text-xs h-10"
+                                        />
+                                    </div>
+
                                     <div className="space-y-1 sm:col-span-2">
                                         <label className="text-xs font-semibold text-foreground">
                                             Proposal Header Title
@@ -483,26 +748,10 @@ export default function QuoteFormModal({
                                         <Input
                                             {...register("proposalType")}
                                             placeholder="e.g. SOFTWARE DEVELOPMENT PROPOSAL"
+                                            className="bg-background border-border text-xs h-10"
                                         />
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-semibold text-foreground">
-                                            Project Duration *
-                                        </label>
-                                        <Input
-                                            {...register("projectDuration")}
-                                            placeholder="e.g. 6–8 Weeks"
-                                        />
-                                        {errors.projectDuration && (
-                                            <p className="text-xs text-red-500">
-                                                {
-                                                    (
-                                                        errors.projectDuration as any
-                                                    ).message
-                                                }
-                                            </p>
-                                        )}
-                                    </div>
+
                                     <div className="space-y-1 sm:col-span-3">
                                         <label className="text-xs font-semibold text-foreground">
                                             Proposal Subtitle / App Type
@@ -510,6 +759,7 @@ export default function QuoteFormModal({
                                         <Input
                                             {...register("proposalSubtitle")}
                                             placeholder="e.g. Mobile Application — Inventory Management System"
+                                            className="bg-background border-border text-xs h-10"
                                         />
                                     </div>
                                 </div>
@@ -547,7 +797,7 @@ export default function QuoteFormModal({
                                                         );
                                                         setValue(
                                                             "billedBy.title",
-                                                            foundUser.title ||
+                                                            formatUserTitle(foundUser.title) ||
                                                                 foundUser.role ||
                                                                 "Full Stack Developer",
                                                         );
@@ -825,78 +1075,15 @@ export default function QuoteFormModal({
 
                                 <div className="space-y-3">
                                     {phaseFields.map((field, index) => (
-                                        <div
+                                        <DeliverableRowItem
                                             key={field.id}
-                                            className="p-4 rounded-xl border border-border bg-accent/20 relative space-y-3"
-                                        >
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() =>
-                                                    removePhase(index)
-                                                }
-                                                className="absolute right-2 top-2 h-6 w-6 text-muted-foreground hover:text-red-500"
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </Button>
-
-                                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pr-6">
-                                                <div className="space-y-1 sm:col-span-2">
-                                                    <label className="text-xs font-medium text-muted-foreground">
-                                                        Deliverable Title *
-                                                    </label>
-                                                    <Input
-                                                        {...register(
-                                                            `phases.${index}.phaseName`,
-                                                        )}
-                                                        placeholder="e.g. Frontend Development"
-                                                        className="bg-background text-sm"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-xs font-medium text-muted-foreground">
-                                                        Phase Tag
-                                                    </label>
-                                                    <Input
-                                                        {...register(
-                                                            `phases.${index}.phaseTag`,
-                                                        )}
-                                                        placeholder="e.g. Phase 1"
-                                                        className="bg-background text-sm"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <label className="text-xs font-medium text-muted-foreground">
-                                                        Budget Amount
-                                                    </label>
-                                                    <Input
-                                                        type="number"
-                                                        {...register(
-                                                            `phases.${index}.maxBudget`,
-                                                            {
-                                                                valueAsNumber: true,
-                                                            },
-                                                        )}
-                                                        placeholder="Amount"
-                                                        className="bg-background text-sm"
-                                                    />
-                                                </div>
-                                                <div className="sm:col-span-4 space-y-1">
-                                                    <label className="text-xs font-medium text-muted-foreground">
-                                                        Description / Technical
-                                                        Details
-                                                    </label>
-                                                    <Input
-                                                        {...register(
-                                                            `phases.${index}.description`,
-                                                        )}
-                                                        placeholder="e.g. UI/UX Design & Implementation..."
-                                                        className="bg-background text-xs"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
+                                            index={index}
+                                            field={field}
+                                            register={register}
+                                            setValue={setValue}
+                                            watch={watch}
+                                            removePhase={removePhase}
+                                        />
                                     ))}
                                 </div>
                             </div>
@@ -1418,6 +1605,155 @@ function FeatureListArray({
                     />
                 </div>
             ))}
+        </div>
+    );
+}
+
+function DeliverableRowItem({
+    index,
+    field,
+    register,
+    setValue,
+    watch,
+    removePhase,
+}: {
+    index: number;
+    field: any;
+    register: any;
+    setValue: any;
+    watch: any;
+    removePhase: (idx: number) => void;
+}) {
+    const minB = watch(`phases.${index}.minBudget`);
+    const maxB = watch(`phases.${index}.maxBudget`);
+    const isRange = minB && minB > 0 && minB !== maxB;
+    const [budgetMode, setBudgetMode] = useState<"fixed" | "range">(
+        isRange ? "range" : "fixed"
+    );
+
+    return (
+        <div
+            key={field.id}
+            className="p-4 rounded-xl border border-border bg-accent/20 relative space-y-3"
+        >
+            <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => removePhase(index)}
+                className="absolute right-2 top-2 h-6 w-6 text-muted-foreground hover:text-red-500 cursor-pointer"
+            >
+                <X className="h-4 w-4" />
+            </Button>
+
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 pr-6">
+                <div className="space-y-1 sm:col-span-2">
+                    <label className="text-xs font-medium text-muted-foreground">
+                        Deliverable Title *
+                    </label>
+                    <Input
+                        {...register(`phases.${index}.phaseName`)}
+                        placeholder="e.g. Frontend Development"
+                        className="bg-background text-sm"
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">
+                        Phase Tag
+                    </label>
+                    <Input
+                        {...register(`phases.${index}.phaseTag`)}
+                        placeholder="e.g. Phase 1"
+                        className="bg-background text-sm"
+                    />
+                </div>
+
+                {/* Budget Column with Mode Switcher */}
+                <div className="space-y-1 sm:col-span-2">
+                    <div className="flex items-center justify-between">
+                        <label className="text-xs font-medium text-muted-foreground">
+                            Budget ({budgetMode === "fixed" ? "Fixed Amount" : "Price Range"})
+                        </label>
+                        <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded border border-border">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setBudgetMode("fixed");
+                                    const currentMax = watch(`phases.${index}.maxBudget`) || 0;
+                                    setValue(`phases.${index}.minBudget`, 0);
+                                    setValue(`phases.${index}.maxBudget`, currentMax);
+                                }}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded transition-colors cursor-pointer ${
+                                    budgetMode === "fixed"
+                                        ? "bg-indigo-600 text-white shadow-xs"
+                                        : "text-muted-foreground hover:text-foreground"
+                                }`}
+                            >
+                                Fixed
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setBudgetMode("range");
+                                }}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded transition-colors cursor-pointer ${
+                                    budgetMode === "range"
+                                        ? "bg-indigo-600 text-white shadow-xs"
+                                        : "text-muted-foreground hover:text-foreground"
+                                }`}
+                            >
+                                Range
+                            </button>
+                        </div>
+                    </div>
+
+                    {budgetMode === "fixed" ? (
+                        <Input
+                            type="number"
+                            {...register(`phases.${index}.maxBudget`, {
+                                valueAsNumber: true,
+                            })}
+                            onChange={(e) => {
+                                const val = Number(e.target.value) || 0;
+                                setValue(`phases.${index}.maxBudget`, val);
+                                setValue(`phases.${index}.minBudget`, 0);
+                            }}
+                            placeholder="Fixed Budget Amount"
+                            className="bg-background text-sm"
+                        />
+                    ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                            <Input
+                                type="number"
+                                {...register(`phases.${index}.minBudget`, {
+                                    valueAsNumber: true,
+                                })}
+                                placeholder="Min Budget"
+                                className="bg-background text-sm"
+                            />
+                            <Input
+                                type="number"
+                                {...register(`phases.${index}.maxBudget`, {
+                                    valueAsNumber: true,
+                                })}
+                                placeholder="Max Budget"
+                                className="bg-background text-sm"
+                            />
+                        </div>
+                    )}
+                </div>
+
+                <div className="sm:col-span-5 space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">
+                        Description / Technical Details
+                    </label>
+                    <Input
+                        {...register(`phases.${index}.description`)}
+                        placeholder="e.g. UI/UX Design & Implementation..."
+                        className="bg-background text-xs"
+                    />
+                </div>
+            </div>
         </div>
     );
 }

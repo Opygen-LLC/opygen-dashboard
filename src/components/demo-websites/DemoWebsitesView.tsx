@@ -16,12 +16,15 @@ import {
     Loader2,
     Tag,
     Layers,
+    Filter,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { FilterDrawer } from "@/components/ui/FilterDrawer";
 import {
     Select,
     SelectContent,
@@ -37,9 +40,27 @@ export default function DemoWebsitesView() {
     const [editingWebsite, setEditingWebsite] = useState<any | null>(null);
     const [websiteToDelete, setWebsiteToDelete] = useState<any | null>(null);
 
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [filterCategory, setFilterCategory] = useState<string>("All");
+    const [tempFilterCategory, setTempFilterCategory] = useState<string>("All");
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [searchInput, setSearchInput] = useState<string>("");
+
+    const openFilterDrawer = () => {
+        setTempFilterCategory(filterCategory);
+        setIsFilterOpen(true);
+    };
+
+    const handleApplyFilters = () => {
+        setFilterCategory(tempFilterCategory);
+    };
+
+    const handleResetFilters = () => {
+        setTempFilterCategory("All");
+        setFilterCategory("All");
+    };
+
+    const activeFilterCount = filterCategory !== "All" ? 1 : 0;
 
     // Fetch distinct categories for filter bar
     const { data: categories = [] } = useQuery<string[]>({
@@ -141,15 +162,14 @@ export default function DemoWebsitesView() {
                 </Button>
             </div>
 
-            {/* Filter Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-3 bg-card/60 backdrop-blur-md p-4 rounded-xl border border-border shadow-xs">
-                {/* Controlled Search Form */}
+            {/* Controls Bar: Search Left, Filter Button Right */}
+            <div className="flex items-center justify-between gap-3 bg-card/60 backdrop-blur-md p-4 rounded-xl border border-border shadow-xs">
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
                         setSearchQuery(searchInput);
                     }}
-                    className="relative sm:col-span-2 flex items-center"
+                    className="relative w-full sm:max-w-md flex flex-1 items-center"
                 >
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -173,28 +193,55 @@ export default function DemoWebsitesView() {
                     </button>
                 </form>
 
-                {/* Category Filter */}
-                <div>
-                    <Select
-                        value={filterCategory}
-                        onValueChange={(val: any) => setFilterCategory(typeof val === "string" ? val : "All")}
+                <div className="flex items-center gap-2 sm:w-auto justify-end">
+                    <Button
+                        onClick={openFilterDrawer}
+                        variant="outline"
+                        className="bg-background/50 border-border hover:bg-accent text-foreground h-10 gap-2 cursor-pointer relative font-semibold text-xs"
                     >
-                        <SelectTrigger className="bg-background/50 border-border text-foreground h-10! cursor-pointer focus:ring-1 focus:ring-indigo-500 transition-all">
-                            <SelectValue placeholder="All Categories" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border text-foreground z-[150]">
-                            <SelectItem value="All" className="h-10!">
-                                All Categories
-                            </SelectItem>
-                            {categories.map((cat) => (
-                                <SelectItem key={cat} value={cat} className="h-10!">
-                                    {cat}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                        <Filter className="h-4 w-4 text-indigo-500" />
+                        <span>Filter</span>
+                        {activeFilterCount > 0 && (
+                            <Badge className="ml-1 bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                                {activeFilterCount}
+                            </Badge>
+                        )}
+                    </Button>
                 </div>
             </div>
+
+            {/* Filter Drawer Sidebar */}
+            <FilterDrawer
+                isOpen={isFilterOpen}
+                onClose={() => setIsFilterOpen(false)}
+                onApply={handleApplyFilters}
+                onReset={handleResetFilters}
+                activeFilterCount={activeFilterCount}
+                title="Demo Website Filters"
+                description="Filter showcase demo websites by industry or project category."
+            >
+                <div className="space-y-4">
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-muted-foreground">Category</Label>
+                        <Select
+                            value={tempFilterCategory}
+                            onValueChange={(val: any) => setTempFilterCategory(typeof val === "string" ? val : "All")}
+                        >
+                            <SelectTrigger className="bg-background border-border text-foreground h-10! cursor-pointer w-full">
+                                <SelectValue placeholder="All Categories" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border text-foreground z-[160]">
+                                <SelectItem value="All" className="h-10">All Categories</SelectItem>
+                                {categories.map((cat) => (
+                                    <SelectItem key={cat} value={cat} className="h-10">
+                                        {cat}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            </FilterDrawer>
 
             {/* Content Grid */}
             {websites.length === 0 ? (

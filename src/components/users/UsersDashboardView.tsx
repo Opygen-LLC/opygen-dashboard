@@ -21,6 +21,7 @@ import {
     Phone,
     Briefcase,
     Edit,
+    Plus,
     Search,
     Filter,
     RotateCcw,
@@ -33,6 +34,7 @@ import {
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loading } from "@/components/ui/Loading";
+import { FilterDrawer } from "@/components/ui/FilterDrawer";
 import { useForm, Controller } from "react-hook-form";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -72,6 +74,7 @@ import {
 } from "@/components/ui/card";
 import { addUserSchema, AddUserInput } from "@/lib/validations";
 import { UserRole, UserStatus } from "@/types";
+import { formatUserTitle, parseUserTitle } from "@/lib/utils";
 
 export default function UsersManagementPage() {
     const queryClient = useQueryClient();
@@ -81,20 +84,110 @@ export default function UsersManagementPage() {
     const [deleteUserTarget, setDeleteUserTarget] = useState<any | null>(null);
     const [viewUserTarget, setViewUserTarget] = useState<any | null>(null);
     const [editUserTarget, setEditUserTarget] = useState<any | null>(null);
-    const [editTitleValue, setEditTitleValue] = useState("");
+    const [editTitlesList, setEditTitlesList] = useState<string[]>([]);
+    const [newTitleInput, setNewTitleInput] = useState("");
+
+    const [createTitlesList, setCreateTitlesList] = useState<string[]>([]);
+    const [newCreateTitleInput, setNewCreateTitleInput] = useState("");
 
     // Search and Filter states
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [roleFilter, setRoleFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
     const [titleFilter, setTitleFilter] = useState("all");
+    const [tempRoleFilter, setTempRoleFilter] = useState("all");
+    const [tempStatusFilter, setTempStatusFilter] = useState("all");
+    const [tempTitleFilter, setTempTitleFilter] = useState("all");
+
+    const openFilterDrawer = () => {
+        setTempRoleFilter(roleFilter);
+        setTempStatusFilter(statusFilter);
+        setTempTitleFilter(titleFilter);
+        setIsFilterOpen(true);
+    };
+
+    const handleApplyFilters = () => {
+        setRoleFilter(tempRoleFilter);
+        setStatusFilter(tempStatusFilter);
+        setTitleFilter(tempTitleFilter);
+    };
+
+    const handleResetUserFilters = () => {
+        setTempRoleFilter("all");
+        setTempStatusFilter("all");
+        setTempTitleFilter("all");
+        setRoleFilter("all");
+        setStatusFilter("all");
+        setTitleFilter("all");
+    };
+
+    const activeUserFilterCount = [
+        roleFilter !== "all",
+        statusFilter !== "all",
+        titleFilter !== "all",
+    ].filter(Boolean).length;
 
     useEffect(() => {
         if (editUserTarget) {
-            setEditTitleValue(editUserTarget.title || "");
+            if (Array.isArray(editUserTarget.title)) {
+                setEditTitlesList(editUserTarget.title.filter(Boolean));
+            } else if (editUserTarget.title) {
+                setEditTitlesList(parseUserTitle(editUserTarget.title));
+            } else {
+                setEditTitlesList([]);
+            }
+            setNewTitleInput("");
         }
     }, [editUserTarget]);
+
+    useEffect(() => {
+        if (!isCreateOpen) {
+            setCreateTitlesList([]);
+            setNewCreateTitleInput("");
+        }
+    }, [isCreateOpen]);
+
+    const handleAddTitle = () => {
+        const trimmed = newTitleInput.trim();
+        if (!trimmed) return;
+        const parsed = parseUserTitle(trimmed);
+        setEditTitlesList((prev: string[]) => {
+            const next = [...prev];
+            parsed.forEach((t: string) => {
+                if (!next.includes(t)) {
+                    next.push(t);
+                }
+            });
+            return next;
+        });
+        setNewTitleInput("");
+    };
+
+    const handleRemoveTitle = (indexToRemove: number) => {
+        setEditTitlesList((prev: string[]) => prev.filter((_: string, idx: number) => idx !== indexToRemove));
+    };
+
+    const handleAddCreateTitle = () => {
+        const trimmed = newCreateTitleInput.trim();
+        if (!trimmed) return;
+        const parsed = parseUserTitle(trimmed);
+        setCreateTitlesList((prev: string[]) => {
+            const next = [...prev];
+            parsed.forEach((t: string) => {
+                if (!next.includes(t)) {
+                    next.push(t);
+                }
+            });
+            return next;
+        });
+        setNewCreateTitleInput("");
+    };
+
+    const handleRemoveCreateTitle = (indexToRemove: number) => {
+        setCreateTitlesList((prev: string[]) => prev.filter((_: string, idx: number) => idx !== indexToRemove));
+    };
 
     // Form setup for creating user
     const {
@@ -132,7 +225,9 @@ export default function UsersManagementPage() {
     const availableTitles = React.useMemo(() => {
         const set = new Set<string>();
         users.forEach((u: any) => {
-            if (u.title && u.title.trim()) {
+            if (Array.isArray(u.title)) {
+                u.title.forEach((t: string) => t && t.trim() && set.add(t.trim()));
+            } else if (typeof u.title === "string" && u.title.trim()) {
                 set.add(u.title.trim());
             }
         });
@@ -155,7 +250,10 @@ export default function UsersManagementPage() {
                 u.status?.toLowerCase() === statusFilter.toLowerCase();
 
             const matchesTitle =
-                titleFilter === "all" || u.title === titleFilter;
+                titleFilter === "all" ||
+                (Array.isArray(u.title)
+                    ? u.title.includes(titleFilter)
+                    : u.title === titleFilter);
 
             return matchesSearch && matchesRole && matchesStatus && matchesTitle;
         });
@@ -210,7 +308,7 @@ export default function UsersManagementPage() {
             id: string;
             role?: string;
             status?: string;
-            title?: string;
+            title?: string[] | string;
         }) => {
             const res = await fetch(`/api/users/${id}`, {
                 method: "PATCH",
@@ -345,15 +443,14 @@ export default function UsersManagementPage() {
                     </div>
                 </CardHeader>
 
-                {/* Search & Filter Toolbar */}
-                <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 p-4 bg-accent/20 border-b border-border/60">
-                    {/* Search Input Form (Matching Accounts / Quotes / Clients pattern) */}
+                {/* Controls Bar: Search Left, Filter Button Right */}
+                <div className="flex items-center justify-between gap-3 p-4 bg-accent/20 border-b border-border/60">
                     <form
                         onSubmit={(e) => {
                             e.preventDefault();
                             setSearchQuery(searchInput);
                         }}
-                        className="relative flex-1 min-w-60 flex items-center"
+                        className="relative w-full sm:max-w-md flex flex-1 items-center"
                     >
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -377,60 +474,82 @@ export default function UsersManagementPage() {
                         </button>
                     </form>
 
-                    {/* Filter Dropdowns */}
-                    <div className="flex flex-wrap items-center gap-2">
-                        {/* Role Filter */}
-                        <Select value={roleFilter} onValueChange={(val: any) => setRoleFilter(val as string)}>
-                            <SelectTrigger className="bg-background border-border text-xs h-10! w-31.25">
-                                <SelectValue placeholder="Role" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-xs">
-                                <SelectItem value="all" className={`h-10!`}>All Roles</SelectItem>
-                                <SelectItem value="admin" className={`h-10!`}>Admin</SelectItem>
-                                <SelectItem value="member" className={`h-10!`}>Member</SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        {/* Status Filter */}
-                        <Select value={statusFilter} onValueChange={(val: any) => setStatusFilter(val as string)}>
-                            <SelectTrigger className="bg-background border-border text-xs h-10! w-31.25">
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-xs">
-                                <SelectItem value="all" className={`h-10!`}>All Statuses</SelectItem>
-                                <SelectItem value="active" className={`h-10!`}>Active</SelectItem>
-                                <SelectItem value="blocked" className={`h-10!`}>Blocked</SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        {/* Title Filter */}
-                        <Select value={titleFilter} onValueChange={(val: any) => setTitleFilter(val as string)}>
-                            <SelectTrigger className="bg-background border-border text-xs h-10! w-60">
-                                <SelectValue placeholder="Title" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-xs max-h-56">
-                                <SelectItem value="all" className={`h-10!`}>All Titles</SelectItem>
-                                {availableTitles.map((title) => (
-                                    <SelectItem key={title} value={title} className={`h-10!`}>
-                                        {title}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-
-                        {isFilterActive && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={resetFilters}
-                                className="h-9 px-2 text-xs text-muted-foreground hover:text-destructive gap-1 cursor-pointer"
-                            >
-                                <RotateCcw className="h-3.5 w-3.5" />
-                                <span>Reset</span>
-                            </Button>
-                        )}
+                    <div className="flex items-center gap-2 sm:w-auto justify-end">
+                        <Button
+                            onClick={openFilterDrawer}
+                            variant="outline"
+                            className="bg-background/50 border-border hover:bg-accent text-foreground h-10 gap-2 cursor-pointer relative font-semibold text-xs"
+                        >
+                            <Filter className="h-4 w-4 text-indigo-500" />
+                            <span>Filter</span>
+                            {activeUserFilterCount > 0 && (
+                                <Badge className="ml-1 bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                                    {activeUserFilterCount}
+                                </Badge>
+                            )}
+                        </Button>
                     </div>
                 </div>
+
+                {/* Filter Drawer Sidebar */}
+                <FilterDrawer
+                    isOpen={isFilterOpen}
+                    onClose={() => setIsFilterOpen(false)}
+                    onApply={handleApplyFilters}
+                    onReset={handleResetUserFilters}
+                    activeFilterCount={activeUserFilterCount}
+                    title="User Filters"
+                    description="Filter registered team members by role, status, or job title."
+                >
+                    <div className="space-y-4">
+                        <div className="flex gap-2">
+                            <div className="space-y-1.5 flex-1">
+                                <Label className="text-xs font-semibold text-muted-foreground">Role</Label>
+                                <Select value={tempRoleFilter} onValueChange={(val: any) => setTempRoleFilter(val as string)}>
+                                    <SelectTrigger className="bg-background border-border text-foreground h-10! cursor-pointer w-full">
+                                        <SelectValue placeholder="Role" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-card border-border text-foreground z-[160]">
+                                        <SelectItem value="all" className="h-10">All Roles</SelectItem>
+                                        <SelectItem value="admin" className="h-10">Admin</SelectItem>
+                                        <SelectItem value="member" className="h-10">Member</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-1.5 flex-1">
+                                <Label className="text-xs font-semibold text-muted-foreground">Status</Label>
+                                <Select value={tempStatusFilter} onValueChange={(val: any) => setTempStatusFilter(val as string)}>
+                                    <SelectTrigger className="bg-background border-border text-foreground h-10! cursor-pointer w-full">
+                                        <SelectValue placeholder="Status" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-card border-border text-foreground z-[160]">
+                                        <SelectItem value="all" className="h-10">All Statuses</SelectItem>
+                                        <SelectItem value="active" className="h-10">Active</SelectItem>
+                                        <SelectItem value="blocked" className="h-10">Blocked</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold text-muted-foreground">Title</Label>
+                            <Select value={tempTitleFilter} onValueChange={(val: any) => setTempTitleFilter(val as string)}>
+                                <SelectTrigger className="bg-background border-border text-foreground h-10! cursor-pointer w-full">
+                                    <SelectValue placeholder="Title" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-border text-foreground z-[160] max-h-56">
+                                    <SelectItem value="all" className="h-10">All Titles</SelectItem>
+                                    {availableTitles.map((title) => (
+                                        <SelectItem key={title} value={title} className="h-10">
+                                            {title}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                </FilterDrawer>
 
                 <CardContent className="p-0">
                     {isLoading ? (
@@ -516,9 +635,9 @@ export default function UsersManagementPage() {
                                                                 </Badge>
                                                             )}
                                                         </div>
-                                                        {user.title && (
+                                                        {formatUserTitle(user.title) && (
                                                             <div className="text-[11px] font-normal text-muted-foreground">
-                                                                {user.title}
+                                                                {formatUserTitle(user.title)}
                                                             </div>
                                                         )}
                                                     </div>
@@ -610,7 +729,6 @@ export default function UsersManagementPage() {
                                                         size="icon"
                                                         onClick={() => {
                                                             setEditUserTarget(user);
-                                                            setEditTitleValue(user.title || "");
                                                         }}
                                                         className="h-10 w-10 text-muted-foreground hover:text-indigo-500 hover:bg-indigo-500/10 rounded-md cursor-pointer hover:scale-[1.05] active:scale-[0.95] transition-all"
                                                         title="Edit user title"
@@ -677,9 +795,23 @@ export default function UsersManagementPage() {
                     </DialogHeader>
 
                     <form
-                        onSubmit={handleSubmit((data) =>
-                            createUserMutation.mutate(data),
-                        )}
+                        onSubmit={handleSubmit((data) => {
+                            const finalTitles = [...createTitlesList];
+                            if (newCreateTitleInput.trim()) {
+                                const parsed = parseUserTitle(newCreateTitleInput.trim());
+                                parsed.forEach((t: string) => {
+                                    if (!finalTitles.includes(t)) finalTitles.push(t);
+                                });
+                            }
+                            if (finalTitles.length === 0) {
+                                toast.error("Please add at least one job title");
+                                return;
+                            }
+                            createUserMutation.mutate({
+                                ...data,
+                                title: finalTitles,
+                            });
+                        })}
                         className="space-y-4 pt-2"
                     >
                         <div className="space-y-1.5">
@@ -700,21 +832,73 @@ export default function UsersManagementPage() {
                             )}
                         </div>
 
-                        <div className="space-y-1.5">
-                            <Label htmlFor="title">Title / Role Designation *</Label>
-                            <div className="relative">
-                                <Briefcase className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    id="title"
-                                    placeholder="e.g. Full Stack Developer, Project Manager"
-                                    {...register("title")}
-                                    className="pl-10 bg-background border-border text-foreground focus-visible:ring-indigo-500 h-10"
-                                />
+                        <div className="space-y-3">
+                            <Label className="text-xs font-semibold text-muted-foreground">
+                                Job Titles / Designations ({createTitlesList.length}) *
+                            </Label>
+                            <div className="flex flex-wrap gap-2 min-h-12 p-3 bg-background/50 border border-border rounded-xl items-center">
+                                {createTitlesList.length === 0 ? (
+                                    <span className="text-xs text-muted-foreground italic">
+                                        No titles added yet. Type below and press Enter to add.
+                                    </span>
+                                ) : (
+                                    createTitlesList.map((title: string, idx: number) => (
+                                        <Badge
+                                            key={idx}
+                                            variant="secondary"
+                                            className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border border-indigo-500/20 text-xs px-2.5 py-1 gap-1.5 flex items-center font-medium rounded-lg"
+                                        >
+                                            <span>{title}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveCreateTitle(idx)}
+                                                className="hover:bg-indigo-500/20 rounded-full p-0.5 text-indigo-500 hover:text-indigo-700 transition-colors cursor-pointer"
+                                                title="Remove title"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </Badge>
+                                    ))
+                                )}
                             </div>
-                            {errors.title && (
-                                <p className="text-xs text-destructive">
-                                    {errors.title.message}
-                                </p>
+
+                            <div className="flex items-center gap-2">
+                                <div className="relative flex-1">
+                                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        id="create-title-input"
+                                        value={newCreateTitleInput}
+                                        onChange={(e) => setNewCreateTitleInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                handleAddCreateTitle();
+                                            }
+                                        }}
+                                        placeholder="Type title and press Enter..."
+                                        className="pl-9 pr-3 bg-background border-border text-foreground focus-visible:ring-indigo-500 h-10 text-xs"
+                                    />
+                                </div>
+                                <Button
+                                    type="button"
+                                    onClick={handleAddCreateTitle}
+                                    disabled={!newCreateTitleInput.trim()}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white h-10 px-3.5 text-xs font-semibold gap-1 cursor-pointer shrink-0"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    <span>Add</span>
+                                </Button>
+                            </div>
+
+                            {createTitlesList.length > 0 && (
+                                <div className="p-3 bg-accent/20 border border-border/60 rounded-xl text-xs space-y-1">
+                                    <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">
+                                        Display Preview ({createTitlesList.length}):
+                                    </span>
+                                    <p className="font-semibold text-indigo-600 dark:text-indigo-300">
+                                        {createTitlesList.join(" & ")}
+                                    </p>
+                                </div>
                             )}
                         </div>
 
@@ -954,10 +1138,10 @@ export default function UsersManagementPage() {
                                             </Badge>
                                         </div>
 
-                                        {viewUserTarget.title && (
+                                        {formatUserTitle(viewUserTarget.title) && (
                                             <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs text-indigo-200 font-medium">
                                                 <Briefcase className="h-3.5 w-3.5" />
-                                                <span>{viewUserTarget.title}</span>
+                                                <span>{formatUserTitle(viewUserTarget.title)}</span>
                                             </div>
                                         )}
 
@@ -1037,6 +1221,18 @@ export default function UsersManagementPage() {
                                             <span className="text-muted-foreground">Blood Group:</span>{" "}
                                             <span className="font-semibold text-foreground">
                                                 {viewUserTarget.bloodGroup || "Not specified"}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-muted-foreground">NID Number:</span>{" "}
+                                            <span className="font-semibold text-foreground">
+                                                {viewUserTarget.nidNumber || "Not specified"}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="text-muted-foreground">Passport Number:</span>{" "}
+                                            <span className="font-semibold text-foreground">
+                                                {viewUserTarget.passportNumber || "Not specified"}
                                             </span>
                                         </div>
                                         <div className="sm:col-span-2">
@@ -1183,21 +1379,88 @@ export default function UsersManagementPage() {
                     </DialogHeader>
 
                     <div className="space-y-4 pt-3">
+                        {/* Title Badges List */}
                         <div className="space-y-1.5">
-                            <Label htmlFor="edit-user-title">Job Title / Designation *</Label>
-                            <div className="relative">
-                                <Briefcase className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    id="edit-user-title"
-                                    value={editTitleValue}
-                                    onChange={(e) => setEditTitleValue(e.target.value)}
-                                    placeholder="e.g. Full Stack Developer, Project Manager"
-                                    className="pl-10 bg-background border-border text-foreground focus-visible:ring-indigo-500 h-10"
-                                />
+                            <Label className="text-xs font-semibold text-muted-foreground">
+                                Current Job Titles ({editTitlesList.length})
+                            </Label>
+                            <div className="flex flex-wrap gap-2 min-h-12 p-3 bg-background/50 border border-border rounded-xl items-center">
+                                {editTitlesList.length === 0 ? (
+                                    <span className="text-xs text-muted-foreground italic">
+                                        No job titles added yet. Type below and press Enter to add.
+                                    </span>
+                                ) : (
+                                    editTitlesList.map((title: string, idx: number) => (
+                                        <Badge
+                                            key={idx}
+                                            variant="secondary"
+                                            className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border border-indigo-500/20 text-xs px-2.5 py-1 gap-1.5 flex items-center font-medium rounded-lg"
+                                        >
+                                            <span>{title}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveTitle(idx)}
+                                                className="hover:bg-indigo-500/20 rounded-full p-0.5 text-indigo-500 hover:text-indigo-700 transition-colors cursor-pointer"
+                                                title="Remove title"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </Badge>
+                                    ))
+                                )}
                             </div>
                         </div>
 
-                        <div className="flex justify-end gap-2 pt-2">
+                        {/* Add Title Input */}
+                        <div className="space-y-1.5">
+                            <Label htmlFor="add-new-title-input" className="text-xs font-semibold text-muted-foreground">
+                                Add Title (Type and press Enter)
+                            </Label>
+                            <div className="flex items-center gap-2">
+                                <div className="relative flex-1">
+                                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        id="add-new-title-input"
+                                        value={newTitleInput}
+                                        onChange={(e) => setNewTitleInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                handleAddTitle();
+                                            }
+                                        }}
+                                        placeholder="e.g. Software Engineer (Press Enter)"
+                                        className="pl-9 pr-3 bg-background border-border text-foreground focus-visible:ring-indigo-500 h-10 text-xs"
+                                    />
+                                </div>
+                                <Button
+                                    type="button"
+                                    onClick={handleAddTitle}
+                                    disabled={!newTitleInput.trim()}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white h-10 px-3.5 text-xs font-semibold gap-1 cursor-pointer shrink-0"
+                                >
+                                    <Plus className="h-4 w-4" />
+                                    <span>Add</span>
+                                </Button>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground italic">
+                                Type a designation and press Enter or click Add. Multiple titles will be displayed joined by &amp;.
+                            </p>
+                        </div>
+
+                        {/* Live Concatenated Preview */}
+                        {editTitlesList.length > 0 && (
+                            <div className="p-3 bg-accent/20 border border-border/60 rounded-xl text-xs space-y-1">
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">
+                                    Display Preview ({editTitlesList.length}):
+                                </span>
+                                <p className="font-semibold text-indigo-600 dark:text-indigo-300">
+                                    {editTitlesList.join(" & ")}
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -1209,18 +1472,21 @@ export default function UsersManagementPage() {
                             <Button
                                 type="button"
                                 onClick={() => {
-                                    if (!editTitleValue.trim()) {
-                                        toast.error("Title cannot be empty");
-                                        return;
+                                    const finalTitles = [...editTitlesList];
+                                    if (newTitleInput.trim()) {
+                                        const parsed = parseUserTitle(newTitleInput.trim());
+                                        parsed.forEach((t: string) => {
+                                            if (!finalTitles.includes(t)) finalTitles.push(t);
+                                        });
                                     }
                                     updateUserMutation.mutate({
                                         id: editUserTarget._id,
-                                        title: editTitleValue.trim(),
+                                        title: finalTitles,
                                     });
                                     setEditUserTarget(null);
                                 }}
                                 disabled={updateUserMutation.isPending}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold cursor-pointer"
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold cursor-pointer shadow-md shadow-indigo-600/10"
                             >
                                 {updateUserMutation.isPending ? <Loading variant="mini" /> : "Save Changes"}
                             </Button>
