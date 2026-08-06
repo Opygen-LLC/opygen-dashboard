@@ -79,6 +79,19 @@ export function ClientCalendarView({
                 company: client.companyName,
             });
         }
+        if (
+            client.nextFollowupDate &&
+            (filterType === "all" || filterType === "followups")
+        ) {
+            itemEvents.push({
+                id: `next-followup-${client._id}`,
+                client,
+                type: "followup",
+                date: new Date(client.nextFollowupDate),
+                title: `${client.name} (Follow-up)`,
+                company: client.companyName,
+            });
+        }
         return itemEvents;
     });
 

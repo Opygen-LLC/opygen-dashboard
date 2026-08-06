@@ -167,15 +167,11 @@ export default function AdminDashboardPage() {
 
     const todayFollowUps = (
         Array.isArray(clientsData) ? clientsData : []
-    ).filter(
-        (c: any) =>
-            c.status === "Follow-up" &&
-            c.followupDate &&
-            (typeof c.followupDate === "string"
-                ? c.followupDate
-                : new Date(c.followupDate).toISOString()
-            ).startsWith(today),
-    );
+    ).filter((c: any) => {
+        const fDate = c.followupDate ? (typeof c.followupDate === "string" ? c.followupDate : new Date(c.followupDate).toISOString()) : null;
+        const nfDate = c.nextFollowupDate ? (typeof c.nextFollowupDate === "string" ? c.nextFollowupDate : new Date(c.nextFollowupDate).toISOString()) : null;
+        return (c.status === "Follow-up" && fDate && fDate.startsWith(today)) || (nfDate && nfDate.startsWith(today));
+    });
 
     const todayMeetings = (
         Array.isArray(clientsData) ? clientsData : []

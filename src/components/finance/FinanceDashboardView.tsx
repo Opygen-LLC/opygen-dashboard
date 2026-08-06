@@ -18,6 +18,7 @@ import {
     Calendar,
     Users,
     Trash2,
+    Pencil,
     ChevronLeft,
     ChevronRight,
     Download,
@@ -35,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FilterDrawer } from "@/components/ui/FilterDrawer";
 import { cn } from "@/lib/utils";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -57,25 +59,108 @@ const monthColors = [
     "bg-pink-500/10 text-pink-600 dark:bg-pink-500/20 dark:text-pink-400"
 ];
 
+function calculateDateRange(preset: string, customStart?: string, customEnd?: string) {
+    if (preset === "all" || !preset) return { startDate: "", endDate: "" };
+    const now = new Date();
+    if (preset === "today") {
+        const todayStr = now.toISOString().split("T")[0];
+        return { startDate: todayStr, endDate: todayStr };
+    }
+    if (preset === "7d") {
+        const d = new Date();
+        d.setDate(d.getDate() - 7);
+        return { startDate: d.toISOString().split("T")[0], endDate: now.toISOString().split("T")[0] };
+    }
+    if (preset === "30d") {
+        const d = new Date();
+        d.setDate(d.getDate() - 30);
+        return { startDate: d.toISOString().split("T")[0], endDate: now.toISOString().split("T")[0] };
+    }
+    if (preset === "this_month") {
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        return { startDate: firstDay.toISOString().split("T")[0], endDate: now.toISOString().split("T")[0] };
+    }
+    if (preset === "custom") {
+        return { startDate: customStart || "", endDate: customEnd || "" };
+    }
+    return { startDate: "", endDate: "" };
+}
+
 export default function FinanceDashboardView() {
     const [activeViewTab, setActiveViewTab] = useState<"overview" | "analytics">("overview");
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+    const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
+
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const [exportRange, setExportRange] = useState("30d");
-    const [transactionToDelete, setTransactionToDelete] = useState<
-        string | null
-    >(null);
+    const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
+
+    // Filter drawer state
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [filterType, setFilterType] = useState<string>("");
     const [filterCategory, setFilterCategory] = useState<string>("");
-    const [currentPage, setCurrentPage] = useState<number>(1);
+    const [filterUser, setFilterUser] = useState<string>("");
+    const [filterDate, setFilterDate] = useState<string>("all");
+    const [customStartDate, setCustomStartDate] = useState<string>("");
+    const [customEndDate, setCustomEndDate] = useState<string>("");
 
+    // Temp filter drawer state
+    const [tempFilterType, setTempFilterType] = useState<string>("");
+    const [tempFilterCategory, setTempFilterCategory] = useState<string>("");
+    const [tempFilterUser, setTempFilterUser] = useState<string>("");
+    const [tempFilterDate, setTempFilterDate] = useState<string>("all");
+    const [tempCustomStartDate, setTempCustomStartDate] = useState<string>("");
+    const [tempCustomEndDate, setTempCustomEndDate] = useState<string>("");
+
+    const [currentPage, setCurrentPage] = useState<number>(1);
     const [mounted, setMounted] = useState(false);
+
     useEffect(() => setMounted(true), []);
 
     // Reset pagination when filter changes
     useEffect(() => {
         setCurrentPage(1);
-    }, [filterType, filterCategory]);
+    }, [filterType, filterCategory, filterUser, filterDate, customStartDate, customEndDate]);
+
+    const activeFilterCount =
+        (filterType && filterType !== "all" ? 1 : 0) +
+        (filterCategory && filterCategory !== "all" ? 1 : 0) +
+        (filterUser && filterUser !== "all" ? 1 : 0) +
+        (filterDate !== "all" ? 1 : 0);
+
+    const openFilterDrawer = () => {
+        setTempFilterType(filterType);
+        setTempFilterCategory(filterCategory);
+        setTempFilterUser(filterUser);
+        setTempFilterDate(filterDate);
+        setTempCustomStartDate(customStartDate);
+        setTempCustomEndDate(customEndDate);
+        setIsFilterOpen(true);
+    };
+
+    const handleApplyFilters = () => {
+        setFilterType(tempFilterType);
+        setFilterCategory(tempFilterCategory);
+        setFilterUser(tempFilterUser);
+        setFilterDate(tempFilterDate);
+        setCustomStartDate(tempCustomStartDate);
+        setCustomEndDate(tempCustomEndDate);
+    };
+
+    const handleResetFilters = () => {
+        setTempFilterType("");
+        setTempFilterCategory("");
+        setTempFilterUser("");
+        setTempFilterDate("all");
+        setTempCustomStartDate("");
+        setTempCustomEndDate("");
+        setFilterType("");
+        setFilterCategory("");
+        setFilterUser("");
+        setFilterDate("all");
+        setCustomStartDate("");
+        setCustomEndDate("");
+    };
 
     // Fetch summary
     const {
@@ -97,7 +182,15 @@ export default function FinanceDashboardView() {
         isLoading: isTransactionsLoading,
         refetch: refetchTransactions,
     } = useQuery({
-        queryKey: ["finance-transactions", filterType, filterCategory],
+        queryKey: [
+            "finance-transactions",
+            filterType,
+            filterCategory,
+            filterUser,
+            filterDate,
+            customStartDate,
+            customEndDate,
+        ],
         queryFn: async () => {
             const params = new URLSearchParams();
             if (filterType && filterType !== "all_types" && filterType !== "all") {
@@ -106,6 +199,13 @@ export default function FinanceDashboardView() {
             if (filterCategory && filterCategory !== "all_categories" && filterCategory !== "all") {
                 params.append("category", filterCategory);
             }
+            if (filterUser && filterUser !== "all") {
+                params.append("user", filterUser);
+            }
+            const { startDate, endDate } = calculateDateRange(filterDate, customStartDate, customEndDate);
+            if (startDate) params.append("startDate", startDate);
+            if (endDate) params.append("endDate", endDate);
+
             const queryString = params.toString();
             const url = queryString
                 ? `/api/finance/transactions?${queryString}`
@@ -132,7 +232,6 @@ export default function FinanceDashboardView() {
         handleSubmit,
         reset,
         watch,
-        setValue,
         control,
         formState: { errors, isSubmitting },
     } = useForm({
@@ -141,9 +240,11 @@ export default function FinanceDashboardView() {
             type: "expense",
             category: "office",
             amount: 0,
+            amountInBdt: 0,
             date: new Date().toISOString().split("T")[0],
             description: "",
             user: null,
+            externalEntity: "",
         },
     });
 
@@ -163,8 +264,48 @@ export default function FinanceDashboardView() {
             ? "bg-emerald-50 text-emerald-700 border-emerald-200 focus:ring-emerald-500"
             : "bg-rose-50 text-rose-700 border-rose-200 focus:ring-rose-500";
 
-    // Mutations
-    const addMutation = useMutation({
+    const handleOpenCreateModal = () => {
+        setEditingTransaction(null);
+        reset({
+            type: "expense",
+            category: "office",
+            amount: 0,
+            amountInBdt: 0,
+            date: new Date().toISOString().split("T")[0],
+            description: "",
+            user: null,
+            externalEntity: "",
+        });
+        setIsFormModalOpen(true);
+    };
+
+    const handleOpenEditModal = (tx: any) => {
+        setEditingTransaction(tx);
+        const userId = tx.user
+            ? typeof tx.user === "object"
+                ? tx.user._id
+                : tx.user
+            : tx.externalEntity
+            ? "other"
+            : null;
+
+        reset({
+            type: tx.type,
+            category: tx.category,
+            amount: tx.amount,
+            amountInBdt: tx.amountInBdt || 0,
+            date: tx.date
+                ? new Date(tx.date).toISOString().split("T")[0]
+                : new Date().toISOString().split("T")[0],
+            description: tx.description,
+            user: userId,
+            externalEntity: tx.externalEntity || "",
+        });
+        setIsFormModalOpen(true);
+    };
+
+    // Save Mutation (Create or Update)
+    const saveMutation = useMutation({
         mutationFn: async (data: any) => {
             const payload = { ...data };
 
@@ -183,7 +324,7 @@ export default function FinanceDashboardView() {
                             "Please provide the External Entity Name.",
                         );
                     }
-                    payload.user = null; // Remove the 'other' string so it doesn't fail ObjectId validation
+                    payload.user = null;
                 } else {
                     delete payload.externalEntity;
                 }
@@ -192,8 +333,14 @@ export default function FinanceDashboardView() {
                 delete payload.externalEntity;
             }
 
-            const res = await fetch("/api/finance/transactions", {
-                method: "POST",
+            const isEdit = !!editingTransaction;
+            const url = isEdit
+                ? `/api/finance/transactions/${editingTransaction._id}`
+                : "/api/finance/transactions";
+            const method = isEdit ? "PATCH" : "POST";
+
+            const res = await fetch(url, {
+                method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
@@ -209,14 +356,19 @@ export default function FinanceDashboardView() {
                 throw new Error(
                     errData.error ||
                         errData.details ||
-                        "Failed to add transaction",
+                        `Failed to ${isEdit ? "update" : "add"} transaction`,
                 );
             }
             return res.json();
         },
         onSuccess: () => {
-            toast.success("Transaction added successfully");
-            setIsAddModalOpen(false);
+            toast.success(
+                editingTransaction
+                    ? "Transaction updated successfully"
+                    : "Transaction added successfully",
+            );
+            setIsFormModalOpen(false);
+            setEditingTransaction(null);
             reset();
             refetchSummary();
             refetchTransactions();
@@ -310,8 +462,8 @@ export default function FinanceDashboardView() {
                         <span className="hidden sm:inline">Export CSV</span>
                     </Button>
                     <Button
-                        onClick={() => setIsAddModalOpen(true)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md flex gap-2 items-center cursor-pointer"
+                        onClick={handleOpenCreateModal}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md flex gap-2 items-center cursor-pointer font-semibold"
                     >
                         <Plus className="h-4 w-4" />
                         New Transaction
@@ -415,45 +567,25 @@ export default function FinanceDashboardView() {
                         </CardDescription>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <Select
-                            value={filterType || "all_types"}
-                            onValueChange={(val: any) => setFilterType(val === "all_types" ? "" : val)}
+                        <Button
+                            onClick={openFilterDrawer}
+                            variant="outline"
+                            className="bg-card border-border/80 hover:bg-muted text-foreground shadow-xs flex items-center gap-2 cursor-pointer h-10 px-4 text-xs font-semibold"
                         >
-                            <SelectTrigger className="w-[150px] h-10! text-sm focus:ring-2 focus:ring-indigo-500">
-                                <SelectValue placeholder="All Types" />
-                            </SelectTrigger>
-                            <SelectContent className="z-[150]">
-                                <SelectItem value="all_types" className="h-10!">All Types</SelectItem>
-                                <SelectItem value="income" className="h-10!">Income Only</SelectItem>
-                                <SelectItem value="expense" className="h-10!">Expenses Only</SelectItem>
-                            </SelectContent>
-                        </Select>
+                            <Filter className="h-3.5 w-3.5 text-indigo-500" />
+                            <span>Filter</span>
+                            {activeFilterCount > 0 && (
+                                <Badge className="bg-indigo-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold ml-1">
+                                    {activeFilterCount}
+                                </Badge>
+                            )}
+                        </Button>
 
-                        <Select
-                            value={filterCategory || "all_categories"}
-                            onValueChange={(val: any) => setFilterCategory(val === "all_categories" ? "" : val)}
-                        >
-                            <SelectTrigger className="w-[180px] h-10! text-sm focus:ring-2 focus:ring-indigo-500">
-                                <SelectValue placeholder="All Categories" />
-                            </SelectTrigger>
-                            <SelectContent className="z-[150]">
-                                <SelectItem value="all_categories" className="h-10!">All Categories</SelectItem>
-                                {Object.values(TransactionCategory).map((cat) => (
-                                    <SelectItem key={cat} value={cat} className="h-10! capitalize">
-                                        {cat.replace("_", " ")}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-
-                        {(filterType || filterCategory) && (
+                        {activeFilterCount > 0 && (
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => {
-                                    setFilterType("");
-                                    setFilterCategory("");
-                                }}
+                                onClick={handleResetFilters}
                                 className="h-10 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
                             >
                                 <X className="h-3.5 w-3.5" />
@@ -474,7 +606,10 @@ export default function FinanceDashboardView() {
                                         Category
                                     </th>
                                     <th className="px-6 py-4 font-semibold">
-                                        Amount
+                                        Amount ($)
+                                    </th>
+                                    <th className="px-6 py-4 font-semibold">
+                                        BDT (৳)
                                     </th>
                                     <th className="px-6 py-4 font-semibold">
                                         Date
@@ -487,7 +622,7 @@ export default function FinanceDashboardView() {
                             <tbody>
                                 {transactions.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-10 text-center text-muted-foreground">
+                                        <td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">
                                             No transactions found.
                                         </td>
                                     </tr>
@@ -546,6 +681,19 @@ export default function FinanceDashboardView() {
                                                     </span>
                                                 )}
                                             </td>
+                                            <td className="px-6 py-4 font-bold">
+                                                {t.type === "income" ? (
+                                                    <span className="text-emerald-500 flex items-center gap-1">
+                                                        <ArrowUpRight className="h-3.5 w-3.5" />
+                                                        ৳{(t.amountInBdt || 0).toLocaleString()}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-rose-500 flex items-center gap-1">
+                                                        <ArrowDownRight className="h-3.5 w-3.5" />
+                                                        ৳{(t.amountInBdt || 0).toLocaleString()}
+                                                    </span>
+                                                )}
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <div className={cn("flex items-center gap-1.5 px-2.5 py-1.5 rounded-md w-max font-semibold text-xs", monthColors[new Date(t.date).getMonth()])}>
                                                     <Calendar className="h-3.5 w-3.5" />
@@ -554,16 +702,26 @@ export default function FinanceDashboardView() {
                                                     ).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-right">
+                                            <td className="px-6 py-4 text-right flex justify-end gap-1">
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-8 w-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10"
+                                                    className="h-8 w-8 text-muted-foreground hover:text-indigo-600 hover:bg-indigo-500/10 cursor-pointer"
+                                                    onClick={() => handleOpenEditModal(t)}
+                                                    title="Edit Transaction"
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-8 w-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer"
                                                     onClick={() =>
                                                         setTransactionToDelete(
                                                             t._id,
                                                         )
                                                     }
+                                                    title="Delete Transaction"
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
@@ -708,17 +866,138 @@ export default function FinanceDashboardView() {
             </>
             )}
 
-            {/* Add Transaction Modal */}
+            {/* Filter Drawer Component */}
+            <FilterDrawer
+                isOpen={isFilterOpen}
+                onClose={() => setIsFilterOpen(false)}
+                onApply={handleApplyFilters}
+                onReset={handleResetFilters}
+                activeFilterCount={
+                    (tempFilterType && tempFilterType !== "all" ? 1 : 0) +
+                    (tempFilterCategory && tempFilterCategory !== "all" ? 1 : 0) +
+                    (tempFilterUser && tempFilterUser !== "all" ? 1 : 0) +
+                    (tempFilterDate !== "all" ? 1 : 0)
+                }
+                title="Filter Transactions"
+                description="Filter transactions by type, category, assigned user, or date range."
+            >
+                <div className="space-y-5">
+                    {/* Transaction Type */}
+                    <div className="space-y-2">
+                        <label className="text-xs font-semibold text-muted-foreground uppercase">
+                            Transaction Type
+                        </label>
+                        <Select value={tempFilterType || "all"} onValueChange={setTempFilterType}>
+                            <SelectTrigger className="w-full h-10! text-sm">
+                                <SelectValue placeholder="All Types" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[200]">
+                                <SelectItem value="all" className={`h-10!`}>All Types</SelectItem>
+                                <SelectItem value="income" className={`h-10!`}>Income Only</SelectItem>
+                                <SelectItem value="expense" className={`h-10!`}>Expenses Only</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Category */}
+                    <div className="space-y-2">
+                        <label className="text-xs font-semibold text-muted-foreground uppercase">
+                            Category
+                        </label>
+                        <Select value={tempFilterCategory || "all"} onValueChange={setTempFilterCategory}>
+                            <SelectTrigger className="w-full h-10! text-sm">
+                                <SelectValue placeholder="All Categories" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[200]">
+                                <SelectItem value="all" className={`h-10!`}>All Categories</SelectItem>
+                                {Object.values(TransactionCategory).map((cat) => (
+                                    <SelectItem key={cat} value={cat} className="capitalize h-10!">
+                                        {cat.replace("_", " ")}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Employee / User Filter */}
+                    <div className="space-y-2">
+                        <label className="text-xs font-semibold text-muted-foreground uppercase">
+                            Assigned Employee / User
+                        </label>
+                        <Select value={tempFilterUser || "all"} onValueChange={setTempFilterUser}>
+                            <SelectTrigger className="w-full h-10! text-sm">
+                                <SelectValue placeholder="All Users" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[200]">
+                                <SelectItem value="all" className={`h-10!`}>All Users</SelectItem>
+                                {users.map((u: any) => (
+                                    <SelectItem key={u._id} value={u._id} className={`h-10!`}>
+                                        {u.name} ({u.email})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Date Range Filter */}
+                    <div className="space-y-2">
+                        <label className="text-xs font-semibold text-muted-foreground uppercase">
+                            Date Range
+                        </label>
+                        <Select value={tempFilterDate || "all"} onValueChange={setTempFilterDate}>
+                            <SelectTrigger className="w-full h-10! text-sm">
+                                <SelectValue placeholder="All Time" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[200]">
+                                <SelectItem value="all" className={`h-10!`}>All Time</SelectItem>
+                                <SelectItem value="today" className={`h-10!`}>Today</SelectItem>
+                                <SelectItem value="7d" className={`h-10!`}>Last 7 Days</SelectItem>
+                                <SelectItem value="30d" className={`h-10!`}>Last 30 Days</SelectItem>
+                                <SelectItem value="this_month" className={`h-10!`}>This Month</SelectItem>
+                                <SelectItem value="custom" className={`h-10!`}>Custom Date Range</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {tempFilterDate === "custom" && (
+                        <div className="grid grid-cols-2 gap-3 pt-1">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-muted-foreground">From Date</label>
+                                <Input
+                                    type="date"
+                                    value={tempCustomStartDate}
+                                    onChange={(e) => setTempCustomStartDate(e.target.value)}
+                                    className="h-9 text-xs"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-muted-foreground">To Date</label>
+                                <Input
+                                    type="date"
+                                    value={tempCustomEndDate}
+                                    onChange={(e) => setTempCustomEndDate(e.target.value)}
+                                    className="h-9 text-xs"
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </FilterDrawer>
+
+            {/* Add / Edit Transaction Modal */}
             {mounted &&
                 createPortal(
                     <AnimatePresence>
-                        {isAddModalOpen && (
+                        {isFormModalOpen && (
                             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                                 <motion.div
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
-                                    onClick={() => setIsAddModalOpen(false)}
+                                    onClick={() => {
+                                        setIsFormModalOpen(false);
+                                        setEditingTransaction(null);
+                                    }}
                                     className="absolute inset-0 bg-background/80 backdrop-blur-sm"
                                 />
                                 <motion.div
@@ -733,58 +1012,69 @@ export default function FinanceDashboardView() {
                                 >
                                     <div className="flex items-center justify-between p-4 border-b border-border/50 bg-accent/5">
                                         <h3 className="font-bold text-lg flex items-center gap-2">
-                                            <Plus className="h-5 w-5 text-indigo-500" />
-                                            Add Transaction
+                                            {editingTransaction ? (
+                                                <>
+                                                    <Pencil className="h-5 w-5 text-indigo-500" />
+                                                    Update Transaction
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Plus className="h-5 w-5 text-indigo-500" />
+                                                    Add Transaction
+                                                </>
+                                            )}
                                         </h3>
                                         <Button
                                             variant="ghost"
                                             size="icon"
                                             className="h-8 w-8 rounded-full hover:bg-muted"
-                                            onClick={() =>
-                                                setIsAddModalOpen(false)
-                                            }
+                                            onClick={() => {
+                                                setIsFormModalOpen(false);
+                                                setEditingTransaction(null);
+                                            }}
                                         >
                                             <X className="h-4 w-4" />
                                         </Button>
                                     </div>
                                     <form
                                         onSubmit={handleSubmit((d) =>
-                                            addMutation.mutate(d as any),
+                                            saveMutation.mutate(d as any),
                                         )}
                                         className="p-6 space-y-4"
                                     >
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold text-muted-foreground uppercase">
+                                                Type{" "}
+                                                <span className="text-rose-500">
+                                                    *
+                                                </span>
+                                            </label>
+                                            <Controller
+                                                name="type"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Select value={field.value} onValueChange={field.onChange}>
+                                                        <SelectTrigger
+                                                            className={cn(
+                                                                "w-full h-10! px-3 text-sm focus:ring-2 outline-none transition-colors",
+                                                                typeColorClass
+                                                            )}
+                                                        >
+                                                            <SelectValue placeholder="Select type" />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="z-[150]">
+                                                            <SelectItem value="income" className={`h-10!`}>INCOME</SelectItem>
+                                                            <SelectItem value="expense" className={`h-10!`}>EXPENSE</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
+                                            />
+                                        </div>
+
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                                 <label className="text-xs font-semibold text-muted-foreground uppercase">
-                                                    Type{" "}
-                                                    <span className="text-rose-500">
-                                                        *
-                                                    </span>
-                                                </label>
-                                                <Controller
-                                                    name="type"
-                                                    control={control}
-                                                    render={({ field }) => (
-                                                        <Select value={field.value} onValueChange={field.onChange}>
-                                                            <SelectTrigger
-                                                                className={cn(
-                                                                    "w-full h-10! px-3 text-sm focus:ring-2 outline-none transition-colors",
-                                                                    typeColorClass
-                                                                )}
-                                                            >
-                                                                <SelectValue placeholder="Select type" />
-                                                            </SelectTrigger>
-                                                            <SelectContent className="z-[150]">
-                                                                <SelectItem value="income" className={`h-10!`}>INCOME</SelectItem>
-                                                                <SelectItem value="expense" className={`h-10!`}>EXPENSE</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    )}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-semibold text-muted-foreground uppercase">
-                                                    Amount ($){" "}
+                                                    Amount ($ USD){" "}
                                                     <span className="text-rose-500">
                                                         *
                                                     </span>
@@ -801,6 +1091,28 @@ export default function FinanceDashboardView() {
                                                 {errors.amount && (
                                                     <p className="text-xs text-rose-500">
                                                         {errors.amount.message}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-semibold text-muted-foreground uppercase">
+                                                    Amount (৳ BDT){" "}
+                                                    <span className="text-rose-500">
+                                                        *
+                                                    </span>
+                                                </label>
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    {...register("amountInBdt", {
+                                                        valueAsNumber: true,
+                                                    })}
+                                                    placeholder="0.00"
+                                                    className="h-10 text-lg font-semibold tracking-tight"
+                                                />
+                                                {errors.amountInBdt && (
+                                                    <p className="text-xs text-rose-500">
+                                                        {errors.amountInBdt.message}
                                                     </p>
                                                 )}
                                             </div>
@@ -865,7 +1177,7 @@ export default function FinanceDashboardView() {
                                                     name="user"
                                                     control={control}
                                                     render={({ field }) => (
-                                                        <Select value={field.value} onValueChange={field.onChange}>
+                                                        <Select value={field.value || ""} onValueChange={field.onChange}>
                                                             <SelectTrigger className="w-full h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
                                                                 <SelectValue placeholder="-- Select User --" />
                                                             </SelectTrigger>
@@ -925,9 +1237,10 @@ export default function FinanceDashboardView() {
                                             <Button
                                                 type="button"
                                                 variant="ghost"
-                                                onClick={() =>
-                                                    setIsAddModalOpen(false)
-                                                }
+                                                onClick={() => {
+                                                    setIsFormModalOpen(false);
+                                                    setEditingTransaction(null);
+                                                }}
                                             >
                                                 Cancel
                                             </Button>
@@ -935,13 +1248,15 @@ export default function FinanceDashboardView() {
                                                 type="submit"
                                                 disabled={
                                                     isSubmitting ||
-                                                    addMutation.isPending
+                                                    saveMutation.isPending
                                                 }
-                                                className="min-w-[120px] bg-indigo-600 hover:bg-indigo-700 text-white"
+                                                className="min-w-[120px] bg-indigo-600 hover:bg-indigo-700 text-white font-semibold cursor-pointer"
                                             >
                                                 {isSubmitting ||
-                                                addMutation.isPending
+                                                saveMutation.isPending
                                                     ? "Saving..."
+                                                    : editingTransaction
+                                                    ? "Update Transaction"
                                                     : "Save Transaction"}
                                             </Button>
                                         </div>
@@ -998,13 +1313,13 @@ export default function FinanceDashboardView() {
                                             onClick={() =>
                                                 setTransactionToDelete(null)
                                             }
-                                            className="flex-1"
+                                            className="flex-1 cursor-pointer"
                                         >
                                             Cancel
                                         </Button>
                                         <Button
                                             variant="destructive"
-                                            className="flex-1 bg-rose-600 hover:bg-rose-700 text-white"
+                                            className="flex-1 bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
                                             onClick={() => {
                                                 deleteMutation.mutate(
                                                     transactionToDelete,
@@ -1042,7 +1357,7 @@ export default function FinanceDashboardView() {
                             >
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-lg font-bold">Export Finance Data</h3>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsExportModalOpen(false)}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 cursor-pointer" onClick={() => setIsExportModalOpen(false)}>
                                         <X className="h-4 w-4" />
                                     </Button>
                                 </div>
@@ -1083,7 +1398,8 @@ export default function FinanceDashboardView() {
                                                 Date: new Date(t.date).toLocaleDateString(),
                                                 Type: t.type,
                                                 Category: t.category,
-                                                Amount: t.amount,
+                                                "Amount (USD)": t.amount,
+                                                "Amount (BDT)": t.amountInBdt || 0,
                                                 Description: t.description,
                                                 "User/Entity": t.user ? t.user.name : (t.externalEntity || ""),
                                                 "Created At": new Date(t.createdAt).toLocaleDateString()
@@ -1092,7 +1408,7 @@ export default function FinanceDashboardView() {
                                             exportToCSV(`finance-export-${exportRange}.csv`, data);
                                             setIsExportModalOpen(false);
                                         });
-                                    }} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white flex gap-2 items-center justify-center cursor-pointer">
+                                    }} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white flex gap-2 items-center justify-center cursor-pointer font-semibold">
                                         <Download className="h-4 w-4" />
                                         Export to CSV
                                     </Button>

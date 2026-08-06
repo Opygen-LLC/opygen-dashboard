@@ -400,6 +400,12 @@ export default function ClientDashboardView() {
                                               c.meetingDate,
                                           ).toLocaleDateString()
                                         : "",
+                                    "Meeting Outcome": c.meetingOutcome || "",
+                                    "Next Follow-up Date": c.nextFollowupDate
+                                        ? new Date(
+                                              c.nextFollowupDate,
+                                          ).toLocaleDateString()
+                                        : "",
                                     Notes: c.notes || "",
                                 }));
                                 exportToCSV("clients-export.csv", data);
@@ -544,6 +550,8 @@ export default function ClientDashboardView() {
                                     <SelectItem value="Confirmed" className="h-10">Confirmed</SelectItem>
                                     <SelectItem value="Follow-up" className="h-10">Follow-up</SelectItem>
                                     <SelectItem value="Meeting Scheduled" className="h-10">Meeting Scheduled</SelectItem>
+                                    <SelectItem value="Meeting Completed" className="h-10">Meeting Completed</SelectItem>
+                                    <SelectItem value="Proposal Sent" className="h-10">Proposal Sent</SelectItem>
                                     <SelectItem value="Blocked" className="h-10">Blocked</SelectItem>
                                     <SelectItem value="Declined" className="h-10">Declined</SelectItem>
                                 </SelectContent>
@@ -716,6 +724,29 @@ export default function ClientDashboardView() {
                                                                 </span>
                                                             </div>
                                                         )}
+                                                    {client.status ===
+                                                        "Meeting Completed" && (
+                                                        <div className="text-[10px] text-muted-foreground mt-1 space-y-0.5">
+                                                            {client.meetingOutcome && (
+                                                                <div>
+                                                                    Outcome:{" "}
+                                                                    <span className="font-semibold text-emerald-500">
+                                                                        {client.meetingOutcome}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {client.nextFollowupDate && (
+                                                                <div>
+                                                                    Next Follow-up:{" "}
+                                                                    <span className="font-medium text-amber-500">
+                                                                        {new Date(
+                                                                            client.nextFollowupDate,
+                                                                        ).toLocaleDateString()}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-1.5 text-foreground font-medium">
@@ -791,64 +822,75 @@ export default function ClientDashboardView() {
                                                         <SelectTrigger
                                                             className={cn(
                                                                 "text-[11px] font-semibold px-2 py-1.5 h-8! rounded-md border cursor-pointer outline-none transition-colors w-[135px]",
-                                                                client.status ===
-                                                                    "Confirmed"
+                                                                client.status === "Confirmed"
                                                                     ? "text-emerald-600 bg-emerald-500/10 border-emerald-500/30"
-                                                                    : client.status ===
-                                                                        "Follow-up"
+                                                                    : client.status === "Follow-up"
                                                                       ? "text-blue-600 bg-blue-500/10 border-blue-500/30"
-                                                                      : client.status ===
-                                                                          "Meeting Scheduled"
+                                                                      : client.status === "Meeting Scheduled"
                                                                         ? "text-purple-600 bg-purple-500/10 border-purple-500/30"
-                                                                        : client.status ===
-                                                                            "Blocked"
-                                                                          ? "text-orange-600 bg-orange-500/10 border-orange-500/30"
-                                                                          : client.status ===
-                                                                              "Declined"
-                                                                            ? "text-rose-600 bg-rose-500/10 border-rose-500/30"
-                                                                            : "text-amber-600 bg-amber-500/10 border-amber-500/30",
+                                                                        : client.status === "Meeting Completed"
+                                                                          ? "text-indigo-600 bg-indigo-500/10 border-indigo-500/30"
+                                                                          : client.status === "Proposal Sent"
+                                                                            ? "text-cyan-600 bg-cyan-500/10 border-cyan-500/30"
+                                                                            : client.status === "Blocked"
+                                                                              ? "text-orange-600 bg-orange-500/10 border-orange-500/30"
+                                                                              : client.status === "Declined"
+                                                                                ? "text-rose-600 bg-rose-500/10 border-rose-500/30"
+                                                                                : "text-amber-600 bg-amber-500/10 border-amber-500/30",
                                                             )}
                                                         >
                                                             <SelectValue />
                                                         </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem
-                                                                value="Pending"
-                                                                className={`h-8!`}
-                                                            >
-                                                                Pending
-                                                            </SelectItem>
-                                                            <SelectItem
-                                                                value="Confirmed"
-                                                                className={`h-8!`}
-                                                            >
-                                                                Confirmed
-                                                            </SelectItem>
-                                                            <SelectItem
-                                                                value="Follow-up"
-                                                                className={`h-8!`}
-                                                            >
-                                                                Follow-up
-                                                            </SelectItem>
-                                                            <SelectItem
-                                                                value="Meeting Scheduled"
-                                                                className={`h-8!`}
-                                                            >
-                                                                Meeting Scheduled
-                                                            </SelectItem>
-                                                            <SelectItem
-                                                                value="Blocked"
-                                                                className={`h-8!`}
-                                                            >
-                                                                Blocked
-                                                            </SelectItem>
-                                                            <SelectItem
-                                                                value="Declined"
-                                                                className={`h-8!`}
-                                                            >
-                                                                Declined
-                                                            </SelectItem>
-                                                        </SelectContent>
+                                                         <SelectContent>
+                                                             <SelectItem
+                                                                 value="Pending"
+                                                                 className={`h-8!`}
+                                                             >
+                                                                 Pending
+                                                             </SelectItem>
+                                                             <SelectItem
+                                                                 value="Confirmed"
+                                                                 className={`h-8!`}
+                                                             >
+                                                                 Confirmed
+                                                             </SelectItem>
+                                                             <SelectItem
+                                                                 value="Follow-up"
+                                                                 className={`h-8!`}
+                                                             >
+                                                                 Follow-up
+                                                             </SelectItem>
+                                                             <SelectItem
+                                                                 value="Meeting Scheduled"
+                                                                 className={`h-8!`}
+                                                             >
+                                                                 Meeting Scheduled
+                                                             </SelectItem>
+                                                             <SelectItem
+                                                                 value="Meeting Completed"
+                                                                 className={`h-8!`}
+                                                             >
+                                                                 Meeting Completed
+                                                             </SelectItem>
+                                                             <SelectItem
+                                                                 value="Proposal Sent"
+                                                                 className={`h-8!`}
+                                                             >
+                                                                 Proposal Sent
+                                                             </SelectItem>
+                                                             <SelectItem
+                                                                 value="Blocked"
+                                                                 className={`h-8!`}
+                                                             >
+                                                                 Blocked
+                                                             </SelectItem>
+                                                             <SelectItem
+                                                                 value="Declined"
+                                                                 className={`h-8!`}
+                                                             >
+                                                                 Declined
+                                                             </SelectItem>
+                                                         </SelectContent>
                                                     </Select>
                                                 </td>
                                                 <td className="px-6 py-4">

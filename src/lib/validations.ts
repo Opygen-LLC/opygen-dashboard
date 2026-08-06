@@ -256,6 +256,7 @@ export type AddUserInput = z.infer<typeof addUserSchema>;
 
 export const transactionSchema = z.object({
     amount: z.coerce.number().min(0, "Amount must be a non-negative number"),
+    amountInBdt: z.coerce.number().min(0, "Amount in BDT must be a non-negative number").default(0),
     type: z.enum(["income", "expense"]),
     category: z.enum([
         "salary",
@@ -308,7 +309,20 @@ export const clientSchema = z
         adName: z.string().optional(),
         followupDate: z.string().optional().nullable(),
         meetingDate: z.string().optional().nullable(),
-        status: z.enum(["Pending", "Confirmed", "Follow-up", "Meeting Scheduled", "Blocked", "Declined"]).default("Pending"),
+        meetingOutcome: z
+            .enum([
+                "Interested",
+                "Need Follow-up",
+                "Proposal Requested",
+                "Negotiation",
+                "Closed Won",
+                "Closed Lost",
+                "Not Interested",
+            ])
+            .optional()
+            .nullable(),
+        nextFollowupDate: z.string().optional().nullable(),
+        status: z.enum(["Pending", "Confirmed", "Follow-up", "Meeting Scheduled", "Meeting Completed", "Proposal Sent", "Blocked", "Declined"]).default("Pending"),
         priority: z.enum(["low", "medium", "high"]).default("low").optional(),
         assignedTo: z.string().optional().nullable(),
         lastUpdatedBy: z.string().optional().nullable(),

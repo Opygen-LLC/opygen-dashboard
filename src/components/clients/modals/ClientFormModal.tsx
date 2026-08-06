@@ -308,6 +308,8 @@ export function ClientFormModal({
             priority: "low",
             followupDate: "",
             meetingDate: "",
+            meetingOutcome: null,
+            nextFollowupDate: "",
         },
     });
 
@@ -366,6 +368,12 @@ export function ClientFormModal({
                               .toISOString()
                               .split("T")[0]
                         : "",
+                    meetingOutcome: editingClient.meetingOutcome || null,
+                    nextFollowupDate: editingClient.nextFollowupDate
+                        ? new Date(editingClient.nextFollowupDate)
+                              .toISOString()
+                              .split("T")[0]
+                        : "",
                 });
             } else {
                 reset({
@@ -385,6 +393,8 @@ export function ClientFormModal({
                     assignedTo: null,
                     followupDate: "",
                     meetingDate: "",
+                    meetingOutcome: null,
+                    nextFollowupDate: "",
                 });
             }
         }
@@ -481,7 +491,7 @@ export function ClientFormModal({
                             <form
                                 id="client-form"
                                 onSubmit={handleSubmit((d) =>
-                                    saveMutation.mutate(d as ClientInput),
+                                    saveMutation.mutate(d as unknown as ClientInput),
                                 )}
                                 className="space-y-6"
                             >
@@ -586,6 +596,18 @@ export function ClientFormModal({
                                                             className={`h-10!`}
                                                         >
                                                             Meeting Scheduled
+                                                        </SelectItem>
+                                                        <SelectItem
+                                                            value="Meeting Completed"
+                                                            className={`h-10!`}
+                                                        >
+                                                            Meeting Completed
+                                                        </SelectItem>
+                                                        <SelectItem
+                                                            value="Proposal Sent"
+                                                            className={`h-10!`}
+                                                        >
+                                                            Proposal Sent
                                                         </SelectItem>
                                                         <SelectItem
                                                             value="Blocked"
@@ -988,6 +1010,111 @@ export function ClientFormModal({
                                                  </p>
                                              )}
                                          </div>
+                                     )}
+
+                                     {statusWatch === "Meeting Scheduled" && (
+                                         <div className="space-y-2 md:col-span-1 animate-in fade-in">
+                                             <label className="text-xs font-semibold text-muted-foreground uppercase">
+                                                 Meeting Date{" "}
+                                                 <span className="text-rose-500">
+                                                     *
+                                                 </span>
+                                             </label>
+                                             <Input
+                                                 type="date"
+                                                 {...register("meetingDate")}
+                                                 className={
+                                                     errors.meetingDate
+                                                         ? "border-rose-500"
+                                                         : ""
+                                                 }
+                                             />
+                                             {errors.meetingDate && (
+                                                 <p className="text-xs text-rose-500">
+                                                     {
+                                                         errors.meetingDate
+                                                             ?.message as string
+                                                     }
+                                                 </p>
+                                             )}
+                                         </div>
+                                     )}
+
+                                     {statusWatch === "Meeting Completed" && (
+                                         <>
+                                             <div className="space-y-2 md:col-span-1 animate-in fade-in">
+                                                 <label className="text-xs font-semibold text-muted-foreground uppercase">
+                                                     Meeting Outcome
+                                                 </label>
+                                                 <Controller
+                                                     name="meetingOutcome"
+                                                     control={control}
+                                                     render={({ field }) => (
+                                                         <Select
+                                                             value={field.value || "none"}
+                                                             onValueChange={(val: any) =>
+                                                                 field.onChange(val === "none" ? null : val)
+                                                             }
+                                                         >
+                                                             <SelectTrigger className="w-full h-10! bg-background/50 border-border">
+                                                                 <SelectValue placeholder="Select outcome" />
+                                                             </SelectTrigger>
+                                                             <SelectContent className="z-[150]">
+                                                                 <SelectItem value="none" className="h-10!">
+                                                                     -- Select Outcome --
+                                                                 </SelectItem>
+                                                                 <SelectItem value="Interested" className="h-10!">
+                                                                     Interested
+                                                                 </SelectItem>
+                                                                 <SelectItem value="Need Follow-up" className="h-10!">
+                                                                     Need Follow-up
+                                                                 </SelectItem>
+                                                                 <SelectItem value="Proposal Requested" className="h-10!">
+                                                                     Proposal Requested
+                                                                 </SelectItem>
+                                                                 <SelectItem value="Negotiation" className="h-10!">
+                                                                     Negotiation
+                                                                 </SelectItem>
+                                                                 <SelectItem value="Closed Won" className="h-10!">
+                                                                     Closed Won
+                                                                 </SelectItem>
+                                                                 <SelectItem value="Closed Lost" className="h-10!">
+                                                                     Closed Lost
+                                                                 </SelectItem>
+                                                                 <SelectItem value="Not Interested" className="h-10!">
+                                                                     Not Interested
+                                                                 </SelectItem>
+                                                             </SelectContent>
+                                                         </Select>
+                                                     )}
+                                                 />
+                                                 {errors.meetingOutcome && (
+                                                     <p className="text-xs text-rose-500">
+                                                         {errors.meetingOutcome?.message as string}
+                                                     </p>
+                                                 )}
+                                             </div>
+
+                                             <div className="space-y-2 md:col-span-1 animate-in fade-in">
+                                                 <label className="text-xs font-semibold text-muted-foreground uppercase">
+                                                     Next Follow-up Date
+                                                 </label>
+                                                 <Input
+                                                     type="date"
+                                                     {...register("nextFollowupDate")}
+                                                     className={
+                                                         errors.nextFollowupDate
+                                                             ? "border-rose-500"
+                                                             : ""
+                                                     }
+                                                 />
+                                                 {errors.nextFollowupDate && (
+                                                     <p className="text-xs text-rose-500">
+                                                         {errors.nextFollowupDate?.message as string}
+                                                     </p>
+                                                 )}
+                                             </div>
+                                         </>
                                      )}
 
                                     {sourceWatch === "Other" && (

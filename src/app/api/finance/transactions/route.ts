@@ -29,6 +29,8 @@ export async function GET(req: NextRequest) {
         const type = searchParams.get("type");
         const category = searchParams.get("category");
         const user = searchParams.get("user");
+        const startDate = searchParams.get("startDate");
+        const endDate = searchParams.get("endDate");
         const page = parseInt(searchParams.get("page") || "1");
         const limit = parseInt(searchParams.get("limit") || "0"); // 0 means no pagination
 
@@ -36,6 +38,15 @@ export async function GET(req: NextRequest) {
         if (type) query.type = type;
         if (category) query.category = category;
         if (user) query.user = user;
+        if (startDate || endDate) {
+            query.date = {};
+            if (startDate) query.date.$gte = new Date(startDate);
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                query.date.$lte = end;
+            }
+        }
 
         let dbQuery = Transaction.find(query)
             .populate("user", "name email avatarUrl")

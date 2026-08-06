@@ -191,6 +191,26 @@ export function ClientInfoModal({ isOpen, onClose, client, onEdit }: ClientInfoM
                                                 </p>
                                             </div>
                                         )}
+                                        {client.status === "Meeting Completed" && (
+                                            <>
+                                                {client.meetingOutcome && (
+                                                    <div>
+                                                        <p className="text-xs text-muted-foreground mb-1">Meeting Outcome</p>
+                                                        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 font-medium">
+                                                            {client.meetingOutcome}
+                                                        </Badge>
+                                                    </div>
+                                                )}
+                                                {client.nextFollowupDate && (
+                                                    <div>
+                                                        <p className="text-xs text-muted-foreground mb-1">Next Follow-up Date</p>
+                                                        <p className="text-sm font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 w-fit px-2 py-0.5 rounded-md">
+                                                            {new Date(client.nextFollowupDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>

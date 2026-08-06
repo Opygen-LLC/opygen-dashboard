@@ -54,6 +54,7 @@ export async function GET(req: NextRequest) {
         query.$or = [
           { followupDate: { $gte: startOfDay, $lte: endOfDay } },
           { meetingDate: { $gte: startOfDay, $lte: endOfDay } },
+          { nextFollowupDate: { $gte: startOfDay, $lte: endOfDay } },
         ];
       }
     }

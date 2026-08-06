@@ -14,6 +14,15 @@ export interface IClient extends Document {
     adName?: string;
     followupDate?: Date;
     meetingDate?: Date;
+    meetingOutcome?:
+        | "Interested"
+        | "Need Follow-up"
+        | "Proposal Requested"
+        | "Negotiation"
+        | "Closed Won"
+        | "Closed Lost"
+        | "Not Interested";
+    nextFollowupDate?: Date;
     status: string;
     priority?: "low" | "medium" | "high";
     assignedTo?: Schema.Types.ObjectId | string | any;
@@ -79,9 +88,24 @@ const ClientSchema = new Schema<IClient>(
         meetingDate: {
             type: Date,
         },
+        meetingOutcome: {
+            type: String,
+            enum: [
+                "Interested",
+                "Need Follow-up",
+                "Proposal Requested",
+                "Negotiation",
+                "Closed Won",
+                "Closed Lost",
+                "Not Interested",
+            ],
+        },
+        nextFollowupDate: {
+            type: Date,
+        },
         status: {
             type: String,
-            enum: ["Pending", "Confirmed", "Follow-up", "Meeting Scheduled", "Blocked", "Declined"],
+            enum: ["Pending", "Confirmed", "Follow-up", "Meeting Scheduled", "Meeting Completed", "Proposal Sent", "Blocked", "Declined"],
             default: "Pending",
         },
         priority: {
