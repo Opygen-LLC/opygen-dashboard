@@ -4,6 +4,7 @@ export interface IStatement extends Document {
     user: mongoose.Types.ObjectId;
     transaction?: mongoose.Types.ObjectId;
     amount: number;
+    amountInBdt?: number;
     type: "+" | "-";
     category: string;
     description: string;
@@ -25,6 +26,10 @@ const StatementSchema = new Schema<IStatement>({
     amount: {
         type: Number,
         required: true,
+    },
+    amountInBdt: {
+        type: Number,
+        default: 0,
     },
     type: {
         type: String,

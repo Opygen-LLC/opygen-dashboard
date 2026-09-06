@@ -35,21 +35,65 @@ export async function GET(req: NextRequest) {
 
     const skip = (page - 1) * limit;
 
-    const statements = await Statement.find(query)
-      .populate('user', 'name email avatarUrl')
-      .populate('transaction')
-      .sort({ date: -1, createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .exec();
-    
-    const total = await Statement.countDocuments(query);
+    const [statements, total, allUserStatements] = await Promise.all([
+      Statement.find(query)
+        .populate('user', 'name email avatarUrl')
+        .populate('transaction')
+        .sort({ date: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      Statement.countDocuments(query),
+      Statement.find(query)
+        .populate('transaction', 'amountInBdt')
+        .lean()
+        .exec(),
+    ]);
+
+    // Calculate user's true lifetime totals across all statements
+    let totalIncome = 0;
+    let totalExpense = 0;
+    let totalIncomeBdt = 0;
+    let totalExpenseBdt = 0;
+
+    for (const stmt of allUserStatements) {
+      const amt = Number(stmt.amount || 0);
+      const bdt = Number(stmt.amountInBdt || (stmt.transaction as any)?.amountInBdt || 0);
+      if (stmt.type === '+') {
+        totalIncome += amt;
+        totalIncomeBdt += bdt;
+      } else {
+        totalExpense += amt;
+        totalExpenseBdt += bdt;
+      }
+    }
+
+    const totalBalance = Number((totalIncome - totalExpense).toFixed(2));
+    const totalBalanceBdt = Number((totalIncomeBdt - totalExpenseBdt).toFixed(2));
+
+    // Ensure amountInBdt is resolved from transaction if missing/0 on the statement
+    const processedStatements = statements.map((stmt) => {
+      const s = typeof (stmt as any).toObject === 'function' ? (stmt as any).toObject() : stmt;
+      const txAmountInBdt = s.transaction && typeof s.transaction === 'object' ? s.transaction.amountInBdt : 0;
+      if ((!s.amountInBdt || s.amountInBdt === 0) && txAmountInBdt) {
+        s.amountInBdt = txAmountInBdt;
+      }
+      return s;
+    });
     
     return NextResponse.json({
-      statements,
+      statements: processedStatements,
       totalPages: Math.ceil(total / limit),
       currentPage: page,
-      total
+      total,
+      summary: {
+        totalIncome: Number(totalIncome.toFixed(2)),
+        totalIncomeBdt: Number(totalIncomeBdt.toFixed(2)),
+        totalExpense: Number(totalExpense.toFixed(2)),
+        totalExpenseBdt: Number(totalExpenseBdt.toFixed(2)),
+        totalBalance,
+        totalBalanceBdt,
+      },
     });
   } catch (error: any) {
     console.error("Fetch statements error:", error);

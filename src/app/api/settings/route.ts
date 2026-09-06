@@ -4,6 +4,8 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/db";
 import Settings from "@/models/Settings";
+import Transaction from "@/models/Transaction";
+import { TransactionType } from "@/types";
 import { deleteFromCloudinary } from "@/lib/cloudinary";
 
 export const dynamic = "force-dynamic";
@@ -38,9 +40,10 @@ const settingsPatchSchema = z.object({
         })
         .optional(),
     monthlyBudgetGoal: z.coerce.number().min(0).optional(),
+    monthlyRevenueGoals: z.record(z.string(), z.coerce.number().min(0)).optional(),
 });
 
-/* ─── GET — return current settings ─── */
+/* ─── GET — return current settings + all monthly revenue history ─── */
 export async function GET() {
     const session = await getServerSession(authOptions);
     if (!session || session.user.role !== "admin") {
@@ -62,9 +65,115 @@ export async function GET() {
             address: "",
             socials: { facebook: "", instagram: "", linkedin: "", youtube: "", x: "" },
             monthlyBudgetGoal: 0,
+            monthlyRevenueGoals: {},
         };
 
-        return NextResponse.json(settings ?? defaults, {
+        // Query all historical monthly income revenue from Finance Transaction
+        const monthlyStats = await Transaction.aggregate([
+            {
+                $match: {
+                    type: TransactionType.INCOME,
+                },
+            },
+            {
+                $group: {
+                    _id: {
+                        year: { $year: "$date" },
+                        month: { $month: "$date" },
+                    },
+                    revenueUsd: { $sum: "$amount" },
+                    revenueBdt: { $sum: "$amountInBdt" },
+                    count: { $sum: 1 },
+                },
+            },
+            { $sort: { "_id.year": -1, "_id.month": -1 } },
+        ]);
+
+        const now = new Date();
+        const curYear = now.getFullYear();
+        const curMonth = now.getMonth() + 1; // 1-12
+
+        const monthNames = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+
+        // Collect all distinct months (at least current month + all months with income transactions)
+        const monthMap = new Map<string, {
+            year: number;
+            month: number;
+            revenueUsd: number;
+            revenueBdt: number;
+            count: number;
+        }>();
+
+        // Always seed current month
+        const curKey = `${curYear}-${String(curMonth).padStart(2, "0")}`;
+        monthMap.set(curKey, {
+            year: curYear,
+            month: curMonth,
+            revenueUsd: 0,
+            revenueBdt: 0,
+            count: 0,
+        });
+
+        for (const item of monthlyStats) {
+            const y = item._id.year;
+            const m = item._id.month;
+            const key = `${y}-${String(m).padStart(2, "0")}`;
+            monthMap.set(key, {
+                year: y,
+                month: m,
+                revenueUsd: Number(Number(item.revenueUsd || 0).toFixed(2)),
+                revenueBdt: Number(Number(item.revenueBdt || 0).toFixed(2)),
+                count: item.count || 0,
+            });
+        }
+
+        // Sort keys descending (newest first)
+        const sortedKeys = Array.from(monthMap.keys()).sort().reverse();
+
+        const defaultGoal = settings?.monthlyBudgetGoal ?? 0;
+        const customGoals = settings?.monthlyRevenueGoals
+            ? settings.monthlyRevenueGoals instanceof Map
+                ? Object.fromEntries(settings.monthlyRevenueGoals)
+                : (settings.monthlyRevenueGoals as Record<string, number>)
+            : {};
+
+        const monthlyRevenueHistory = sortedKeys.map((key) => {
+            const data = monthMap.get(key)!;
+            const goal = customGoals[key] ?? defaultGoal;
+            const pct = goal > 0 ? Math.min(Math.round((data.revenueUsd / goal) * 100), 999) : 0;
+            const isCurrent = key === curKey;
+
+            let status: "achieved" | "in_progress" | "missed" = "in_progress";
+            if (goal > 0 && data.revenueUsd >= goal) {
+                status = "achieved";
+            } else if (!isCurrent) {
+                status = "missed";
+            }
+
+            return {
+                monthKey: key,
+                monthName: `${monthNames[data.month - 1]} ${data.year}`,
+                year: data.year,
+                month: data.month,
+                revenueUsd: data.revenueUsd,
+                revenueBdt: data.revenueBdt,
+                transactionCount: data.count,
+                goal,
+                percentage: pct,
+                isCurrent,
+                status,
+            };
+        });
+
+        const responseData = {
+            ...(settings ?? defaults),
+            monthlyRevenueHistory,
+        };
+
+        return NextResponse.json(responseData, {
             headers: { "Cache-Control": "no-store, max-age=0, must-revalidate" },
         });
     } catch (error: any) {

@@ -23,6 +23,7 @@ import {
     ChevronRight,
     Download,
     BarChart3,
+    Package,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -41,7 +42,7 @@ import { cn } from "@/lib/utils";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { transactionSchema, TransactionInput } from "@/lib/validations";
-import { TransactionType, TransactionCategory } from "@/types";
+import { TransactionType, TransactionCategory, ProductName } from "@/types";
 import FinancialAnalyticsView from "./FinancialAnalyticsView";
 
 const monthColors = [
@@ -99,6 +100,7 @@ export default function FinanceDashboardView() {
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [filterType, setFilterType] = useState<string>("");
     const [filterCategory, setFilterCategory] = useState<string>("");
+    const [filterProductName, setFilterProductName] = useState<string>("");
     const [filterUser, setFilterUser] = useState<string>("");
     const [filterDate, setFilterDate] = useState<string>("all");
     const [customStartDate, setCustomStartDate] = useState<string>("");
@@ -107,6 +109,7 @@ export default function FinanceDashboardView() {
     // Temp filter drawer state
     const [tempFilterType, setTempFilterType] = useState<string>("");
     const [tempFilterCategory, setTempFilterCategory] = useState<string>("");
+    const [tempFilterProductName, setTempFilterProductName] = useState<string>("");
     const [tempFilterUser, setTempFilterUser] = useState<string>("");
     const [tempFilterDate, setTempFilterDate] = useState<string>("all");
     const [tempCustomStartDate, setTempCustomStartDate] = useState<string>("");
@@ -120,17 +123,19 @@ export default function FinanceDashboardView() {
     // Reset pagination when filter changes
     useEffect(() => {
         setCurrentPage(1);
-    }, [filterType, filterCategory, filterUser, filterDate, customStartDate, customEndDate]);
+    }, [filterType, filterCategory, filterProductName, filterUser, filterDate, customStartDate, customEndDate]);
 
     const activeFilterCount =
         (filterType && filterType !== "all" ? 1 : 0) +
         (filterCategory && filterCategory !== "all" ? 1 : 0) +
+        (filterProductName && filterProductName !== "all" ? 1 : 0) +
         (filterUser && filterUser !== "all" ? 1 : 0) +
         (filterDate !== "all" ? 1 : 0);
 
     const openFilterDrawer = () => {
         setTempFilterType(filterType);
         setTempFilterCategory(filterCategory);
+        setTempFilterProductName(filterProductName);
         setTempFilterUser(filterUser);
         setTempFilterDate(filterDate);
         setTempCustomStartDate(customStartDate);
@@ -141,6 +146,7 @@ export default function FinanceDashboardView() {
     const handleApplyFilters = () => {
         setFilterType(tempFilterType);
         setFilterCategory(tempFilterCategory);
+        setFilterProductName(tempFilterProductName);
         setFilterUser(tempFilterUser);
         setFilterDate(tempFilterDate);
         setCustomStartDate(tempCustomStartDate);
@@ -150,12 +156,14 @@ export default function FinanceDashboardView() {
     const handleResetFilters = () => {
         setTempFilterType("");
         setTempFilterCategory("");
+        setTempFilterProductName("");
         setTempFilterUser("");
         setTempFilterDate("all");
         setTempCustomStartDate("");
         setTempCustomEndDate("");
         setFilterType("");
         setFilterCategory("");
+        setFilterProductName("");
         setFilterUser("");
         setFilterDate("all");
         setCustomStartDate("");
@@ -186,6 +194,7 @@ export default function FinanceDashboardView() {
             "finance-transactions",
             filterType,
             filterCategory,
+            filterProductName,
             filterUser,
             filterDate,
             customStartDate,
@@ -198,6 +207,9 @@ export default function FinanceDashboardView() {
             }
             if (filterCategory && filterCategory !== "all_categories" && filterCategory !== "all") {
                 params.append("category", filterCategory);
+            }
+            if (filterProductName && filterProductName !== "all_products" && filterProductName !== "all") {
+                params.append("productName", filterProductName);
             }
             if (filterUser && filterUser !== "all") {
                 params.append("user", filterUser);
@@ -233,12 +245,14 @@ export default function FinanceDashboardView() {
         reset,
         watch,
         control,
+        setValue,
         formState: { errors, isSubmitting },
     } = useForm({
         resolver: zodResolver(transactionSchema),
         defaultValues: {
             type: "expense",
             category: "office",
+            productName: "",
             amount: 0,
             amountInBdt: 0,
             date: new Date().toISOString().split("T")[0],
@@ -257,7 +271,24 @@ export default function FinanceDashboardView() {
         "loan_given",
         "loan_repayment",
         "loan_taken",
+        "loan_collected",
     ].includes(selectedCategory);
+
+    useEffect(() => {
+        if (selectedType === "income" && (selectedCategory === "loan_given" || selectedCategory === "loan_repayment")) {
+            setValue("category", TransactionCategory.LOAN_TAKEN as any);
+        } else if (selectedType === "expense" && (selectedCategory === "loan_taken" || selectedCategory === "loan_collected")) {
+            setValue("category", TransactionCategory.LOAN_GIVEN as any);
+        }
+    }, [selectedType, selectedCategory, setValue]);
+
+    const modalCategoryOptions = Object.values(TransactionCategory).filter((cat) => {
+        if (selectedType === "income") {
+            return cat !== TransactionCategory.LOAN_GIVEN && cat !== TransactionCategory.LOAN_REPAYMENT;
+        } else {
+            return cat !== TransactionCategory.LOAN_TAKEN && cat !== TransactionCategory.LOAN_COLLECTED;
+        }
+    });
 
     const typeColorClass =
         selectedType === "income"
@@ -269,6 +300,7 @@ export default function FinanceDashboardView() {
         reset({
             type: "expense",
             category: "office",
+            productName: "",
             amount: 0,
             amountInBdt: 0,
             date: new Date().toISOString().split("T")[0],
@@ -292,6 +324,7 @@ export default function FinanceDashboardView() {
         reset({
             type: tx.type,
             category: tx.category,
+            productName: tx.productName || "",
             amount: tx.amount,
             amountInBdt: tx.amountInBdt || 0,
             date: tx.date
@@ -308,6 +341,14 @@ export default function FinanceDashboardView() {
     const saveMutation = useMutation({
         mutationFn: async (data: any) => {
             const payload = { ...data };
+
+            if (payload.category === "product") {
+                if (!payload.productName || payload.productName.trim() === "") {
+                    throw new Error("Please select a Product Name.");
+                }
+            } else {
+                delete payload.productName;
+            }
 
             if (needsUserSelection) {
                 if (!payload.user || payload.user === "") {
@@ -397,6 +438,13 @@ export default function FinanceDashboardView() {
             style: "currency",
             currency: "USD",
         }).format(amount || 0);
+    };
+
+    const formatBDT = (amount: number) => {
+        const val = amount || 0;
+        const isNegative = val < 0;
+        const formatted = Math.abs(val).toLocaleString();
+        return isNegative ? `-৳${formatted}` : `৳${formatted}`;
     };
 
     if (isSummaryLoading || isTransactionsLoading) {
@@ -511,12 +559,14 @@ export default function FinanceDashboardView() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-foreground">
-                            {formatCurrency(summary.netBalance)}
+                        <div className="text-lg sm:text-xl font-bold text-foreground flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5">
+                            <span>{formatCurrency(summary?.netBalance)}</span>
+                            <span className="text-muted-foreground/60 font-light mx-0.5">|</span>
+                            <span className="">{formatBDT(summary?.netBalanceBdt)}</span>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border-emerald-500/20">
+                <Card className="bg-linear-to-br from-emerald-500/10 to-emerald-600/5 border-emerald-500/20">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-semibold text-muted-foreground flex items-center justify-between">
                             Total Income
@@ -524,8 +574,10 @@ export default function FinanceDashboardView() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                            {formatCurrency(summary.totalIncome)}
+                        <div className="text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5">
+                            <span>{formatCurrency(summary?.totalIncome)}</span>
+                            <span className="text-emerald-500/60 font-light mx-0.5">|</span>
+                            <span>{formatBDT(summary?.totalIncomeBdt)}</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -537,8 +589,10 @@ export default function FinanceDashboardView() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">
-                            {formatCurrency(summary.totalExpense)}
+                        <div className="text-lg sm:text-xl font-bold text-rose-600 dark:text-rose-400 flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5">
+                            <span>{formatCurrency(summary?.totalExpense)}</span>
+                            <span className="text-rose-500/60 font-light mx-0.5">|</span>
+                            <span>{formatBDT(summary?.totalExpenseBdt)}</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -550,8 +604,10 @@ export default function FinanceDashboardView() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-                            {formatCurrency(summary.outstandingLoans)}
+                        <div className="text-lg sm:text-xl font-bold text-amber-600 dark:text-amber-400 flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5">
+                            <span>{formatCurrency(summary?.outstandingLoans)}</span>
+                            <span className="text-amber-500/60 font-light mx-0.5">|</span>
+                            <span>{formatBDT(summary?.outstandingLoansBdt)}</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -638,6 +694,12 @@ export default function FinanceDashboardView() {
                                                 <div className="font-medium text-foreground">
                                                     {t.description}
                                                 </div>
+                                                {t.productName && (
+                                                    <div className="text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1 mt-1 font-semibold">
+                                                        <Package className="h-3.5 w-3.5 shrink-0" />
+                                                        {t.productName}
+                                                    </div>
+                                                )}
                                                 {t.user && (
                                                     <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                                                         <Users className="h-3 w-3" />{" "}
@@ -875,11 +937,12 @@ export default function FinanceDashboardView() {
                 activeFilterCount={
                     (tempFilterType && tempFilterType !== "all" ? 1 : 0) +
                     (tempFilterCategory && tempFilterCategory !== "all" ? 1 : 0) +
+                    (tempFilterProductName && tempFilterProductName !== "all" ? 1 : 0) +
                     (tempFilterUser && tempFilterUser !== "all" ? 1 : 0) +
                     (tempFilterDate !== "all" ? 1 : 0)
                 }
                 title="Filter Transactions"
-                description="Filter transactions by type, category, assigned user, or date range."
+                description="Filter transactions by type, category, product, assigned user, or date range."
             >
                 <div className="space-y-5">
                     {/* Transaction Type */}
@@ -887,7 +950,7 @@ export default function FinanceDashboardView() {
                         <label className="text-xs font-semibold text-muted-foreground uppercase">
                             Transaction Type
                         </label>
-                        <Select value={tempFilterType || "all"} onValueChange={setTempFilterType}>
+                        <Select value={tempFilterType || "all"} onValueChange={(val: any) => setTempFilterType(val)}>
                             <SelectTrigger className="w-full h-10! text-sm">
                                 <SelectValue placeholder="All Types" />
                             </SelectTrigger>
@@ -904,7 +967,7 @@ export default function FinanceDashboardView() {
                         <label className="text-xs font-semibold text-muted-foreground uppercase">
                             Category
                         </label>
-                        <Select value={tempFilterCategory || "all"} onValueChange={setTempFilterCategory}>
+                        <Select value={tempFilterCategory || "all"} onValueChange={(val: any) => setTempFilterCategory(val)}>
                             <SelectTrigger className="w-full h-10! text-sm">
                                 <SelectValue placeholder="All Categories" />
                             </SelectTrigger>
@@ -919,12 +982,33 @@ export default function FinanceDashboardView() {
                         </Select>
                     </div>
 
+                    {/* Product Name Filter */}
+                    <div className="space-y-2">
+                        <label className="text-xs font-semibold text-muted-foreground uppercase">
+                            Product Name
+                        </label>
+                        <Select value={tempFilterProductName || "all"} onValueChange={(val: any) => setTempFilterProductName(val)}>
+                            <SelectTrigger className="w-full h-10! text-sm">
+                                <SelectValue placeholder="All Products" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[200]">
+                                <SelectItem value="all" className={`h-10!`}>All Products</SelectItem>
+                                <SelectItem value={ProductName.OPYGEN_CLEANING_CRM} className={`h-10!`}>
+                                    {ProductName.OPYGEN_CLEANING_CRM}
+                                </SelectItem>
+                                <SelectItem value={ProductName.OPYGEN_REAL_ESTATE_CRM} className={`h-10!`}>
+                                    {ProductName.OPYGEN_REAL_ESTATE_CRM}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
                     {/* Employee / User Filter */}
                     <div className="space-y-2">
                         <label className="text-xs font-semibold text-muted-foreground uppercase">
                             Assigned Employee / User
                         </label>
-                        <Select value={tempFilterUser || "all"} onValueChange={setTempFilterUser}>
+                        <Select value={tempFilterUser || "all"} onValueChange={(val: any) => setTempFilterUser(val)}>
                             <SelectTrigger className="w-full h-10! text-sm">
                                 <SelectValue placeholder="All Users" />
                             </SelectTrigger>
@@ -944,7 +1028,7 @@ export default function FinanceDashboardView() {
                         <label className="text-xs font-semibold text-muted-foreground uppercase">
                             Date Range
                         </label>
-                        <Select value={tempFilterDate || "all"} onValueChange={setTempFilterDate}>
+                        <Select value={tempFilterDate || "all"} onValueChange={(val: any) => setTempFilterDate(val)}>
                             <SelectTrigger className="w-full h-10! text-sm">
                                 <SelectValue placeholder="All Time" />
                             </SelectTrigger>
@@ -1135,7 +1219,7 @@ export default function FinanceDashboardView() {
                                                                 <SelectValue placeholder="Select category" />
                                                             </SelectTrigger>
                                                             <SelectContent className="z-[150]">
-                                                                {Object.values(TransactionCategory).map((cat) => (
+                                                                {modalCategoryOptions.map((cat) => (
                                                                     <SelectItem key={cat} value={cat} className={`h-10!`}>
                                                                         {cat.replace("_", " ").toUpperCase()}
                                                                     </SelectItem>
@@ -1164,6 +1248,44 @@ export default function FinanceDashboardView() {
                                                 )}
                                             </div>
                                         </div>
+
+                                        {selectedCategory === "product" && (
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-semibold text-muted-foreground uppercase">
+                                                    Product Name{" "}
+                                                    <span className="text-rose-500">
+                                                        *
+                                                    </span>
+                                                </label>
+                                                <Controller
+                                                    name="productName"
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <Select
+                                                            value={field.value || ""}
+                                                            onValueChange={field.onChange}
+                                                        >
+                                                            <SelectTrigger className="w-full h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                                <SelectValue placeholder="-- Select Product Name --" />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="z-[150]">
+                                                                <SelectItem value={ProductName.OPYGEN_CLEANING_CRM} className="h-10!">
+                                                                    {ProductName.OPYGEN_CLEANING_CRM}
+                                                                </SelectItem>
+                                                                <SelectItem value={ProductName.OPYGEN_REAL_ESTATE_CRM} className="h-10!">
+                                                                    {ProductName.OPYGEN_REAL_ESTATE_CRM}
+                                                                </SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                />
+                                                {errors.productName && (
+                                                    <p className="text-xs text-rose-500">
+                                                        {errors.productName.message as string}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
 
                                         {needsUserSelection && (
                                             <div className="space-y-2">

@@ -264,12 +264,19 @@ export const transactionSchema = z.object({
         "loan_given",
         "loan_repayment",
         "loan_taken",
+        "loan_collected",
         "equipment",
         "software",
         "office",
         "project_revenue",
+        "product",
         "other",
     ]),
+    productName: z
+        .enum(["Opygen Cleaning CRM", "Opygen Real Estate CRM"])
+        .optional()
+        .nullable()
+        .or(z.literal("")),
     description: z
         .string()
         .min(1, "Description is required")

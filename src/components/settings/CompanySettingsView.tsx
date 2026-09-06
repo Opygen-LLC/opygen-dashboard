@@ -15,6 +15,16 @@ import {
     Save,
     RefreshCw,
     AlertCircle,
+    TrendingUp,
+    Sparkles,
+    CheckCircle2,
+    Calendar,
+    DollarSign,
+    Award,
+    Upload,
+    X,
+    ChevronLeft,
+    ChevronRight,
 } from "lucide-react";
 import { FaFacebook, FaInstagram, FaLinkedin, FaYoutube } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
@@ -30,7 +40,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PhoneInput } from "@/components/ui/PhoneInput";
-import { Upload, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 
 
@@ -126,6 +137,21 @@ export default function CompanySettingsView() {
             return res.json();
         },
     });
+
+    const revenueHistory: any[] = settings?.monthlyRevenueHistory ?? [];
+    const [revenuePage, setRevenuePage] = useState(1);
+    const REVENUE_PER_PAGE = 10;
+    const totalRevenuePages = Math.ceil(revenueHistory.length / REVENUE_PER_PAGE) || 1;
+    const paginatedRevenue = revenueHistory.slice(
+        (revenuePage - 1) * REVENUE_PER_PAGE,
+        revenuePage * REVENUE_PER_PAGE
+    );
+    const totalLifetimeUsd = revenueHistory.reduce((sum, m) => sum + (m.revenueUsd || 0), 0);
+    const totalLifetimeBdt = revenueHistory.reduce((sum, m) => sum + (m.revenueBdt || 0), 0);
+    const bestMonth = revenueHistory.length > 0
+        ? [...revenueHistory].sort((a, b) => (b.revenueUsd || 0) - (a.revenueUsd || 0))[0]
+        : null;
+    const currentMonthData = revenueHistory.find((m) => m.isCurrent);
 
     useEffect(() => {
         if (!settings) return;
@@ -495,7 +521,7 @@ export default function CompanySettingsView() {
                 </Section>
             </motion.div>
 
-            {/* ── Section C: Monthly Revenue Goal ── */}
+            {/* ── Section C: Monthly Revenue Goal & Performance History ── */}
             <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -506,33 +532,366 @@ export default function CompanySettingsView() {
                 }}
             >
                 <Section
-                    title="Monthly Revenue Goal"
-                    description="Set a monthly payment collection target — shown as a progress bar on the dashboard"
+                    title="Monthly Revenue Goal & Performance"
+                    description="Configure monthly revenue goals and review all historical monthly earnings from Finance income transactions"
                     icon={<Target className="h-3.5 w-3.5 text-emerald-500" />}
                     accent="from-emerald-500/8"
                 >
-                    <div className="max-w-xs">
-                        <Field
-                            label="Monthly Target"
-                            icon={<Target className="h-3 w-3" />}
-                            hint="Total amount you aim to collect in payments each month."
-                        >
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground select-none">
-                                    $
-                                </span>
-                                <Input
-                                    type="number"
-                                    min="0"
-                                    value={form.monthlyBudgetGoal}
-                                    onChange={(e) =>
-                                        set("monthlyBudgetGoal")(e.target.value)
-                                    }
-                                    placeholder="0"
-                                    className="pl-8"
-                                />
+                    <div className="space-y-6">
+                        {/* Target Input */}
+                        <div className="max-w-xs">
+                            <Field
+                                label="Default Monthly Target"
+                                icon={<Target className="h-3 w-3" />}
+                                hint="Target revenue you aim to collect in Finance income each month."
+                            >
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground select-none">
+                                        $
+                                    </span>
+                                    <Input
+                                        type="number"
+                                        min="0"
+                                        value={form.monthlyBudgetGoal}
+                                        onChange={(e) =>
+                                            set("monthlyBudgetGoal")(e.target.value)
+                                        }
+                                        placeholder="0"
+                                        className="pl-8 font-semibold"
+                                    />
+                                </div>
+                            </Field>
+                        </div>
+
+                        {/* Summary KPI Cards for Revenue History */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+                            <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5 flex flex-col justify-between gap-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                                        All-Time Income ($)
+                                    </span>
+                                    <div className="h-7 w-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                        <DollarSign className="h-3.5 w-3.5" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-xl font-black text-foreground tracking-tight tabular-nums">
+                                        ${totalLifetimeUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </p>
+                                    <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                                        ৳{totalLifetimeBdt.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} BDT
+                                    </p>
+                                </div>
                             </div>
-                        </Field>
+
+                            <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5 flex flex-col justify-between gap-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                                        Current Month
+                                    </span>
+                                    <div className="h-7 w-7 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                        <Calendar className="h-3.5 w-3.5" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex items-baseline gap-1.5">
+                                        <p className="text-xl font-black text-foreground tracking-tight tabular-nums">
+                                            ${(currentMonthData?.revenueUsd ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </p>
+                                        {Number(form.monthlyBudgetGoal) > 0 && (
+                                            <span className="text-xs font-bold text-muted-foreground">
+                                                / ${Number(form.monthlyBudgetGoal).toLocaleString()}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] font-semibold text-muted-foreground tabular-nums">
+                                        ৳{(currentMonthData?.revenueBdt ?? 0).toLocaleString()} BDT
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5 flex flex-col justify-between gap-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                                        Best Month
+                                    </span>
+                                    <div className="h-7 w-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                                        <Award className="h-3.5 w-3.5" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-xl font-black text-foreground tracking-tight tabular-nums">
+                                        ${(bestMonth?.revenueUsd ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </p>
+                                    <p className="text-[11px] font-medium text-muted-foreground">
+                                        {bestMonth?.monthName ?? "No record yet"}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5 flex flex-col justify-between gap-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                                        Months Tracked
+                                    </span>
+                                    <div className="h-7 w-7 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-600 dark:text-violet-400">
+                                        <TrendingUp className="h-3.5 w-3.5" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-xl font-black text-foreground tracking-tight tabular-nums">
+                                        {revenueHistory.length}
+                                    </p>
+                                    <p className="text-[11px] font-medium text-muted-foreground">
+                                        Finance income ledger
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* All Monthly Revenue Records Showcase */}
+                        <div className="rounded-xl border border-border/70 bg-card overflow-hidden shadow-sm">
+                            <div className="px-5 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-muted/10">
+                                <div>
+                                    <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                                        <Target className="h-4 w-4 text-emerald-500" />
+                                        All Monthly Revenue & Target Showcase
+                                    </h4>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        Full record of all months&apos; earned income transactions vs revenue goal targets.
+                                    </p>
+                                </div>
+                                <span className="text-xs font-semibold text-muted-foreground/80 self-start sm:self-auto px-2.5 py-1 rounded-md bg-muted/40 border border-border/60">
+                                    {revenueHistory.length} Month{revenueHistory.length === 1 ? "" : "s"}
+                                </span>
+                            </div>
+
+                            {revenueHistory.length === 0 ? (
+                                <div className="p-8 text-center text-muted-foreground text-sm">
+                                    No monthly income transactions recorded yet.
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Desktop Table */}
+                                    <div className="hidden md:block overflow-x-auto">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="text-[11px] text-muted-foreground uppercase tracking-wider bg-muted/30 border-b border-border/50">
+                                                <tr>
+                                                    <th className="px-5 py-3 font-semibold">Month & Year</th>
+                                                    <th className="px-5 py-3 font-semibold text-right">Revenue ($ USD)</th>
+                                                    <th className="px-5 py-3 font-semibold text-right">Revenue (৳ BDT)</th>
+                                                    <th className="px-5 py-3 font-semibold text-right">Target Goal</th>
+                                                    <th className="px-5 py-3 font-semibold min-w-[140px]">Progress</th>
+                                                    <th className="px-5 py-3 font-semibold text-right">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border/40 text-xs">
+                                                {paginatedRevenue.map((m) => {
+                                                    const goal = m.goal || Number(form.monthlyBudgetGoal) || 0;
+                                                    const pct = goal > 0 ? Math.min(Math.round((m.revenueUsd / goal) * 100), 999) : 0;
+                                                    const isAchieved = goal > 0 && m.revenueUsd >= goal;
+
+                                                    return (
+                                                        <tr key={m.monthKey} className={cn("hover:bg-muted/20 transition-colors", m.isCurrent && "bg-indigo-500/5")}>
+                                                            <td className="px-5 py-3.5 font-medium whitespace-nowrap">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-bold text-foreground text-sm">
+                                                                        {m.monthName}
+                                                                    </span>
+                                                                    {m.isCurrent && (
+                                                                        <Badge className="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 text-[10px] px-1.5 py-0">
+                                                                            Current Month
+                                                                        </Badge>
+                                                                    )}
+                                                                </div>
+                                                                <span className="text-[11px] text-muted-foreground">
+                                                                    {m.transactionCount} transaction{m.transactionCount === 1 ? "" : "s"}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-5 py-3.5 text-right font-extrabold text-sm tabular-nums text-foreground whitespace-nowrap">
+                                                                ${m.revenueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </td>
+                                                            <td className="px-5 py-3.5 text-right font-bold text-xs tabular-nums text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                                                                ৳{m.revenueBdt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </td>
+                                                            <td className="px-5 py-3.5 text-right font-medium text-xs tabular-nums text-muted-foreground whitespace-nowrap">
+                                                                {goal > 0 ? `$${goal.toLocaleString()}` : <span className="text-muted-foreground/50">No goal</span>}
+                                                            </td>
+                                                            <td className="px-5 py-3.5">
+                                                                <div className="space-y-1">
+                                                                    <div className="flex items-center justify-between text-[11px] font-bold">
+                                                                        <span className={cn(isAchieved ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
+                                                                            {pct}%
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden">
+                                                                        <div
+                                                                            className={cn(
+                                                                                "h-full rounded-full transition-all duration-500",
+                                                                                pct >= 100 ? "bg-emerald-500" : pct >= 50 ? "bg-indigo-500" : "bg-violet-500"
+                                                                            )}
+                                                                            style={{ width: `${Math.min(pct, 100)}%` }}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                                                                {isAchieved ? (
+                                                                    <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[11px] font-semibold gap-1">
+                                                                        <Sparkles className="h-3 w-3" />
+                                                                        Goal Reached
+                                                                    </Badge>
+                                                                ) : m.isCurrent ? (
+                                                                    <Badge className="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 text-[11px] font-semibold gap-1">
+                                                                        <TrendingUp className="h-3 w-3" />
+                                                                        In Progress
+                                                                    </Badge>
+                                                                ) : (
+                                                                    <Badge variant="outline" className="text-muted-foreground text-[11px] font-medium">
+                                                                        Under Target
+                                                                    </Badge>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* Mobile Card List */}
+                                    <div className="md:hidden divide-y divide-border/50">
+                                        {paginatedRevenue.map((m) => {
+                                            const goal = m.goal || Number(form.monthlyBudgetGoal) || 0;
+                                            const pct = goal > 0 ? Math.min(Math.round((m.revenueUsd / goal) * 100), 999) : 0;
+                                            const isAchieved = goal > 0 && m.revenueUsd >= goal;
+
+                                            return (
+                                                <div key={m.monthKey} className="p-4 space-y-3">
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="font-bold text-foreground text-sm">
+                                                                    {m.monthName}
+                                                                </span>
+                                                                {m.isCurrent && (
+                                                                    <Badge className="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 text-[9px] px-1 py-0">
+                                                                        Current
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-[11px] text-muted-foreground">
+                                                                {m.transactionCount} transaction{m.transactionCount === 1 ? "" : "s"}
+                                                            </span>
+                                                        </div>
+                                                        {isAchieved ? (
+                                                            <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-semibold gap-1">
+                                                                <Sparkles className="h-2.5 w-2.5" />
+                                                                Reached
+                                                            </Badge>
+                                                        ) : m.isCurrent ? (
+                                                            <Badge className="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 text-[10px] font-semibold">
+                                                                Active
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge variant="outline" className="text-muted-foreground text-[10px]">
+                                                                Ended
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-2 bg-muted/20 p-2.5 rounded-lg text-xs">
+                                                        <div>
+                                                            <span className="text-[10px] uppercase font-bold text-muted-foreground">USD Revenue</span>
+                                                            <p className="font-black text-foreground tabular-nums text-sm">
+                                                                ${m.revenueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="text-[10px] uppercase font-bold text-muted-foreground">BDT Revenue</span>
+                                                            <p className="font-black text-emerald-600 dark:text-emerald-400 tabular-nums text-sm">
+                                                                ৳{m.revenueBdt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center justify-between text-[11px]">
+                                                            <span className="text-muted-foreground">
+                                                                Target: {goal > 0 ? `$${goal.toLocaleString()}` : "None"}
+                                                            </span>
+                                                            <span className="font-bold text-foreground tabular-nums">
+                                                                {pct}%
+                                                            </span>
+                                                        </div>
+                                                        <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden">
+                                                            <div
+                                                                className={cn(
+                                                                    "h-full rounded-full",
+                                                                    pct >= 100 ? "bg-emerald-500" : pct >= 50 ? "bg-indigo-500" : "bg-violet-500"
+                                                                )}
+                                                                style={{ width: `${Math.min(pct, 100)}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Pagination Controls when data > 10 */}
+                                    {revenueHistory.length > REVENUE_PER_PAGE && (
+                                        <div className="px-5 py-3.5 border-t border-border/50 bg-muted/10 flex flex-col sm:flex-row items-center justify-between gap-3">
+                                            <p className="text-xs text-muted-foreground">
+                                                Showing <span className="font-semibold text-foreground">{(revenuePage - 1) * REVENUE_PER_PAGE + 1}</span> to{" "}
+                                                <span className="font-semibold text-foreground">
+                                                    {Math.min(revenuePage * REVENUE_PER_PAGE, revenueHistory.length)}
+                                                </span>{" "}
+                                                of <span className="font-semibold text-foreground">{revenueHistory.length}</span> months
+                                            </p>
+                                            <div className="flex items-center gap-1.5">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 px-2.5 text-xs gap-1 cursor-pointer"
+                                                    onClick={() => setRevenuePage((p) => Math.max(1, p - 1))}
+                                                    disabled={revenuePage <= 1}
+                                                >
+                                                    <ChevronLeft className="h-3.5 w-3.5" />
+                                                    Previous
+                                                </Button>
+                                                <div className="flex items-center gap-1">
+                                                    {Array.from({ length: totalRevenuePages }).map((_, i) => (
+                                                        <Button
+                                                            key={i}
+                                                            variant={revenuePage === i + 1 ? "default" : "outline"}
+                                                            size="sm"
+                                                            className={cn(
+                                                                "h-8 w-8 p-0 text-xs font-medium cursor-pointer",
+                                                                revenuePage === i + 1 ? "bg-indigo-600 hover:bg-indigo-700 text-white" : ""
+                                                            )}
+                                                            onClick={() => setRevenuePage(i + 1)}
+                                                        >
+                                                            {i + 1}
+                                                        </Button>
+                                                    ))}
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 px-2.5 text-xs gap-1 cursor-pointer"
+                                                    onClick={() => setRevenuePage((p) => Math.min(totalRevenuePages, p + 1))}
+                                                    disabled={revenuePage >= totalRevenuePages}
+                                                >
+                                                    Next
+                                                    <ChevronRight className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     </div>
                 </Section>
             </motion.div>

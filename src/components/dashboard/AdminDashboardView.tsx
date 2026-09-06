@@ -449,6 +449,7 @@ export default function AdminDashboardPage() {
 
                 <MonthlyBudgetBar
                     monthlyCollected={summary.monthlyCollected ?? 0}
+                    monthlyCollectedBdt={summary.monthlyCollectedBdt ?? 0}
                 />
 
                 <StatsGrid columns={3}>

@@ -4,6 +4,8 @@ import {
     TransactionCategory,
     TransactionTypeUnion,
     TransactionCategoryUnion,
+    ProductName,
+    ProductNameUnion,
 } from "@/types";
 
 export interface ITransaction extends Document {
@@ -11,6 +13,7 @@ export interface ITransaction extends Document {
     amountInBdt: number;
     type: TransactionTypeUnion;
     category: TransactionCategoryUnion;
+    productName?: ProductNameUnion | string;
     description: string;
     date: Date;
     user?: mongoose.Types.ObjectId;
@@ -32,6 +35,10 @@ const TransactionSchema = new Schema<ITransaction>(
             type: String,
             enum: Object.values(TransactionCategory),
             required: true,
+        },
+        productName: {
+            type: String,
+            enum: [...Object.values(ProductName), "", null],
         },
         description: { type: String, required: true, maxlength: 500 },
         date: { type: Date, default: Date.now },

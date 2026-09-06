@@ -20,6 +20,7 @@ export interface ISettings extends Document {
     address?: string;
     socials: ISocialLinks;
     monthlyBudgetGoal: number;
+    monthlyRevenueGoals?: Record<string, number>;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -53,6 +54,7 @@ const SettingsSchema = new Schema<ISettings>(
         address:           { type: String, trim: true, default: "" },
         socials:           { type: SocialsSchema, default: () => ({}) },
         monthlyBudgetGoal: { type: Number, min: 0, default: 0 },
+        monthlyRevenueGoals: { type: Map, of: Number, default: () => new Map() },
     },
     { timestamps: true },
 );

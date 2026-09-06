@@ -7,10 +7,10 @@ import Statement from '@/models/Statements';
 import { transactionSchema } from '@/lib/validations';
 import User from '@/models/User';
 
-const STATEMENT_CATEGORIES = ['salary', 'loan_taken', 'loan_given', 'loan_repayment'];
+const STATEMENT_CATEGORIES = ['salary', 'allowance', 'loan_taken', 'loan_collected', 'loan_given', 'loan_repayment'];
 
 function getStmtType(category: string): '+' | '-' {
-  return category === 'loan_taken' ? '-' : '+';
+  return (category === 'loan_taken' || category === 'loan_collected') ? '-' : '+';
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -37,8 +37,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
     }
 
+    const updateData: any = { ...parseResult.data };
+    const effectiveCategory = updateData.category || originalTx.category;
+
+    if (effectiveCategory === 'product') {
+      if (updateData.category === 'product' && !updateData.productName && !originalTx.productName) {
+        return NextResponse.json({ error: 'Product name is required when category is Product' }, { status: 400 });
+      }
+    } else {
+      updateData.productName = null;
+    }
+
     // Perform the update
-    const transaction = await Transaction.findByIdAndUpdate(id, parseResult.data, { new: true })
+    const transaction = await Transaction.findByIdAndUpdate(id, updateData, { new: true })
       .populate('user', 'name email avatarUrl');
 
     if (!transaction) {
@@ -58,11 +69,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (existingStatement) {
         // Calculate old balance delta
         const oldDelta = existingStatement.type === '+' ? Number(existingStatement.amount) : -Number(existingStatement.amount);
+        const oldBdtDelta = existingStatement.type === '+' ? Number(existingStatement.amountInBdt || 0) : -Number(existingStatement.amountInBdt || 0);
         const oldUserId = existingStatement.user.toString();
 
         // Update existing statement
         existingStatement.user = newUserId as any;
         existingStatement.amount = transaction.amount;
+        existingStatement.amountInBdt = transaction.amountInBdt || 0;
         existingStatement.type = stmtType;
         existingStatement.category = transaction.category;
         existingStatement.description = transaction.description;
@@ -71,15 +84,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         
         // Calculate new balance delta
         const newDelta = stmtType === '+' ? Number(transaction.amount) : -Number(transaction.amount);
+        const newBdtDelta = stmtType === '+' ? Number(transaction.amountInBdt || 0) : -Number(transaction.amountInBdt || 0);
 
         // Apply diffs directly
         if (oldUserId !== newUserId) {
-            await User.findByIdAndUpdate(oldUserId, { $inc: { balance: -oldDelta } });
-            await User.findByIdAndUpdate(newUserId, { $inc: { balance: newDelta } });
+            await User.findByIdAndUpdate(oldUserId, { $inc: { balance: -oldDelta, balanceInBdt: -oldBdtDelta } });
+            await User.findByIdAndUpdate(newUserId, { $inc: { balance: newDelta, balanceInBdt: newBdtDelta } });
         } else {
             const diff = newDelta - oldDelta;
-            if (diff !== 0) {
-                await User.findByIdAndUpdate(newUserId, { $inc: { balance: diff } });
+            const bdtDiff = newBdtDelta - oldBdtDelta;
+            if (diff !== 0 || bdtDiff !== 0) {
+                await User.findByIdAndUpdate(newUserId, { $inc: { balance: diff, balanceInBdt: bdtDiff } });
             }
         }
       } else {
@@ -88,6 +103,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           user: newUserId,
           transaction: transaction._id,
           amount: transaction.amount,
+          amountInBdt: transaction.amountInBdt || 0,
           type: stmtType,
           category: transaction.category,
           description: transaction.description,
@@ -95,13 +111,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         });
         
         const balanceDelta = stmtType === '+' ? Number(transaction.amount) : -Number(transaction.amount);
-        await User.findByIdAndUpdate(newUserId, { $inc: { balance: balanceDelta } });
+        const balanceBdtDelta = stmtType === '+' ? Number(transaction.amountInBdt || 0) : -Number(transaction.amountInBdt || 0);
+        await User.findByIdAndUpdate(newUserId, { $inc: { balance: balanceDelta, balanceInBdt: balanceBdtDelta } });
       }
     } else if (existingStatement) {
       // Category changed away from statement type — delete statement
       const oldDelta = existingStatement.type === '+' ? Number(existingStatement.amount) : -Number(existingStatement.amount);
+      const oldBdtDelta = existingStatement.type === '+' ? Number(existingStatement.amountInBdt || 0) : -Number(existingStatement.amountInBdt || 0);
       await Statement.findByIdAndDelete(existingStatement._id);
-      await User.findByIdAndUpdate(existingStatement.user, { $inc: { balance: -oldDelta } });
+      await User.findByIdAndUpdate(existingStatement.user, { $inc: { balance: -oldDelta, balanceInBdt: -oldBdtDelta } });
     }
 
     return NextResponse.json(transaction);
@@ -133,8 +151,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const existingStatement = await Statement.findOne({ transaction: id });
     if (existingStatement) {
       const oldDelta = existingStatement.type === '+' ? Number(existingStatement.amount) : -Number(existingStatement.amount);
+      const oldBdtDelta = existingStatement.type === '+' ? Number(existingStatement.amountInBdt || 0) : -Number(existingStatement.amountInBdt || 0);
       await Statement.findByIdAndDelete(existingStatement._id);
-      await User.findByIdAndUpdate(existingStatement.user, { $inc: { balance: -oldDelta } });
+      await User.findByIdAndUpdate(existingStatement.user, { $inc: { balance: -oldDelta, balanceInBdt: -oldBdtDelta } });
     }
 
     return NextResponse.json({ success: true, message: 'Transaction deleted successfully' });

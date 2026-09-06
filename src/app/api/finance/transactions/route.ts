@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const type = searchParams.get("type");
         const category = searchParams.get("category");
+        const productName = searchParams.get("productName");
         const user = searchParams.get("user");
         const startDate = searchParams.get("startDate");
         const endDate = searchParams.get("endDate");
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest) {
         const query: any = {};
         if (type) query.type = type;
         if (category) query.category = category;
+        if (productName && productName !== "all") query.productName = productName;
         if (user) query.user = user;
         if (startDate || endDate) {
             query.date = {};
@@ -101,6 +103,17 @@ export async function POST(req: NextRequest) {
 
         const transactionData = parseResult.data;
 
+        if (transactionData.category === "product") {
+            if (!transactionData.productName || !transactionData.productName.trim()) {
+                return NextResponse.json(
+                    { error: "Product name is required when category is Product" },
+                    { status: 400 },
+                );
+            }
+        } else {
+            transactionData.productName = null as any;
+        }
+
         const newTransaction = new Transaction(transactionData);
         await newTransaction.save();
 
@@ -109,23 +122,25 @@ export async function POST(req: NextRequest) {
         const userId = transactionData.user ? transactionData.user.toString() : null;
 
         if (userId) {
-            const statementCategories = ['salary', 'allowance', 'loan_taken', 'loan_given', 'loan_repayment'];
+            const statementCategories = ['salary', 'allowance', 'loan_taken', 'loan_collected', 'loan_given', 'loan_repayment'];
             if (statementCategories.includes(transactionData.category)) {
-                const stmtType = transactionData.category === 'loan_taken' ? '-' : '+';
+                const stmtType = (transactionData.category === 'loan_taken' || transactionData.category === 'loan_collected') ? '-' : '+';
                 await Statement.create({
                     user: userId,
                     transaction: newTransaction._id,
                     amount: transactionData.amount,
+                    amountInBdt: transactionData.amountInBdt || 0,
                     type: stmtType,
                     category: transactionData.category,
                     description: transactionData.description,
                     date: transactionData.date || new Date(),
                 });
                 
-                // Explicitly update user balance
+                // Explicitly update user balance and balanceInBdt
                 const balanceDelta = stmtType === '+' ? Number(transactionData.amount) : -Number(transactionData.amount);
+                const balanceBdtDelta = stmtType === '+' ? Number(transactionData.amountInBdt || 0) : -Number(transactionData.amountInBdt || 0);
                 await User.findByIdAndUpdate(userId, {
-                    $inc: { balance: balanceDelta }
+                    $inc: { balance: balanceDelta, balanceInBdt: balanceBdtDelta }
                 });
             }
         }

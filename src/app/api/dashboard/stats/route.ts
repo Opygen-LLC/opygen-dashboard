@@ -5,6 +5,8 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/db";
 import Project from "@/models/Project";
 import User from "@/models/User";
+import Transaction from "@/models/Transaction";
+import { TransactionType } from "@/types";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -53,7 +55,6 @@ export async function GET(request: Request) {
         let totalBudget = 0;
         let totalRevenueReceived = 0;
         let totalRevenuePending = 0;
-        let monthlyCollected = 0;
 
         const monthStart = startOfMonth(now);
         const monthEnd = endOfMonth(now);
@@ -84,15 +85,23 @@ export async function GET(request: Request) {
                         if (isWithinRange) {
                             totalRevenueReceived += Number(pay.amount || 0);
                         }
-                        
-                        // Count toward this month's collected total (independent of range filter, usually fixed to current month)
-                        if (pd && pd >= monthStart && pd <= monthEnd) {
-                            monthlyCollected += Number(pay.amount || 0);
-                        }
                     }
                 });
             }
         });
+
+        // Monthly revenue goal collection is based on Finance income transactions (not project payments)
+        const currentMonthIncomeTxs = await Transaction.find({
+            type: TransactionType.INCOME,
+            date: { $gte: monthStart, $lte: monthEnd },
+        }).lean();
+
+        let monthlyCollected = 0;
+        let monthlyCollectedBdt = 0;
+        for (const tx of currentMonthIncomeTxs) {
+            monthlyCollected += Number(tx.amount || 0);
+            monthlyCollectedBdt += Number(tx.amountInBdt || 0);
+        }
 
         // Status breakdown (Pie Chart data)
         const statusLabels: Record<string, string> = {
@@ -179,6 +188,7 @@ export async function GET(request: Request) {
                     totalRevenueReceived,
                     totalRevenuePending,
                     monthlyCollected,
+                    monthlyCollectedBdt,
                 },
                 statusBreakdown,
                 workload,

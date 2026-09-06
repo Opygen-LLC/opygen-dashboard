@@ -57,12 +57,23 @@ export enum TransactionCategory {
     LOAN_GIVEN = "loan_given",
     LOAN_TAKEN = "loan_taken",
     LOAN_REPAYMENT = "loan_repayment",
+    LOAN_COLLECTED = "loan_collected",
     EQUIPMENT = "equipment",
     SOFTWARE = "software",
     OFFICE = "office",
     PROJECT_REVENUE = "project_revenue",
+    PRODUCT = "product",
     OTHER = "other",
 }
+
+export enum ProductName {
+    OPYGEN_CLEANING_CRM = "Opygen Cleaning CRM",
+    OPYGEN_REAL_ESTATE_CRM = "Opygen Real Estate CRM",
+}
+
+export type ProductNameUnion =
+    | "Opygen Cleaning CRM"
+    | "Opygen Real Estate CRM";
 
 export type TransactionTypeUnion = "income" | "expense";
 export type TransactionCategoryUnion =
@@ -71,8 +82,11 @@ export type TransactionCategoryUnion =
     | "loan_given"
     | "loan_taken"
     | "loan_repayment"
+    | "loan_collected"
     | "equipment"
     | "software"
     | "office"
     | "project_revenue"
+    | "product"
     | "other";
+

@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 interface MonthlyBudgetBarProps {
     monthlyCollected: number;
+    monthlyCollectedBdt?: number;
 }
 
 const MONTH_NAMES = [
@@ -16,7 +17,7 @@ const MONTH_NAMES = [
     "July","August","September","October","November","December",
 ];
 
-export default function MonthlyBudgetBar({ monthlyCollected }: MonthlyBudgetBarProps) {
+export default function MonthlyBudgetBar({ monthlyCollected, monthlyCollectedBdt }: MonthlyBudgetBarProps) {
     const currentMonth = MONTH_NAMES[new Date().getMonth()];
     const currentYear  = new Date().getFullYear();
 
@@ -80,27 +81,33 @@ export default function MonthlyBudgetBar({ monthlyCollected }: MonthlyBudgetBarP
                                     Goal Reached!
                                 </span>
                             )}
-                            {/* Link to Settings page to manage the goal */}
-                            {/* <Link
+                            <Link
                                 href="/admin-dashboard/settings"
-                                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground hover:text-indigo-500 hover:bg-indigo-500/10 transition-colors"
-                                title="Set monthly goal in Settings"
+                                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:text-indigo-500 hover:bg-indigo-500/10 transition-colors"
+                                title="View history and manage goals in Settings"
                             >
                                 <Settings className="h-3 w-3" />
-                                Set Goal
-                            </Link> */}
+                                History & Goals
+                            </Link>
                         </div>
                     </div>
 
                     {/* Amount row */}
                     <div className="flex items-end justify-between gap-2">
-                        <div className="flex items-baseline gap-1.5">
-                            <span className="text-3xl font-extrabold tracking-tight text-foreground">
-                                ${monthlyCollected.toLocaleString()}
-                            </span>
-                            {goal > 0 && (
-                                <span className="text-sm font-medium text-muted-foreground">
-                                    / ${goal.toLocaleString()}
+                        <div className="flex flex-col gap-0.5">
+                            <div className="flex items-baseline gap-1.5 flex-wrap">
+                                <span className="text-3xl font-extrabold tracking-tight text-foreground">
+                                    ${monthlyCollected.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                                </span>
+                                {goal > 0 && (
+                                    <span className="text-sm font-medium text-muted-foreground">
+                                        / ${goal.toLocaleString()}
+                                    </span>
+                                )}
+                            </div>
+                            {monthlyCollectedBdt !== undefined && monthlyCollectedBdt > 0 && (
+                                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                                    ৳{monthlyCollectedBdt.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} BDT earned
                                 </span>
                             )}
                         </div>

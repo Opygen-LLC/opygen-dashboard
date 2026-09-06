@@ -68,7 +68,9 @@ export default function LoginPage() {
             } else {
                 toast.success("Logged in successfully!");
                 const session = await getSession();
-                if (session?.user?.role === "admin") {
+                if (session?.user?.needPasswordChange) {
+                    router.push("/change-password");
+                } else if (session?.user?.role === "admin") {
                     router.push("/admin-dashboard");
                 } else {
                     router.push("/dashboard");

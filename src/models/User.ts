@@ -24,6 +24,7 @@ export interface IUser extends Document {
     resetPasswordToken?: string;
     resetPasswordExpires?: Date;
     balance: number;
+    balanceInBdt?: number;
     fathersName?: string;
     mothersName?: string;
     gender?: string;
@@ -56,6 +57,7 @@ const UserSchema = new Schema<IUser>({
     resetPasswordToken: { type: String },
     resetPasswordExpires: { type: Date },
     balance: { type: Number, default: 0 },
+    balanceInBdt: { type: Number, default: 0 },
     fathersName: { type: String },
     mothersName: { type: String },
     gender: { type: String, enum: ["Male", "Female", "Other"] },
