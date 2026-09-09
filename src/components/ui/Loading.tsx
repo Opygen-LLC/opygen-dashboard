@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 
 interface LoadingProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'full' | 'block' | 'mini';
+  variant?: 'full' | 'block' | 'mini' | 'page';
   size?: 'sm' | 'md' | 'lg';
   text?: string;
 }
@@ -37,11 +37,13 @@ export function Loading({
     </div>
   );
 
-  if (variant === 'full') {
+  if (variant === 'full' || variant === 'page') {
     return (
       <div
         className={cn(
-          "fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-xs",
+          variant === 'page'
+            ? "min-h-[50vh] flex flex-col items-center justify-center p-8"
+            : "fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-xs",
           className
         )}
         {...props}

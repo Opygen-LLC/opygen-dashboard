@@ -9,6 +9,7 @@ export interface UserState {
   role: string | null;
   title?: string[] | string | null;
   balance: number;
+  balanceInBdt?: number;
   status: string | null;
   fathersName?: string | null;
   mothersName?: string | null;
@@ -29,6 +30,7 @@ const initialState: UserState = {
   mobileNumber: null,
   role: null,
   balance: 0,
+  balanceInBdt: 0,
   status: null,
   fathersName: null,
   mothersName: null,

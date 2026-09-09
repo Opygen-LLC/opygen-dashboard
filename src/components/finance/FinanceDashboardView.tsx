@@ -24,6 +24,7 @@ import {
     Download,
     BarChart3,
     Package,
+    Landmark,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -238,6 +239,17 @@ export default function FinanceDashboardView() {
         },
     });
 
+    // Fetch accounts for transaction account selection
+    const { data: accountsData } = useQuery<any>({
+        queryKey: ["all-finance-accounts"],
+        queryFn: async () => {
+            const res = await fetch("/api/admin/accounts?limit=1000");
+            if (!res.ok) throw new Error("Failed to fetch accounts");
+            return res.json();
+        },
+    });
+    const allAccounts = accountsData?.accounts || [];
+
     // Form
     const {
         register,
@@ -259,6 +271,8 @@ export default function FinanceDashboardView() {
             description: "",
             user: null,
             externalEntity: "",
+            accountId: "",
+            accountUser: "",
         },
     });
 
@@ -307,6 +321,8 @@ export default function FinanceDashboardView() {
             description: "",
             user: null,
             externalEntity: "",
+            accountId: "",
+            accountUser: "",
         });
         setIsFormModalOpen(true);
     };
@@ -333,6 +349,8 @@ export default function FinanceDashboardView() {
             description: tx.description,
             user: userId,
             externalEntity: tx.externalEntity || "",
+            accountId: tx.accountId || "",
+            accountUser: tx.accountUser?._id ? tx.accountUser._id.toString() : tx.accountUser?.toString() || "",
         });
         setIsFormModalOpen(true);
     };
@@ -348,6 +366,10 @@ export default function FinanceDashboardView() {
                 }
             } else {
                 delete payload.productName;
+            }
+
+            if (!payload.accountId || !payload.accountUser) {
+                throw new Error("Please select an account for this transaction.");
             }
 
             if (needsUserSelection) {
@@ -714,6 +736,22 @@ export default function FinanceDashboardView() {
                                                             (External)
                                                         </div>
                                                     )}
+                                                {t.accountDetails && (
+                                                    <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1 font-medium">
+                                                        <Landmark className="h-3 w-3 text-indigo-500 shrink-0" />
+                                                        <span className="font-semibold text-foreground">
+                                                            {t.accountDetails.providerName}
+                                                        </span>
+                                                        <span className="font-mono text-[10px] bg-muted/60 px-1 py-0.2 rounded text-foreground">
+                                                            {t.accountDetails.accountNumber}
+                                                        </span>
+                                                        {t.accountUser?.name && (
+                                                            <span className="text-[11px] opacity-75">
+                                                                ({t.accountUser.name})
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <Badge
@@ -1153,6 +1191,64 @@ export default function FinanceDashboardView() {
                                                     </Select>
                                                 )}
                                             />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold text-muted-foreground uppercase flex items-center justify-between">
+                                                <span>Account (Bank / Mobile) <span className="text-rose-500">*</span></span>
+                                                {allAccounts.length === 0 && (
+                                                    <span className="text-amber-500 text-[10px] lowercase">No accounts found</span>
+                                                )}
+                                            </label>
+                                            <Controller
+                                                name="accountId"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Select
+                                                        value={field.value || ""}
+                                                        onValueChange={(val: any) => {
+                                                            const strVal = String(val || "");
+                                                            field.onChange(strVal);
+                                                            const found = allAccounts.find(
+                                                                (a: any) => a.account?._id?.toString() === strVal
+                                                            );
+                                                            if (found) {
+                                                                setValue("accountUser", found.userId?.toString() || "");
+                                                            }
+                                                        }}
+                                                    >
+                                                        <SelectTrigger className="w-full h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                            <SelectValue placeholder="-- Select Account --" />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="z-[150] max-h-64">
+                                                            {allAccounts.map((item: any) => {
+                                                                const acc = item.account;
+                                                                return (
+                                                                    <SelectItem
+                                                                        key={acc._id}
+                                                                        value={acc._id}
+                                                                        className="h-12 py-2"
+                                                                    >
+                                                                        <div className="flex flex-col text-left">
+                                                                            <span className="font-semibold text-xs">
+                                                                                {acc.providerName} • {acc.accountNumber} ({item.userName})
+                                                                            </span>
+                                                                            <span className="text-[10px] text-muted-foreground">
+                                                                                {acc.accountName} | Bal: ${Number(acc.balance || 0).toLocaleString()} / ৳{Number(acc.balanceInBdt || 0).toLocaleString()}
+                                                                            </span>
+                                                                        </div>
+                                                                    </SelectItem>
+                                                                );
+                                                            })}
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
+                                            />
+                                            {errors.accountId && (
+                                                <p className="text-xs text-rose-500">
+                                                    {errors.accountId.message as string}
+                                                </p>
+                                            )}
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-4">

@@ -9,6 +9,8 @@ export interface IUserAccount {
     accountNumber: string;
     routingNumber?: string;
     branch?: string;
+    balance?: number;
+    balanceInBdt?: number;
 }
 
 export interface IUser extends Document {
@@ -73,6 +75,8 @@ const UserSchema = new Schema<IUser>({
             accountNumber: { type: String, required: true },
             routingNumber: { type: String },
             branch: { type: String },
+            balance: { type: Number, default: 0 },
+            balanceInBdt: { type: Number, default: 0 },
         }
     ],
     createdAt: { type: Date, default: Date.now },

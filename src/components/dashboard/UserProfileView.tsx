@@ -31,6 +31,7 @@ import {
   X,
   CreditCard,
   Briefcase,
+  History,
 } from "lucide-react";
 import { Loading } from "@/components/ui/Loading";
 import { useForm, Controller } from "react-hook-form";
@@ -60,7 +61,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../ui/select";
+} from "@/components/ui/select";
+import AccountHistoryModal from "@/components/accounts/AccountHistoryModal";
+
 
 const BANGLADESH_BANKS = [
   "AB Bank",
@@ -246,6 +249,7 @@ export default function UserProfileView() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<string | null>(null);
   const [providerSelection, setProviderSelection] = useState("");
+  const [selectedAccountForHistory, setSelectedAccountForHistory] = useState<any | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form for Profile Details (Name, Mobile Number, Avatar)
@@ -312,6 +316,8 @@ export default function UserProfileView() {
       accountNumber: "",
       routingNumber: "",
       branch: "",
+      balance: 0,
+      balanceInBdt: 0,
     },
   });
 
@@ -2059,8 +2065,27 @@ export default function UserProfileView() {
                                 </span>
                               </div>
                             )}
+                            <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                              <span className="text-xs text-muted-foreground font-medium">Balance</span>
+                              <div className="flex items-center gap-1.5 font-bold text-xs">
+                                <span className="text-foreground">
+                                  ${Number(acc.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                                <span className="text-muted-foreground/50">|</span>
+                                <span className="text-indigo-600 dark:text-indigo-400">
+                                  ৳{Number(acc.balanceInBdt || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            </div>
                           </CardContent>
                           <div className="absolute top-4 right-4 flex opacity-0 group-hover:opacity-100 transition-opacity bg-card/80 backdrop-blur-md rounded-md shadow-sm border border-border/50 overflow-hidden">
+                            <button
+                              onClick={() => setSelectedAccountForHistory({ ...acc, userName: reduxUser.name })}
+                              className="p-2 hover:bg-muted text-indigo-600 dark:text-indigo-400 transition-colors cursor-pointer"
+                              title="Transaction History"
+                            >
+                              <History className="h-4 w-4" />
+                            </button>
                             <button
                               onClick={() => {
                                 setAccountToEdit(acc);
@@ -2121,6 +2146,9 @@ export default function UserProfileView() {
                             </th>
                             <th className="px-4 py-3 border-b border-border">
                               Branch/Routing
+                            </th>
+                            <th className="px-4 py-3 border-b border-border">
+                              Balance (USD / BDT)
                             </th>
                             <th className="px-4 py-3 border-b border-border text-right">
                               Actions
@@ -2186,8 +2214,25 @@ export default function UserProfileView() {
                                   </span>
                                 )}
                               </td>
+                              <td className="px-4 py-3">
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="font-bold text-sm text-foreground">
+                                    ${Number(acc.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
+                                  <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                                    ৳{Number(acc.balanceInBdt || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </span>
+                                </div>
+                              </td>
                               <td className="px-4 py-3 text-right">
                                 <div className="flex justify-end gap-1">
+                                  <button
+                                    onClick={() => setSelectedAccountForHistory({ ...acc, userName: reduxUser.name })}
+                                    className="p-1.5 hover:bg-muted text-indigo-600 dark:text-indigo-400 rounded transition-colors cursor-pointer"
+                                    title="View History"
+                                  >
+                                    <History className="h-4 w-4" />
+                                  </button>
                                   <button
                                     onClick={() => {
                                       setAccountToEdit(acc);
@@ -2419,6 +2464,27 @@ export default function UserProfileView() {
                     </>
                   )}
 
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Balance ($ USD)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        {...registerAccount("balance", { valueAsNumber: true })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Balance (৳ BDT)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        {...registerAccount("balanceInBdt", { valueAsNumber: true })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
                   <div className="pt-4 flex justify-end gap-3">
                     <Button
                       type="button"
@@ -2499,6 +2565,12 @@ export default function UserProfileView() {
           </div>
         )}
       </AnimatePresence>
+
+      <AccountHistoryModal
+        isOpen={!!selectedAccountForHistory}
+        onClose={() => setSelectedAccountForHistory(null)}
+        account={selectedAccountForHistory}
+      />
     </motion.div>
   );
 }

@@ -11,6 +11,9 @@ import {
     User as UserIcon,
     AlertCircle,
     Filter,
+    History,
+    Wallet,
+    ArrowUpDown,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -34,6 +37,7 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import AccountHistoryModal from "./AccountHistoryModal";
 
 export default function AdminAccountsView() {
     const { data: session } = useSession();
@@ -43,25 +47,54 @@ export default function AdminAccountsView() {
     const [search, setSearch] = useState("");
     const [type, setType] = useState("all");
     const [tempType, setTempType] = useState("all");
+    const [userFilter, setUserFilter] = useState("all");
+    const [tempUserFilter, setTempUserFilter] = useState("all");
+    const [sortBy, setSortBy] = useState("default");
+    const [tempSortBy, setTempSortBy] = useState("default");
     const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [selectedAccountForHistory, setSelectedAccountForHistory] = useState<any | null>(null);
+
+    // Fetch users for the user filter dropdown
+    const { data: usersData } = useQuery({
+        queryKey: ["users-list-for-accounts"],
+        queryFn: async () => {
+            const res = await fetch("/api/users");
+            if (!res.ok) return [];
+            const json = await res.json();
+            return Array.isArray(json) ? json : json.users || [];
+        },
+        enabled: !!session,
+    });
+    const users: any[] = usersData || [];
 
     const openFilterDrawer = () => {
         setTempType(type);
+        setTempUserFilter(userFilter);
+        setTempSortBy(sortBy);
         setIsFilterOpen(true);
     };
 
     const handleApplyFilters = () => {
         setType(tempType);
+        setUserFilter(tempUserFilter);
+        setSortBy(tempSortBy);
         setPage(1);
     };
 
     const handleResetFilters = () => {
         setTempType("all");
+        setTempUserFilter("all");
+        setTempSortBy("default");
         setType("all");
+        setUserFilter("all");
+        setSortBy("default");
         setPage(1);
     };
 
-    const activeFilterCount = type !== "all" ? 1 : 0;
+    const activeFilterCount =
+        (type !== "all" ? 1 : 0) +
+        (userFilter !== "all" ? 1 : 0) +
+        (sortBy !== "default" ? 1 : 0);
 
     // Controlled search trigger handler
     const handleSearchSubmit = () => {
@@ -70,13 +103,15 @@ export default function AdminAccountsView() {
     };
 
     const { data, isLoading, error } = useQuery({
-        queryKey: ["adminAccounts", page, limit, debouncedSearch, type],
+        queryKey: ["adminAccounts", page, limit, debouncedSearch, type, userFilter, sortBy],
         queryFn: async () => {
             const params = new URLSearchParams({
                 page: page.toString(),
                 limit: limit.toString(),
                 search: debouncedSearch,
                 type: type,
+                userId: userFilter,
+                sortBy: sortBy,
             });
             const res = await fetch(`/api/admin/accounts?${params}`);
             if (!res.ok) {
@@ -145,7 +180,7 @@ export default function AdminAccountsView() {
                     <Button
                         onClick={openFilterDrawer}
                         variant="outline"
-                        className="bg-background/50 border-border hover:bg-accent text-foreground h-10! gap-2 cursor-pointer relative font-semibold text-xs"
+                        className="bg-background/50 border-border hover:bg-accent text-foreground h-10! gap-2 cursor-pointer relative font-semibold text-xs shrink-0"
                     >
                         <Filter className="h-4 w-4 text-indigo-500" />
                         <span>Filter</span>
@@ -166,11 +201,42 @@ export default function AdminAccountsView() {
                 onReset={handleResetFilters}
                 activeFilterCount={activeFilterCount}
                 title="Account Filters"
-                description="Filter linked payment accounts by bank or mobile banking type."
+                description="Filter linked payment accounts by user, account type, or sort by balance price."
             >
                 <div className="space-y-4">
+                    {/* User Filter */}
                     <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-muted-foreground">Account Type</Label>
+                        <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                            <UserIcon className="h-3.5 w-3.5 text-indigo-500" />
+                            Filter by User
+                        </Label>
+                        <Select
+                            value={tempUserFilter}
+                            onValueChange={(val: any) => setTempUserFilter(typeof val === "string" ? val : "all")}
+                        >
+                            <SelectTrigger className="w-full bg-background border-border text-foreground h-10! cursor-pointer">
+                                <SelectValue placeholder="Select User" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border text-foreground z-[160] max-h-64">
+                                <SelectItem value="all" className="h-10">All Users</SelectItem>
+                                {users.map((u: any) => (
+                                    <SelectItem key={u._id} value={u._id} className="h-10">
+                                        <div className="flex flex-col text-left">
+                                            <span className="font-semibold text-xs">{u.name}</span>
+                                            <span className="text-[10px] text-muted-foreground">{u.email}</span>
+                                        </div>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Account Type Filter */}
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                            <Landmark className="h-3.5 w-3.5 text-indigo-500" />
+                            Account Type
+                        </Label>
                         <Select
                             value={tempType}
                             onValueChange={(val: any) => setTempType(typeof val === "string" ? val : "all")}
@@ -182,6 +248,37 @@ export default function AdminAccountsView() {
                                 <SelectItem value="all" className="h-10">All Accounts</SelectItem>
                                 <SelectItem value="bank" className="h-10">Bank Accounts</SelectItem>
                                 <SelectItem value="mobile_banking" className="h-10">Mobile Banking</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Sort by Price / Balance */}
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                            <ArrowUpDown className="h-3.5 w-3.5 text-indigo-500" />
+                            Sort by Price (Balance)
+                        </Label>
+                        <Select
+                            value={tempSortBy}
+                            onValueChange={(val: any) => setTempSortBy(typeof val === "string" ? val : "default")}
+                        >
+                            <SelectTrigger className="w-full bg-background border-border text-foreground h-10! cursor-pointer">
+                                <SelectValue placeholder="Sort Order" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border text-foreground z-[160]">
+                                <SelectItem value="default" className="h-10">Default (Provider Name)</SelectItem>
+                                <SelectItem value="price_desc" className="h-10 font-semibold text-emerald-600 dark:text-emerald-400">
+                                    Price: High to Low (USD $)
+                                </SelectItem>
+                                <SelectItem value="price_asc" className="h-10">
+                                    Price: Low to High (USD $)
+                                </SelectItem>
+                                <SelectItem value="price_bdt_desc" className="h-10 font-semibold text-emerald-600 dark:text-emerald-400">
+                                    Price: High to Low (BDT ৳)
+                                </SelectItem>
+                                <SelectItem value="price_bdt_asc" className="h-10">
+                                    Price: Low to High (BDT ৳)
+                                </SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -205,6 +302,12 @@ export default function AdminAccountsView() {
                                 <TableHead className="font-semibold text-foreground/80">
                                     Routing/Branch
                                 </TableHead>
+                                <TableHead className="font-semibold text-foreground/80">
+                                    Balance (USD / BDT)
+                                </TableHead>
+                                <TableHead className="font-semibold text-foreground/80 text-right">
+                                    Actions
+                                </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody className="divide-y divide-border">
@@ -223,12 +326,18 @@ export default function AdminAccountsView() {
                                         <TableCell>
                                             <div className="h-6 w-32 bg-muted animate-pulse rounded"></div>
                                         </TableCell>
+                                        <TableCell>
+                                            <div className="h-6 w-28 bg-muted animate-pulse rounded"></div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="h-8 w-20 bg-muted animate-pulse rounded ml-auto"></div>
+                                        </TableCell>
                                     </TableRow>
                                 ))
                             ) : error ? (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={4}
+                                        colSpan={6}
                                         className="h-32 text-center text-rose-500"
                                     >
                                         <div className="flex flex-col items-center justify-center gap-2">
@@ -242,7 +351,7 @@ export default function AdminAccountsView() {
                             ) : accounts.length === 0 ? (
                                 <TableRow>
                                     <TableCell
-                                        colSpan={4}
+                                        colSpan={6}
                                         className="h-32 text-center text-muted-foreground"
                                     >
                                         No accounts found matching your
@@ -357,6 +466,27 @@ export default function AdminAccountsView() {
                                                     </span>
                                                 )}
                                             </TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className="font-bold text-sm text-foreground">
+                                                        ${Number(account.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </span>
+                                                    <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                                                        ৳{Number(account.balanceInBdt || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setSelectedAccountForHistory({ ...account, userName })}
+                                                    className="h-8 gap-1.5 text-xs font-medium hover:border-indigo-500 hover:text-indigo-600 cursor-pointer"
+                                                >
+                                                    <History className="h-3.5 w-3.5 text-indigo-500" />
+                                                    <span>History</span>
+                                                </Button>
+                                            </TableCell>
                                         </TableRow>
                                     );
                                 })
@@ -466,6 +596,12 @@ export default function AdminAccountsView() {
                     )}
                 </div>
             </div>
+
+            <AccountHistoryModal
+                isOpen={!!selectedAccountForHistory}
+                onClose={() => setSelectedAccountForHistory(null)}
+                account={selectedAccountForHistory}
+            />
         </motion.div>
     );
 }

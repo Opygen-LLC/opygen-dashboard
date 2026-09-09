@@ -192,6 +192,8 @@ export const userAccountSchema = z.object({
     accountNumber: z.string().min(1, "Account Number is required"),
     routingNumber: z.string().optional(),
     branch: z.string().optional(),
+    balance: z.number().optional(),
+    balanceInBdt: z.number().optional(),
 });
 
 export type UserAccountInput = z.infer<typeof userAccountSchema>;
@@ -217,6 +219,7 @@ export const profileSchema = z.object({
         .optional()
         .or(z.literal("")),
     balance: z.number().optional(),
+    balanceInBdt: z.number().optional(),
     fathersName: z.string().optional().or(z.literal("")),
     mothersName: z.string().optional().or(z.literal("")),
     gender: z.string().optional().or(z.literal("")),
@@ -293,6 +296,18 @@ export const transactionSchema = z.object({
         .optional()
         .nullable(),
     externalEntity: z.string().optional(),
+    accountId: z.string().min(1, "Account selection is required"),
+    accountUser: z.string().min(1, "Account owner is required"),
+    accountDetails: z
+        .object({
+            providerName: z.string().optional(),
+            accountName: z.string().optional(),
+            accountNumber: z.string().optional(),
+            type: z.string().optional(),
+            branch: z.string().optional(),
+            routingNumber: z.string().optional(),
+        })
+        .optional(),
 });
 
 export type TransactionInput = z.infer<typeof transactionSchema>;

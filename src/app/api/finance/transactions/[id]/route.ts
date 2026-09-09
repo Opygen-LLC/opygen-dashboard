@@ -48,12 +48,67 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       updateData.productName = null;
     }
 
+    // If account was changed or provided, snapshot new accountDetails
+    if (updateData.accountUser && updateData.accountId) {
+      const owner = await User.findById(updateData.accountUser);
+      const acc = owner?.accounts?.find((a: any) => a._id?.toString() === updateData.accountId);
+      if (acc) {
+        updateData.accountDetails = {
+          providerName: acc.providerName,
+          accountName: acc.accountName,
+          accountNumber: acc.accountNumber,
+          type: acc.type,
+          branch: acc.branch,
+          routingNumber: acc.routingNumber,
+        };
+      }
+    }
+
     // Perform the update
     const transaction = await Transaction.findByIdAndUpdate(id, updateData, { new: true })
-      .populate('user', 'name email avatarUrl');
+      .populate('user', 'name email avatarUrl')
+      .populate('accountUser', 'name email avatarUrl');
 
     if (!transaction) {
       return NextResponse.json({ error: 'Transaction not found after update' }, { status: 404 });
+    }
+
+    // ── ACCOUNT BALANCE SYNC ────────────────────────────────────────────────
+    // Revert old transaction's impact on its account
+    if (originalTx.accountUser && originalTx.accountId) {
+      const oldIsIncome = originalTx.type === 'income';
+      const oldDeltaUsd = oldIsIncome ? Number(originalTx.amount) : -Number(originalTx.amount);
+      const oldDeltaBdt = oldIsIncome ? Number(originalTx.amountInBdt || 0) : -Number(originalTx.amountInBdt || 0);
+
+      await User.updateOne(
+        { _id: originalTx.accountUser, 'accounts._id': originalTx.accountId },
+        {
+          $inc: {
+            'accounts.$.balance': -oldDeltaUsd,
+            'accounts.$.balanceInBdt': -oldDeltaBdt,
+          }
+        }
+      );
+    }
+
+    // Apply new transaction's impact on updated account
+    if (transaction.accountUser && transaction.accountId) {
+      const newAccountUserId = transaction.accountUser._id
+        ? transaction.accountUser._id.toString()
+        : transaction.accountUser.toString();
+      const newIsIncome = transaction.type === 'income';
+      const newDeltaUsd = newIsIncome ? Number(transaction.amount) : -Number(transaction.amount);
+      const newDeltaBdt = newIsIncome ? Number(transaction.amountInBdt || 0) : -Number(transaction.amountInBdt || 0);
+
+      await User.updateOne(
+        { _id: newAccountUserId, 'accounts._id': transaction.accountId },
+        {
+          $inc: {
+            'accounts.$.balance': newDeltaUsd,
+            'accounts.$.balanceInBdt': newDeltaBdt,
+          }
+        }
+      );
     }
 
     const newUserId = transaction.user
@@ -144,10 +199,27 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
     }
 
+    // Revert account balance before deletion
+    if (transaction.accountUser && transaction.accountId) {
+      const isIncome = transaction.type === 'income';
+      const deltaUsd = isIncome ? Number(transaction.amount) : -Number(transaction.amount);
+      const deltaBdt = isIncome ? Number(transaction.amountInBdt || 0) : -Number(transaction.amountInBdt || 0);
+
+      await User.updateOne(
+        { _id: transaction.accountUser, 'accounts._id': transaction.accountId },
+        {
+          $inc: {
+            'accounts.$.balance': -deltaUsd,
+            'accounts.$.balanceInBdt': -deltaBdt,
+          }
+        }
+      );
+    }
+
     // Delete the transaction
     await Transaction.findByIdAndDelete(id);
 
-    // Delete associated statement and explicitly revert the balance
+    // Delete associated statement and explicitly revert the personal user balance
     const existingStatement = await Statement.findOne({ transaction: id });
     if (existingStatement) {
       const oldDelta = existingStatement.type === '+' ? Number(existingStatement.amount) : -Number(existingStatement.amount);

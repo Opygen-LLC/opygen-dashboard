@@ -8,6 +8,15 @@ import {
     ProductNameUnion,
 } from "@/types";
 
+export interface ITransactionAccountDetails {
+    providerName?: string;
+    accountName?: string;
+    accountNumber?: string;
+    type?: string;
+    branch?: string;
+    routingNumber?: string;
+}
+
 export interface ITransaction extends Document {
     amount: number;
     amountInBdt: number;
@@ -18,6 +27,9 @@ export interface ITransaction extends Document {
     date: Date;
     user?: mongoose.Types.ObjectId;
     externalEntity?: string;
+    accountId?: string;
+    accountUser?: mongoose.Types.ObjectId;
+    accountDetails?: ITransactionAccountDetails;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -44,6 +56,16 @@ const TransactionSchema = new Schema<ITransaction>(
         date: { type: Date, default: Date.now },
         user: { type: Schema.Types.ObjectId, ref: "User" },
         externalEntity: { type: String },
+        accountId: { type: String, index: true },
+        accountUser: { type: Schema.Types.ObjectId, ref: "User", index: true },
+        accountDetails: {
+            providerName: { type: String },
+            accountName: { type: String },
+            accountNumber: { type: String },
+            type: { type: String },
+            branch: { type: String },
+            routingNumber: { type: String },
+        },
     },
     {
         timestamps: true,

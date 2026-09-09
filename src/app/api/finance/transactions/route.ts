@@ -10,9 +10,9 @@ import Statement from "@/models/Statements";
 
 export async function GET(req: NextRequest) {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "admin") {
+    if (!session) {
         return NextResponse.json(
-            { error: "Unauthorized. Admin access required." },
+            { error: "Unauthorized" },
             { status: 401 },
         );
     }
@@ -26,6 +26,29 @@ export async function GET(req: NextRequest) {
         }
 
         const { searchParams } = new URL(req.url);
+        const accountId = searchParams.get("accountId");
+        const isAdmin = session.user.role === "admin";
+
+        // Non-admins can only view transactions for their own accounts
+        if (!isAdmin) {
+            if (!accountId) {
+                return NextResponse.json(
+                    { error: "Unauthorized. Admin access required." },
+                    { status: 401 },
+                );
+            }
+            const userWithAccount = await User.findOne({
+                _id: session.user.id,
+                "accounts._id": accountId,
+            });
+            if (!userWithAccount) {
+                return NextResponse.json(
+                    { error: "Unauthorized to access this account." },
+                    { status: 403 },
+                );
+            }
+        }
+
         const type = searchParams.get("type");
         const category = searchParams.get("category");
         const productName = searchParams.get("productName");
@@ -36,6 +59,7 @@ export async function GET(req: NextRequest) {
         const limit = parseInt(searchParams.get("limit") || "0"); // 0 means no pagination
 
         const query: any = {};
+        if (accountId) query.accountId = accountId;
         if (type) query.type = type;
         if (category) query.category = category;
         if (productName && productName !== "all") query.productName = productName;
@@ -52,6 +76,7 @@ export async function GET(req: NextRequest) {
 
         let dbQuery = Transaction.find(query)
             .populate("user", "name email avatarUrl")
+            .populate("accountUser", "name email avatarUrl")
             .sort({ date: -1, createdAt: -1 });
 
         if (limit > 0) {
@@ -103,6 +128,33 @@ export async function POST(req: NextRequest) {
 
         const transactionData = parseResult.data;
 
+        // Snapshot account details from account owner
+        const accountOwner = await User.findById(transactionData.accountUser);
+        if (!accountOwner) {
+            return NextResponse.json(
+                { error: "Selected account owner user not found" },
+                { status: 400 },
+            );
+        }
+        const selectedAccount = accountOwner.accounts?.find(
+            (acc: any) => acc._id?.toString() === transactionData.accountId
+        );
+        if (!selectedAccount) {
+            return NextResponse.json(
+                { error: "Selected account not found on user profile" },
+                { status: 400 },
+            );
+        }
+
+        transactionData.accountDetails = {
+            providerName: selectedAccount.providerName,
+            accountName: selectedAccount.accountName,
+            accountNumber: selectedAccount.accountNumber,
+            type: selectedAccount.type,
+            branch: selectedAccount.branch,
+            routingNumber: selectedAccount.routingNumber,
+        };
+
         if (transactionData.category === "product") {
             if (!transactionData.productName || !transactionData.productName.trim()) {
                 return NextResponse.json(
@@ -116,6 +168,21 @@ export async function POST(req: NextRequest) {
 
         const newTransaction = new Transaction(transactionData);
         await newTransaction.save();
+
+        // Atomically adjust the account balance on User
+        const isIncome = transactionData.type === "income";
+        const deltaUsd = isIncome ? Number(transactionData.amount) : -Number(transactionData.amount);
+        const deltaBdt = isIncome ? Number(transactionData.amountInBdt || 0) : -Number(transactionData.amountInBdt || 0);
+
+        await User.updateOne(
+            { _id: transactionData.accountUser, "accounts._id": transactionData.accountId },
+            {
+                $inc: {
+                    "accounts.$.balance": deltaUsd,
+                    "accounts.$.balanceInBdt": deltaBdt,
+                },
+            }
+        );
 
         // Create Statement if user is assigned and category is statement-relevant.
         // The Statement model's post-save hook automatically updates user.balance.
@@ -145,8 +212,9 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Populate user before returning
+        // Populate user and accountUser before returning
         await newTransaction.populate("user", "name email avatarUrl");
+        await newTransaction.populate("accountUser", "name email avatarUrl");
 
         return NextResponse.json(newTransaction, { status: 201 });
     } catch (error: any) {

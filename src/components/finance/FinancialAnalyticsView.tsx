@@ -16,6 +16,9 @@ import {
     ArrowDownRight,
     Sparkles,
     ShieldAlert,
+    Landmark,
+    Smartphone,
+    Wallet,
 } from "lucide-react";
 import {
     Card,
@@ -42,6 +45,7 @@ import {
     Tooltip,
     Legend,
 } from "recharts";
+import { cn } from "@/lib/utils";
 
 const PIE_COLORS = [
     "#3b82f6", // blue-500
@@ -57,13 +61,17 @@ const PIE_COLORS = [
 interface MonthlyTrend {
     month: string;
     income: number;
+    incomeBdt: number;
     expense: number;
+    expenseBdt: number;
     profit: number;
+    profitBdt: number;
 }
 
 interface CategoryBreakdown {
     category: string;
     amount: number;
+    amountBdt: number;
 }
 
 interface ProjectProfitability {
@@ -81,8 +89,27 @@ interface ProjectProfitability {
 interface CashFlowForecast {
     horizon: string;
     projectedInflow: number;
+    projectedInflowBdt: number;
     projectedOutflow: number;
+    projectedOutflowBdt: number;
     netCashFlow: number;
+    netCashFlowBdt: number;
+}
+
+interface AccountBalanceItem {
+    _id: string;
+    userId: string;
+    userName: string;
+    userEmail: string;
+    userAvatar?: string;
+    providerName: string;
+    accountName: string;
+    accountNumber: string;
+    type: string;
+    branch?: string;
+    routingNumber?: string;
+    balance: number;
+    balanceInBdt: number;
 }
 
 interface AnalyticsData {
@@ -90,16 +117,21 @@ interface AnalyticsData {
     categoryBreakdown: CategoryBreakdown[];
     projectProfitability: ProjectProfitability[];
     cashFlowForecast: CashFlowForecast[];
+    accountBalances: AccountBalanceItem[];
     summaryMetrics: {
         totalIncome6M: number;
+        totalIncome6MBdt: number;
         totalExpense6M: number;
+        totalExpense6MBdt: number;
         netProfit6M: number;
+        netProfit6MBdt: number;
         profitMargin6M: number;
         monthlyBurnRate: number;
+        monthlyBurnRateBdt: number;
     };
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label, currencyPrefix }: any) => {
     if (active && payload && payload.length) {
         return (
             <div className="bg-popover/90 backdrop-blur-md border border-border p-3 rounded-lg shadow-xl text-xs space-y-1">
@@ -110,7 +142,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
                             {entry.name}:
                         </span>
                         <span className="font-bold text-popover-foreground">
-                            ${Number(entry.value).toLocaleString()}
+                            {currencyPrefix}{Number(entry.value).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </span>
                     </div>
                 ))}
@@ -120,8 +152,58 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     return null;
 };
 
+const ACCOUNT_PIE_COLORS = [
+    "#6366f1", // indigo-500
+    "#10b981", // emerald-500
+    "#3b82f6", // blue-500
+    "#f59e0b", // amber-500
+    "#ec4899", // pink-500
+    "#8b5cf6", // violet-500
+    "#14b8a6", // teal-500
+    "#06b6d4", // cyan-500
+    "#f43f5e", // rose-500
+    "#64748b", // slate-500
+];
+
+const AccountPieTooltip = ({ active, payload, currencyPrefix }: any) => {
+    if (active && payload && payload.length) {
+        const item = payload[0].payload;
+        return (
+            <div className="bg-popover/95 backdrop-blur-md border border-border p-3.5 rounded-xl shadow-xl text-xs space-y-1.5 min-w-[220px]">
+                <div className="flex items-center gap-2">
+                    <div
+                        className="h-2.5 w-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: item.color }}
+                    />
+                    <p className="font-bold text-foreground truncate">{item.providerName}</p>
+                </div>
+                <p className="text-[11px] text-muted-foreground font-mono">
+                    {item.accountNumber} • {item.accountName}
+                </p>
+                <p className="text-[10px] text-muted-foreground">Owner: {item.userName}</p>
+                <div className="border-t border-border/50 pt-1.5 flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground">Balance:</span>
+                    <span className="font-bold text-foreground">
+                        {currencyPrefix}{Number(item.actualBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                </div>
+                {item.percent !== undefined && (
+                    <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+                        <span>Share of Liquidity:</span>
+                        <span className="font-semibold text-indigo-500">{item.percent}%</span>
+                    </div>
+                )}
+            </div>
+        );
+    }
+    return null;
+};
+
 export default function FinancialAnalyticsView() {
+    const [currency, setCurrency] = useState<"USD" | "BDT">("USD");
     const [forecastHorizon, setForecastHorizon] = useState<"30" | "60" | "90">("30");
+
+    const currencyPrefix = currency === "USD" ? "$" : "৳";
 
     const { data, isLoading, isError, refetch } = useQuery<AnalyticsData>({
         queryKey: ["finance-analytics"],
@@ -165,9 +247,81 @@ export default function FinancialAnalyticsView() {
         );
     }
 
-    const { summaryMetrics, monthlyTrends, categoryBreakdown, projectProfitability, cashFlowForecast } = data;
+    const {
+        summaryMetrics,
+        monthlyTrends = [],
+        categoryBreakdown = [],
+        projectProfitability = [],
+        cashFlowForecast = [],
+        accountBalances = [],
+    } = data;
 
-    const selectedForecast = cashFlowForecast.find(f => f.horizon.includes(forecastHorizon)) || cashFlowForecast[0];
+    // Currency mapped metrics
+    const netProfitActive = currency === "USD" ? summaryMetrics.netProfit6M : summaryMetrics.netProfit6MBdt;
+    const burnRateActive = currency === "USD" ? summaryMetrics.monthlyBurnRate : summaryMetrics.monthlyBurnRateBdt;
+    const inflow30Active = currency === "USD" ? (cashFlowForecast[0]?.projectedInflow || 0) : (cashFlowForecast[0]?.projectedInflowBdt || 0);
+
+    // Filtered trends by currency
+    const activeMonthlyTrends = monthlyTrends.map((m) => ({
+        month: m.month,
+        income: currency === "USD" ? m.income : m.incomeBdt,
+        expense: currency === "USD" ? m.expense : m.expenseBdt,
+        profit: currency === "USD" ? m.profit : m.profitBdt,
+    }));
+
+    // Filtered categories by currency
+    const activeCategories = categoryBreakdown.map((c) => ({
+        category: c.category,
+        amount: currency === "USD" ? c.amount : c.amountBdt,
+    }));
+
+    // Filtered forecast by currency
+    const activeForecast = cashFlowForecast.map((f) => ({
+        horizon: f.horizon,
+        projectedInflow: currency === "USD" ? f.projectedInflow : f.projectedInflowBdt,
+        projectedOutflow: currency === "USD" ? f.projectedOutflow : f.projectedOutflowBdt,
+        netCashFlow: currency === "USD" ? f.netCashFlow : f.netCashFlowBdt,
+    }));
+
+    const selectedForecast = activeForecast.find((f) => f.horizon.includes(forecastHorizon)) || activeForecast[0];
+
+    // Account balances & liquidity breakdown mapped by active currency
+    const totalAccountLiquidity = accountBalances.reduce(
+        (sum, item) => sum + (currency === "USD" ? (item.balance || 0) : (item.balanceInBdt || 0)),
+        0
+    );
+
+    const accountPieData = accountBalances.map((acc, index) => {
+        const rawBalance = currency === "USD" ? (acc.balance || 0) : (acc.balanceInBdt || 0);
+        const percent = totalAccountLiquidity > 0 ? ((rawBalance / totalAccountLiquidity) * 100) : 0;
+        return {
+            ...acc,
+            name: `${acc.providerName} (${acc.accountNumber.slice(-4)})`,
+            fullName: `${acc.providerName} - ${acc.accountNumber}`,
+            actualBalance: rawBalance,
+            value: Math.max(0, rawBalance),
+            percent: percent.toFixed(1),
+            color: ACCOUNT_PIE_COLORS[index % ACCOUNT_PIE_COLORS.length],
+        };
+    });
+
+    const hasPositiveFunds = accountPieData.some((a) => a.value > 0);
+    const pieChartData = hasPositiveFunds
+        ? accountPieData.filter((a) => a.value > 0)
+        : [
+              {
+                  name: "Zero Balance",
+                  fullName: "All accounts balance = 0",
+                  providerName: "Zero Liquidity",
+                  accountNumber: "----",
+                  accountName: "0.00 Balance",
+                  userName: "All",
+                  actualBalance: 0,
+                  value: 1,
+                  percent: "0.0",
+                  color: "#94a3b8",
+              },
+          ];
 
     return (
         <motion.div
@@ -176,6 +330,49 @@ export default function FinancialAnalyticsView() {
             transition={{ duration: 0.3 }}
             className="space-y-6"
         >
+            {/* Controls Bar: Currency Selector Toggle */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-card p-4 rounded-xl border border-border shadow-xs">
+                <div>
+                    <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5 text-indigo-500" />
+                        Financial Analytics & Forecasting
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        Track historical income, operating costs, liquidity by account, and predictive cash flow.
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-1.5 p-1 bg-muted/60 rounded-xl border border-border">
+                    <span className="text-xs font-semibold text-muted-foreground px-2">Currency:</span>
+                    <Button
+                        variant={currency === "USD" ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setCurrency("USD")}
+                        className={cn(
+                            "h-8 px-3 text-xs font-semibold rounded-lg cursor-pointer transition-all",
+                            currency === "USD"
+                                ? "bg-indigo-600 text-white shadow-xs"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        USD ($)
+                    </Button>
+                    <Button
+                        variant={currency === "BDT" ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setCurrency("BDT")}
+                        className={cn(
+                            "h-8 px-3 text-xs font-semibold rounded-lg cursor-pointer transition-all",
+                            currency === "BDT"
+                                ? "bg-indigo-600 text-white shadow-xs"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        BDT (৳)
+                    </Button>
+                </div>
+            </div>
+
             {/* Top KPI Metrics Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="relative overflow-hidden border-border/60 bg-gradient-to-br from-card/80 via-card to-card/60 backdrop-blur-sm shadow-sm hover:shadow-md transition-all">
@@ -189,10 +386,10 @@ export default function FinancialAnalyticsView() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-foreground">
-                            ${summaryMetrics.netProfit6M.toLocaleString()}
+                            {currencyPrefix}{Math.round(netProfitActive).toLocaleString()}
                         </div>
                         <div className="flex items-center text-xs text-muted-foreground mt-1">
-                            {summaryMetrics.netProfit6M >= 0 ? (
+                            {netProfitActive >= 0 ? (
                                 <span className="text-emerald-500 font-medium flex items-center mr-1">
                                     <ArrowUpRight className="h-3.5 w-3.5 mr-0.5" />
                                     +{summaryMetrics.profitMargin6M}% Margin
@@ -219,7 +416,7 @@ export default function FinancialAnalyticsView() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-foreground">
-                            ${summaryMetrics.monthlyBurnRate.toLocaleString()}
+                            {currencyPrefix}{Math.round(burnRateActive).toLocaleString()}
                             <span className="text-xs font-normal text-muted-foreground">/mo</span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
@@ -239,7 +436,7 @@ export default function FinancialAnalyticsView() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                            ${(cashFlowForecast[0]?.projectedInflow || 0).toLocaleString()}
+                            {currencyPrefix}{Math.round(inflow30Active).toLocaleString()}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
                             Pending project milestones & quote advances
@@ -261,11 +458,168 @@ export default function FinancialAnalyticsView() {
                             {summaryMetrics.profitMargin6M}%
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                            Avg profit retained per $1 earned
+                            Avg profit retained per {currencyPrefix}1 earned
                         </p>
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Account Balances Breakdown Chart & Liquidity */}
+            <Card className="border-border/60 shadow-sm">
+                <CardHeader>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <CardTitle className="text-base font-semibold flex items-center gap-2">
+                                <Landmark className="h-4 w-4 text-indigo-500" />
+                                Account Balances & Liquidity Distribution ({currency})
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                                Real-time balance currently held across linked bank and mobile banking accounts in {currency}.
+                            </CardDescription>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Badge variant="secondary" className="font-semibold text-xs">
+                                Total Accounts: {accountBalances.length}
+                            </Badge>
+                            <Badge className="bg-indigo-600 text-white font-semibold text-xs">
+                                Total: {currencyPrefix}{Number(totalAccountLiquidity).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </Badge>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    {accountBalances.length === 0 ? (
+                        <div className="py-12 text-center text-xs text-muted-foreground">
+                            No linked accounts with balances found.
+                        </div>
+                    ) : (
+                        <>
+                            {/* Pie Chart & Breakdown Section */}
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center p-2">
+                                {/* Left: Pie Chart */}
+                                <div className="lg:col-span-5 flex flex-col items-center justify-center relative min-h-[250px]">
+                                    <ResponsiveContainer width="100%" height={250}>
+                                        <PieChart>
+                                            <Pie
+                                                data={pieChartData}
+                                                dataKey="value"
+                                                nameKey="name"
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={65}
+                                                outerRadius={95}
+                                                paddingAngle={pieChartData.length > 1 && totalAccountLiquidity > 0 ? 3 : 0}
+                                            >
+                                                {pieChartData.map((entry: any, index: number) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip content={<AccountPieTooltip currencyPrefix={currencyPrefix} />} />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                    {/* Donut Center Total */}
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                                            Total {currency}
+                                        </span>
+                                        <span className="text-base font-bold text-foreground">
+                                            {currencyPrefix}{Number(totalAccountLiquidity).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Right: Account Share Breakdown List */}
+                                <div className="lg:col-span-7 space-y-2.5">
+                                    <div className="flex items-center justify-between pb-1 border-b border-border/50">
+                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                            Account Share Breakdown ({currency})
+                                        </p>
+                                        <span className="text-[11px] text-muted-foreground">
+                                            Active Currency: <strong className="text-foreground">{currency}</strong>
+                                        </span>
+                                    </div>
+                                    <div className="max-h-[230px] overflow-y-auto space-y-2 pr-1">
+                                        {accountPieData.map((item: any) => (
+                                            <div
+                                                key={item._id}
+                                                className="flex items-center justify-between p-2.5 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors text-xs"
+                                            >
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <span
+                                                        className="h-3 w-3 rounded-full shrink-0"
+                                                        style={{ backgroundColor: item.color }}
+                                                    />
+                                                    <div className="min-w-0">
+                                                        <p className="font-semibold text-foreground truncate">
+                                                            {item.providerName}
+                                                        </p>
+                                                        <p className="text-[10px] text-muted-foreground font-mono truncate">
+                                                            {item.accountNumber} • {item.userName}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right shrink-0 ml-2">
+                                                    <p className="font-bold text-foreground">
+                                                        {currencyPrefix}{Number(item.actualBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </p>
+                                                    <span className="inline-block text-[10px] font-medium text-indigo-500 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded mt-0.5">
+                                                        {item.percent}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Account Detail Cards Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {accountBalances.map((acc) => {
+                                    const bal = currency === "USD" ? acc.balance : acc.balanceInBdt;
+                                    const altBal = currency === "USD" ? acc.balanceInBdt : acc.balance;
+                                    const altPrefix = currency === "USD" ? "৳" : "$";
+                                    return (
+                                        <div
+                                            key={acc._id}
+                                            className="p-3.5 rounded-xl border border-border/70 bg-card/60 hover:bg-muted/30 transition-all flex items-start justify-between gap-3 shadow-xs"
+                                        >
+                                            <div className="flex items-start gap-2.5 min-w-0">
+                                                <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg shrink-0 mt-0.5">
+                                                    {acc.type === "bank" ? (
+                                                        <Landmark className="h-4 w-4" />
+                                                    ) : (
+                                                        <Smartphone className="h-4 w-4" />
+                                                    )}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="font-semibold text-xs text-foreground truncate">
+                                                        {acc.providerName}
+                                                    </p>
+                                                    <p className="font-mono text-[10px] text-muted-foreground truncate">
+                                                        {acc.accountNumber} • {acc.accountName}
+                                                    </p>
+                                                    <p className="text-[10px] text-muted-foreground/75 truncate mt-0.5">
+                                                        Owner: {acc.userName}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="text-right shrink-0">
+                                                <p className="font-bold text-sm text-foreground">
+                                                    {currencyPrefix}{Number(bal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </p>
+                                                <p className="text-[10px] text-muted-foreground font-medium">
+                                                    {altPrefix}{Number(altBal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    )}
+                </CardContent>
+            </Card>
 
             {/* Main Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -276,10 +630,10 @@ export default function FinancialAnalyticsView() {
                             <div>
                                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                                     <BarChart3 className="h-4 w-4 text-primary" />
-                                    MoM Revenue vs. Operating Expenses
+                                    MoM Revenue vs. Operating Expenses ({currency})
                                 </CardTitle>
                                 <CardDescription className="text-xs">
-                                    Track historical monthly income, expenses, and net profit trends.
+                                    Track historical monthly income, expenses, and net profit trends in {currency}.
                                 </CardDescription>
                             </div>
                         </div>
@@ -287,7 +641,7 @@ export default function FinancialAnalyticsView() {
                     <CardContent>
                         <div className="h-72 w-full pt-2">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={monthlyTrends} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <AreaChart data={activeMonthlyTrends} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                     <defs>
                                         <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
@@ -301,7 +655,7 @@ export default function FinancialAnalyticsView() {
                                     <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
                                     <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} />
                                     <YAxis tick={{ fontSize: 11 }} axisLine={false} />
-                                    <Tooltip content={<CustomTooltip />} />
+                                    <Tooltip content={<CustomTooltip currencyPrefix={currencyPrefix} />} />
                                     <Legend wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
                                     <Area
                                         type="monotone"
@@ -332,19 +686,19 @@ export default function FinancialAnalyticsView() {
                     <CardHeader>
                         <CardTitle className="text-base font-semibold flex items-center gap-2">
                             <PieIcon className="h-4 w-4 text-primary" />
-                            Expense Distribution
+                            Expense Distribution ({currency})
                         </CardTitle>
                         <CardDescription className="text-xs">
-                            Breakdown of operating costs by category.
+                            Breakdown of operating costs by category in {currency}.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {categoryBreakdown.length > 0 ? (
+                        {activeCategories.length > 0 ? (
                             <div className="h-72 w-full flex flex-col items-center justify-center">
                                 <ResponsiveContainer width="100%" height="70%">
                                     <PieChart>
                                         <Pie
-                                            data={categoryBreakdown}
+                                            data={activeCategories}
                                             dataKey="amount"
                                             nameKey="category"
                                             cx="50%"
@@ -353,22 +707,24 @@ export default function FinancialAnalyticsView() {
                                             outerRadius={80}
                                             paddingAngle={4}
                                         >
-                                            {categoryBreakdown.map((entry, index) => (
+                                            {activeCategories.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                                             ))}
                                         </Pie>
-                                        <Tooltip content={<CustomTooltip />} />
+                                        <Tooltip content={<CustomTooltip currencyPrefix={currencyPrefix} />} />
                                     </PieChart>
                                 </ResponsiveContainer>
                                 <div className="w-full grid grid-cols-2 gap-2 text-xs mt-2 overflow-y-auto max-h-24 pr-1">
-                                    {categoryBreakdown.map((item, idx) => (
+                                    {activeCategories.map((item, idx) => (
                                         <div key={idx} className="flex items-center gap-1.5 truncate">
                                             <span
                                                 className="h-2.5 w-2.5 rounded-full shrink-0"
                                                 style={{ backgroundColor: PIE_COLORS[idx % PIE_COLORS.length] }}
                                             />
                                             <span className="text-muted-foreground truncate">{item.category}:</span>
-                                            <span className="font-medium text-foreground ml-auto">${item.amount.toLocaleString()}</span>
+                                            <span className="font-medium text-foreground ml-auto">
+                                                {currencyPrefix}{Number(item.amount).toLocaleString()}
+                                            </span>
                                         </div>
                                     ))}
                                 </div>
@@ -391,10 +747,10 @@ export default function FinancialAnalyticsView() {
                             <div>
                                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                                     <Calendar className="h-4 w-4 text-primary" />
-                                    Cash Flow Forecast
+                                    Cash Flow Forecast ({currency})
                                 </CardTitle>
                                 <CardDescription className="text-xs">
-                                    Estimated cash inflows vs burn rate over time.
+                                    Estimated cash inflows vs burn rate over time in {currency}.
                                 </CardDescription>
                             </div>
                             <div className="flex items-center bg-muted p-1 rounded-lg text-xs">
@@ -417,11 +773,11 @@ export default function FinancialAnalyticsView() {
                     <CardContent className="space-y-4">
                         <div className="h-48 w-full pt-1">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={cashFlowForecast} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <BarChart data={activeForecast} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                     <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
                                     <XAxis dataKey="horizon" tick={{ fontSize: 11 }} axisLine={false} />
                                     <YAxis tick={{ fontSize: 11 }} axisLine={false} />
-                                    <Tooltip content={<CustomTooltip />} />
+                                    <Tooltip content={<CustomTooltip currencyPrefix={currencyPrefix} />} />
                                     <Bar dataKey="projectedInflow" name="Projected Inflow" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                                     <Bar dataKey="projectedOutflow" name="Expected Burn" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                                 </BarChart>
@@ -436,19 +792,19 @@ export default function FinancialAnalyticsView() {
                             <div className="flex justify-between items-center">
                                 <span className="text-muted-foreground">Est. Inflow:</span>
                                 <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                    +${selectedForecast.projectedInflow.toLocaleString()}
+                                    +{currencyPrefix}{selectedForecast.projectedInflow.toLocaleString()}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-muted-foreground">Est. Operating Burn:</span>
                                 <span className="font-semibold text-amber-600 dark:text-amber-400">
-                                    -${selectedForecast.projectedOutflow.toLocaleString()}
+                                    -{currencyPrefix}{selectedForecast.projectedOutflow.toLocaleString()}
                                 </span>
                             </div>
                             <div className="border-t border-border/40 pt-1.5 flex justify-between items-center font-bold">
                                 <span>Projected Net Position:</span>
                                 <span className={selectedForecast.netCashFlow >= 0 ? "text-emerald-500" : "text-red-500"}>
-                                    {selectedForecast.netCashFlow >= 0 ? "+" : ""}${selectedForecast.netCashFlow.toLocaleString()}
+                                    {selectedForecast.netCashFlow >= 0 ? "+" : ""}{currencyPrefix}{selectedForecast.netCashFlow.toLocaleString()}
                                 </span>
                             </div>
                         </div>
