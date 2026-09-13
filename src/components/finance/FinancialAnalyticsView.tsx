@@ -200,10 +200,10 @@ const AccountPieTooltip = ({ active, payload, currencyPrefix }: any) => {
 };
 
 export default function FinancialAnalyticsView() {
-    const [currency, setCurrency] = useState<"USD" | "BDT">("USD");
+    const currency = "BDT";
     const [forecastHorizon, setForecastHorizon] = useState<"30" | "60" | "90">("30");
 
-    const currencyPrefix = currency === "USD" ? "$" : "৳";
+    const currencyPrefix = "৳";
 
     const { data, isLoading, isError, refetch } = useQuery<AnalyticsData>({
         queryKey: ["finance-analytics"],
@@ -256,43 +256,43 @@ export default function FinancialAnalyticsView() {
         accountBalances = [],
     } = data;
 
-    // Currency mapped metrics
-    const netProfitActive = currency === "USD" ? summaryMetrics.netProfit6M : summaryMetrics.netProfit6MBdt;
-    const burnRateActive = currency === "USD" ? summaryMetrics.monthlyBurnRate : summaryMetrics.monthlyBurnRateBdt;
-    const inflow30Active = currency === "USD" ? (cashFlowForecast[0]?.projectedInflow || 0) : (cashFlowForecast[0]?.projectedInflowBdt || 0);
+    // Currency mapped metrics (standardized to BDT)
+    const netProfitActive = summaryMetrics.netProfit6MBdt;
+    const burnRateActive = summaryMetrics.monthlyBurnRateBdt;
+    const inflow30Active = cashFlowForecast[0]?.projectedInflowBdt || 0;
 
     // Filtered trends by currency
     const activeMonthlyTrends = monthlyTrends.map((m) => ({
         month: m.month,
-        income: currency === "USD" ? m.income : m.incomeBdt,
-        expense: currency === "USD" ? m.expense : m.expenseBdt,
-        profit: currency === "USD" ? m.profit : m.profitBdt,
+        income: m.incomeBdt,
+        expense: m.expenseBdt,
+        profit: m.profitBdt,
     }));
 
     // Filtered categories by currency
     const activeCategories = categoryBreakdown.map((c) => ({
         category: c.category,
-        amount: currency === "USD" ? c.amount : c.amountBdt,
+        amount: c.amountBdt,
     }));
 
     // Filtered forecast by currency
     const activeForecast = cashFlowForecast.map((f) => ({
         horizon: f.horizon,
-        projectedInflow: currency === "USD" ? f.projectedInflow : f.projectedInflowBdt,
-        projectedOutflow: currency === "USD" ? f.projectedOutflow : f.projectedOutflowBdt,
-        netCashFlow: currency === "USD" ? f.netCashFlow : f.netCashFlowBdt,
+        projectedInflow: f.projectedInflowBdt,
+        projectedOutflow: f.projectedOutflowBdt,
+        netCashFlow: f.netCashFlowBdt,
     }));
 
     const selectedForecast = activeForecast.find((f) => f.horizon.includes(forecastHorizon)) || activeForecast[0];
 
     // Account balances & liquidity breakdown mapped by active currency
     const totalAccountLiquidity = accountBalances.reduce(
-        (sum, item) => sum + (currency === "USD" ? (item.balance || 0) : (item.balanceInBdt || 0)),
+        (sum, item) => sum + (item.balanceInBdt || 0),
         0
     );
 
     const accountPieData = accountBalances.map((acc, index) => {
-        const rawBalance = currency === "USD" ? (acc.balance || 0) : (acc.balanceInBdt || 0);
+        const rawBalance = acc.balanceInBdt || 0;
         const percent = totalAccountLiquidity > 0 ? ((rawBalance / totalAccountLiquidity) * 100) : 0;
         return {
             ...acc,
@@ -342,34 +342,11 @@ export default function FinancialAnalyticsView() {
                     </p>
                 </div>
 
-                <div className="flex items-center gap-1.5 p-1 bg-muted/60 rounded-xl border border-border">
-                    <span className="text-xs font-semibold text-muted-foreground px-2">Currency:</span>
-                    <Button
-                        variant={currency === "USD" ? "default" : "ghost"}
-                        size="sm"
-                        onClick={() => setCurrency("USD")}
-                        className={cn(
-                            "h-8 px-3 text-xs font-semibold rounded-lg cursor-pointer transition-all",
-                            currency === "USD"
-                                ? "bg-indigo-600 text-white shadow-xs"
-                                : "text-muted-foreground hover:text-foreground"
-                        )}
-                    >
-                        USD ($)
-                    </Button>
-                    <Button
-                        variant={currency === "BDT" ? "default" : "ghost"}
-                        size="sm"
-                        onClick={() => setCurrency("BDT")}
-                        className={cn(
-                            "h-8 px-3 text-xs font-semibold rounded-lg cursor-pointer transition-all",
-                            currency === "BDT"
-                                ? "bg-indigo-600 text-white shadow-xs"
-                                : "text-muted-foreground hover:text-foreground"
-                        )}
-                    >
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/60 rounded-xl border border-border">
+                    <span className="text-xs font-semibold text-muted-foreground">Currency:</span>
+                    <Badge className="bg-indigo-600/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/20 font-bold text-xs">
                         BDT (৳)
-                    </Button>
+                    </Badge>
                 </div>
             </div>
 
@@ -575,9 +552,7 @@ export default function FinancialAnalyticsView() {
                             {/* Account Detail Cards Grid */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {accountBalances.map((acc) => {
-                                    const bal = currency === "USD" ? acc.balance : acc.balanceInBdt;
-                                    const altBal = currency === "USD" ? acc.balanceInBdt : acc.balance;
-                                    const altPrefix = currency === "USD" ? "৳" : "$";
+                                    const bal = acc.balanceInBdt || acc.balance || 0;
                                     return (
                                         <div
                                             key={acc._id}
@@ -607,9 +582,6 @@ export default function FinancialAnalyticsView() {
                                             <div className="text-right shrink-0">
                                                 <p className="font-bold text-sm text-foreground">
                                                     {currencyPrefix}{Number(bal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </p>
-                                                <p className="text-[10px] text-muted-foreground font-medium">
-                                                    {altPrefix}{Number(altBal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </p>
                                             </div>
                                         </div>
@@ -843,13 +815,13 @@ export default function FinancialAnalyticsView() {
                                                     <div className="text-[11px] text-muted-foreground">{proj.clientName}</div>
                                                 </td>
                                                 <td className="py-2.5 px-3 font-medium">
-                                                    ${proj.budget.toLocaleString()}
+                                                    ৳{proj.budget.toLocaleString()}
                                                 </td>
                                                 <td className="py-2.5 px-3 text-emerald-600 dark:text-emerald-400 font-semibold">
-                                                    ${proj.revenueCollected.toLocaleString()}
+                                                    ৳{proj.revenueCollected.toLocaleString()}
                                                 </td>
                                                 <td className="py-2.5 px-3 text-amber-600 dark:text-amber-400 font-medium">
-                                                    ${proj.pendingRevenue.toLocaleString()}
+                                                    ৳{proj.pendingRevenue.toLocaleString()}
                                                 </td>
                                                 <td className="py-2.5 px-3 text-right">
                                                     <Badge

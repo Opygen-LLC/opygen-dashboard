@@ -337,12 +337,13 @@ export default function FinanceDashboardView() {
             ? "other"
             : null;
 
+        const bdtVal = tx.amountInBdt || tx.amount || 0;
         reset({
             type: tx.type,
             category: tx.category,
             productName: tx.productName || "",
-            amount: tx.amount,
-            amountInBdt: tx.amountInBdt || 0,
+            amount: bdtVal,
+            amountInBdt: bdtVal,
             date: tx.date
                 ? new Date(tx.date).toISOString().split("T")[0]
                 : new Date().toISOString().split("T")[0],
@@ -359,6 +360,11 @@ export default function FinanceDashboardView() {
     const saveMutation = useMutation({
         mutationFn: async (data: any) => {
             const payload = { ...data };
+            if (payload.amountInBdt !== undefined) {
+                payload.amount = payload.amountInBdt;
+            } else if (payload.amount !== undefined) {
+                payload.amountInBdt = payload.amount;
+            }
 
             if (payload.category === "product") {
                 if (!payload.productName || payload.productName.trim() === "") {
@@ -581,10 +587,8 @@ export default function FinanceDashboardView() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-lg sm:text-xl font-bold text-foreground flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5">
-                            <span>{formatCurrency(summary?.netBalance)}</span>
-                            <span className="text-muted-foreground/60 font-light mx-0.5">|</span>
-                            <span className="">{formatBDT(summary?.netBalanceBdt)}</span>
+                        <div className="text-lg sm:text-xl font-bold text-foreground">
+                            <span>{formatBDT(summary?.netBalanceBdt ?? summary?.netBalance)}</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -596,10 +600,8 @@ export default function FinanceDashboardView() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5">
-                            <span>{formatCurrency(summary?.totalIncome)}</span>
-                            <span className="text-emerald-500/60 font-light mx-0.5">|</span>
-                            <span>{formatBDT(summary?.totalIncomeBdt)}</span>
+                        <div className="text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                            <span>{formatBDT(summary?.totalIncomeBdt ?? summary?.totalIncome)}</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -611,10 +613,8 @@ export default function FinanceDashboardView() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-lg sm:text-xl font-bold text-rose-600 dark:text-rose-400 flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5">
-                            <span>{formatCurrency(summary?.totalExpense)}</span>
-                            <span className="text-rose-500/60 font-light mx-0.5">|</span>
-                            <span>{formatBDT(summary?.totalExpenseBdt)}</span>
+                        <div className="text-lg sm:text-xl font-bold text-rose-600 dark:text-rose-400">
+                            <span>{formatBDT(summary?.totalExpenseBdt ?? summary?.totalExpense)}</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -626,10 +626,8 @@ export default function FinanceDashboardView() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-lg sm:text-xl font-bold text-amber-600 dark:text-amber-400 flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5">
-                            <span>{formatCurrency(summary?.outstandingLoans)}</span>
-                            <span className="text-amber-500/60 font-light mx-0.5">|</span>
-                            <span>{formatBDT(summary?.outstandingLoansBdt)}</span>
+                        <div className="text-lg sm:text-xl font-bold text-amber-600 dark:text-amber-400">
+                            <span>{formatBDT(summary?.outstandingLoansBdt ?? summary?.outstandingLoans)}</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -684,10 +682,7 @@ export default function FinanceDashboardView() {
                                         Category
                                     </th>
                                     <th className="px-6 py-4 font-semibold">
-                                        Amount ($)
-                                    </th>
-                                    <th className="px-6 py-4 font-semibold">
-                                        BDT (৳)
+                                        Amount (৳)
                                     </th>
                                     <th className="px-6 py-4 font-semibold">
                                         Date
@@ -700,7 +695,7 @@ export default function FinanceDashboardView() {
                             <tbody>
                                 {transactions.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="px-6 py-10 text-center text-muted-foreground">
+                                        <td colSpan={5} className="px-6 py-10 text-center text-muted-foreground">
                                             No transactions found.
                                         </td>
                                     </tr>
@@ -768,29 +763,12 @@ export default function FinanceDashboardView() {
                                                 {t.type === "income" ? (
                                                     <span className="text-emerald-500 flex items-center gap-1">
                                                         <ArrowUpRight className="h-3.5 w-3.5" />
-                                                        {formatCurrency(
-                                                            t.amount,
-                                                        )}
+                                                        ৳{(t.amountInBdt || t.amount || 0).toLocaleString()}
                                                     </span>
                                                 ) : (
                                                     <span className="text-rose-500 flex items-center gap-1">
                                                         <ArrowDownRight className="h-3.5 w-3.5" />
-                                                        {formatCurrency(
-                                                            t.amount,
-                                                        )}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 font-bold">
-                                                {t.type === "income" ? (
-                                                    <span className="text-emerald-500 flex items-center gap-1">
-                                                        <ArrowUpRight className="h-3.5 w-3.5" />
-                                                        ৳{(t.amountInBdt || 0).toLocaleString()}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-rose-500 flex items-center gap-1">
-                                                        <ArrowDownRight className="h-3.5 w-3.5" />
-                                                        ৳{(t.amountInBdt || 0).toLocaleString()}
+                                                        ৳{(t.amountInBdt || t.amount || 0).toLocaleString()}
                                                     </span>
                                                 )}
                                             </td>
@@ -1234,7 +1212,7 @@ export default function FinanceDashboardView() {
                                                                                 {acc.providerName} • {acc.accountNumber} ({item.userName})
                                                                             </span>
                                                                             <span className="text-[10px] text-muted-foreground">
-                                                                                {acc.accountName} | Bal: ${Number(acc.balance || 0).toLocaleString()} / ৳{Number(acc.balanceInBdt || 0).toLocaleString()}
+                                                                                {acc.accountName} | Bal: ৳{Number(acc.balanceInBdt || acc.balance || 0).toLocaleString()}
                                                                             </span>
                                                                         </div>
                                                                     </SelectItem>
@@ -1251,51 +1229,30 @@ export default function FinanceDashboardView() {
                                             )}
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-semibold text-muted-foreground uppercase">
-                                                    Amount ($ USD){" "}
-                                                    <span className="text-rose-500">
-                                                        *
-                                                    </span>
-                                                </label>
-                                                <Input
-                                                    type="number"
-                                                    step="0.01"
-                                                    {...register("amount", {
-                                                        valueAsNumber: true,
-                                                    })}
-                                                    placeholder="0.00"
-                                                    className="h-10 text-lg font-semibold tracking-tight"
-                                                />
-                                                {errors.amount && (
-                                                    <p className="text-xs text-rose-500">
-                                                        {errors.amount.message}
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-semibold text-muted-foreground uppercase">
-                                                    Amount (৳ BDT){" "}
-                                                    <span className="text-rose-500">
-                                                        *
-                                                    </span>
-                                                </label>
-                                                <Input
-                                                    type="number"
-                                                    step="0.01"
-                                                    {...register("amountInBdt", {
-                                                        valueAsNumber: true,
-                                                    })}
-                                                    placeholder="0.00"
-                                                    className="h-10 text-lg font-semibold tracking-tight"
-                                                />
-                                                {errors.amountInBdt && (
-                                                    <p className="text-xs text-rose-500">
-                                                        {errors.amountInBdt.message}
-                                                    </p>
-                                                )}
-                                            </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold text-muted-foreground uppercase">
+                                                Amount (৳){" "}
+                                                <span className="text-rose-500">
+                                                    *
+                                                </span>
+                                            </label>
+                                            <Input
+                                                type="number"
+                                                step="any"
+                                                {...register("amountInBdt", {
+                                                    valueAsNumber: true,
+                                                    onChange: (e) => {
+                                                        setValue("amount", parseFloat(e.target.value) || 0);
+                                                    },
+                                                })}
+                                                placeholder="0.00"
+                                                className="h-10 text-lg font-semibold tracking-tight"
+                                            />
+                                            {errors.amountInBdt && (
+                                                <p className="text-xs text-rose-500">
+                                                    {errors.amountInBdt.message}
+                                                </p>
+                                            )}
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-4">
@@ -1616,8 +1573,7 @@ export default function FinanceDashboardView() {
                                                 Date: new Date(t.date).toLocaleDateString(),
                                                 Type: t.type,
                                                 Category: t.category,
-                                                "Amount (USD)": t.amount,
-                                                "Amount (BDT)": t.amountInBdt || 0,
+                                                "Amount (BDT)": t.amountInBdt || t.amount || 0,
                                                 Description: t.description,
                                                 "User/Entity": t.user ? t.user.name : (t.externalEntity || ""),
                                                 "Created At": new Date(t.createdAt).toLocaleDateString()

@@ -177,7 +177,7 @@ export default function QuotesView() {
             clientName: "",
             clientPhone: "",
             clientSocialLink: "",
-            currency: "USD",
+            currency: "BDT",
             advanceType: "percentage",
             advanceValue: null,
             projectDuration: "6–8 Weeks",
@@ -204,7 +204,7 @@ export default function QuotesView() {
             phases: quote.phases || [],
             paymentSchedule: quote.paymentSchedule || [],
             termsAndConditions: quote.termsAndConditions || [],
-            currency: quote.currency || "USD",
+            currency: quote.currency || "BDT",
             advanceType: quote.advanceType || "percentage",
             advanceValue: quote.advanceValue ?? quote.advancePercent ?? null,
             projectDuration: quote.projectDuration || "",
@@ -430,7 +430,15 @@ export default function QuotesView() {
                                 </tr>
                             ) : (
                                 filteredQuotes.map((quote) => {
-                                    const quoteRef = quote.quoteNumber || `PRJ-${new Date(quote.createdAt || Date.now()).getFullYear()}-${quote._id.substring(0, 6).toUpperCase()}`;
+                                    const quoteYear = quote.createdAt
+                                        ? new Date(quote.createdAt).getFullYear()
+                                        : quote.quoteDate
+                                          ? new Date(quote.quoteDate).getFullYear()
+                                          : "";
+                                    const quoteRef = quote.quoteNumber ||
+                                        (quoteYear
+                                            ? `PRJ-${quoteYear}-${quote._id.substring(0, 6).toUpperCase()}`
+                                            : `PRJ-${quote._id.substring(0, 6).toUpperCase()}`);
 
                                     return (
                                         <tr key={quote._id} className="hover:bg-accent/30 transition-colors">
@@ -464,7 +472,7 @@ export default function QuotesView() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className="inline-flex items-center rounded-md bg-indigo-500/10 px-2 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-                                                    {quote.currency || "USD"}
+                                                    {quote.currency || "BDT"}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-right">

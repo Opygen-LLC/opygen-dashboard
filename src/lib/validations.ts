@@ -478,7 +478,7 @@ export const quoteSchema = z
         phases: z.array(quotePhaseSchema).optional().default([]),
         paymentSchedule: z.array(quotePaymentScheduleSchema).optional().default([]),
         termsAndConditions: z.array(quoteTermSchema).optional().default([]),
-        currency: z.enum(["USD", "BDT", "EUR"]).default("USD"),
+        currency: z.enum(["USD", "BDT", "EUR"]).default("BDT"),
         advanceType: z.enum(["percentage", "fixed"]).default("percentage"),
         advanceValue: z.coerce
             .number()

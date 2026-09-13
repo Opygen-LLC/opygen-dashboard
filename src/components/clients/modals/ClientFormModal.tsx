@@ -881,7 +881,7 @@ export function ClientFormModal({
 
                                     <div className="space-y-2">
                                         <label className="text-xs font-semibold text-muted-foreground uppercase">
-                                            Min Amount ($)
+                                            Min Amount (৳)
                                         </label>
                                         <Input
                                             type="number"
@@ -903,7 +903,7 @@ export function ClientFormModal({
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-semibold text-muted-foreground uppercase">
-                                            Max Amount ($)
+                                            Max Amount (৳)
                                         </label>
                                         <Input
                                             type="number"

@@ -44,7 +44,7 @@ export default function ClientToQuoteModal({
 
     const [projectName, setProjectName] = useState(activeClient?.name ? `${activeClient.name} - Project` : "");
     const [projectDetails, setProjectDetails] = useState("");
-    const [currency, setCurrency] = useState("USD");
+    const [currency, setCurrency] = useState("BDT");
     const [projectDuration, setProjectDuration] = useState("");
     const [minBudget, setMinBudget] = useState<number | "">(activeClient?.minAmount || "");
     const [maxBudget, setMaxBudget] = useState<number | "">(activeClient?.maxAmount || "");
@@ -185,15 +185,15 @@ export default function ClientToQuoteModal({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-foreground">Currency</label>
-                            <Select value={currency} onValueChange={(val: any) => setCurrency(typeof val === "string" ? val : "USD")}>
+                            <Select value={currency} onValueChange={(val: any) => setCurrency(typeof val === "string" ? val : "BDT")}>
                                 <SelectTrigger className="w-full h-10 border-border focus-visible:ring-indigo-500">
                                     <SelectValue placeholder="Select Currency" />
                                 </SelectTrigger>
                                 <SelectContent className="z-[150]">
+                                    <SelectItem value="BDT">BDT (৳)</SelectItem>
                                     <SelectItem value="USD">USD ($)</SelectItem>
                                     <SelectItem value="EUR">EUR (€)</SelectItem>
                                     <SelectItem value="GBP">GBP (£)</SelectItem>
-                                    <SelectItem value="BDT">BDT (৳)</SelectItem>
                                     <SelectItem value="INR">INR (₹)</SelectItem>
                                 </SelectContent>
                             </Select>

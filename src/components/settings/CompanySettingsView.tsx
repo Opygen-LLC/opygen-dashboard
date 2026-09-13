@@ -112,7 +112,7 @@ const DEFAULT_FORM = {
     website: "",
     address: "",
     socials: { facebook: "", instagram: "", linkedin: "", youtube: "", x: "" },
-    monthlyBudgetGoal: "0",
+    monthlyBudgetGoal: "200000",
 };
 
 type FormState = typeof DEFAULT_FORM;
@@ -128,6 +128,13 @@ export default function CompanySettingsView() {
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
     const isDirty = JSON.stringify(form) !== JSON.stringify(savedForm) || logoFile !== null;
 
+    /* ── active tab ── */
+    const [activeTab, setActiveTab] = useState<"general" | "goals">("general");
+
+    /* ── pagination for revenue table ── */
+    const [revenuePage, setRevenuePage] = useState(1);
+    const REVENUE_PER_PAGE = 10;
+
     /* ── fetch settings ── */
     const { data: settings, isLoading } = useQuery<any>({
         queryKey: ["settings"],
@@ -139,17 +146,15 @@ export default function CompanySettingsView() {
     });
 
     const revenueHistory: any[] = settings?.monthlyRevenueHistory ?? [];
-    const [revenuePage, setRevenuePage] = useState(1);
-    const REVENUE_PER_PAGE = 10;
     const totalRevenuePages = Math.ceil(revenueHistory.length / REVENUE_PER_PAGE) || 1;
+    const totalPages = totalRevenuePages;
     const paginatedRevenue = revenueHistory.slice(
         (revenuePage - 1) * REVENUE_PER_PAGE,
         revenuePage * REVENUE_PER_PAGE
     );
-    const totalLifetimeUsd = revenueHistory.reduce((sum, m) => sum + (m.revenueUsd || 0), 0);
     const totalLifetimeBdt = revenueHistory.reduce((sum, m) => sum + (m.revenueBdt || 0), 0);
     const bestMonth = revenueHistory.length > 0
-        ? [...revenueHistory].sort((a, b) => (b.revenueUsd || 0) - (a.revenueUsd || 0))[0]
+        ? [...revenueHistory].sort((a, b) => (b.revenueBdt || 0) - (a.revenueBdt || 0))[0]
         : null;
     const currentMonthData = revenueHistory.find((m) => m.isCurrent);
 
@@ -171,7 +176,11 @@ export default function CompanySettingsView() {
                 youtube: settings.socials?.youtube ?? "",
                 x: settings.socials?.x ?? "",
             },
-            monthlyBudgetGoal: String(settings.monthlyBudgetGoal ?? 0),
+            monthlyBudgetGoal: String(
+                settings.monthlyBudgetGoal && Number(settings.monthlyBudgetGoal) > 0
+                    ? settings.monthlyBudgetGoal
+                    : 200000
+            ),
         };
         setForm(loaded);
         setSavedForm(loaded);
@@ -207,7 +216,7 @@ export default function CompanySettingsView() {
                 website: form.website,
                 address: form.address,
                 socials: form.socials,
-                monthlyBudgetGoal: parseFloat(form.monthlyBudgetGoal) || 0,
+                monthlyBudgetGoal: parseFloat(form.monthlyBudgetGoal) || 200000,
             };
             const res = await fetch("/api/settings", {
                 method: "PATCH",
@@ -547,7 +556,7 @@ export default function CompanySettingsView() {
                             >
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground select-none">
-                                        $
+                                        ৳
                                     </span>
                                     <Input
                                         type="number"
@@ -556,7 +565,7 @@ export default function CompanySettingsView() {
                                         onChange={(e) =>
                                             set("monthlyBudgetGoal")(e.target.value)
                                         }
-                                        placeholder="0"
+                                        placeholder="200000"
                                         className="pl-8 font-semibold"
                                     />
                                 </div>
@@ -568,18 +577,18 @@ export default function CompanySettingsView() {
                             <div className="rounded-xl border border-border/70 bg-muted/20 p-3.5 flex flex-col justify-between gap-2">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                                        All-Time Income ($)
+                                        All-Time Income
                                     </span>
                                     <div className="h-7 w-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                                        <DollarSign className="h-3.5 w-3.5" />
+                                        <TrendingUp className="h-3.5 w-3.5" />
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="text-xl font-black text-foreground tracking-tight tabular-nums">
-                                        ${totalLifetimeUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight tabular-nums">
+                                        ৳{totalLifetimeBdt.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                                     </p>
-                                    <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                                        ৳{totalLifetimeBdt.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} BDT
+                                    <p className="text-[11px] font-semibold text-muted-foreground tabular-nums">
+                                        Total BDT Collected
                                     </p>
                                 </div>
                             </div>
@@ -596,16 +605,16 @@ export default function CompanySettingsView() {
                                 <div>
                                     <div className="flex items-baseline gap-1.5">
                                         <p className="text-xl font-black text-foreground tracking-tight tabular-nums">
-                                            ${(currentMonthData?.revenueUsd ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            ৳{(currentMonthData?.revenueBdt ?? 0).toLocaleString()}
                                         </p>
                                         {Number(form.monthlyBudgetGoal) > 0 && (
                                             <span className="text-xs font-bold text-muted-foreground">
-                                                / ${Number(form.monthlyBudgetGoal).toLocaleString()}
+                                                / ৳{Number(form.monthlyBudgetGoal).toLocaleString()}
                                             </span>
                                         )}
                                     </div>
                                     <p className="text-[11px] font-semibold text-muted-foreground tabular-nums">
-                                        ৳{(currentMonthData?.revenueBdt ?? 0).toLocaleString()} BDT
+                                        Earned this month
                                     </p>
                                 </div>
                             </div>
@@ -621,7 +630,7 @@ export default function CompanySettingsView() {
                                 </div>
                                 <div>
                                     <p className="text-xl font-black text-foreground tracking-tight tabular-nums">
-                                        ${(bestMonth?.revenueUsd ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        ৳{(bestMonth?.revenueBdt ?? 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                                     </p>
                                     <p className="text-[11px] font-medium text-muted-foreground">
                                         {bestMonth?.monthName ?? "No record yet"}
@@ -672,172 +681,160 @@ export default function CompanySettingsView() {
                                 </div>
                             ) : (
                                 <>
-                                    {/* Desktop Table */}
-                                    <div className="hidden md:block overflow-x-auto">
-                                        <table className="w-full text-sm text-left">
-                                            <thead className="text-[11px] text-muted-foreground uppercase tracking-wider bg-muted/30 border-b border-border/50">
-                                                <tr>
-                                                    <th className="px-5 py-3 font-semibold">Month & Year</th>
-                                                    <th className="px-5 py-3 font-semibold text-right">Revenue ($ USD)</th>
-                                                    <th className="px-5 py-3 font-semibold text-right">Revenue (৳ BDT)</th>
-                                                    <th className="px-5 py-3 font-semibold text-right">Target Goal</th>
-                                                    <th className="px-5 py-3 font-semibold min-w-[140px]">Progress</th>
-                                                    <th className="px-5 py-3 font-semibold text-right">Status</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-border/40 text-xs">
-                                                {paginatedRevenue.map((m) => {
-                                                    const goal = m.goal || Number(form.monthlyBudgetGoal) || 0;
-                                                    const pct = goal > 0 ? Math.min(Math.round((m.revenueUsd / goal) * 100), 999) : 0;
-                                                    const isAchieved = goal > 0 && m.revenueUsd >= goal;
+                                     {/* Desktop Table */}
+                                     <div className="hidden md:block overflow-x-auto">
+                                         <table className="w-full text-sm text-left">
+                                             <thead className="text-[11px] text-muted-foreground uppercase tracking-wider bg-muted/30 border-b border-border/50">
+                                                 <tr>
+                                                     <th className="px-5 py-3 font-semibold">Month & Year</th>
+                                                     <th className="px-5 py-3 font-semibold text-right">Revenue (৳ BDT)</th>
+                                                     <th className="px-5 py-3 font-semibold text-right">Target Goal</th>
+                                                     <th className="px-5 py-3 font-semibold min-w-[140px]">Progress</th>
+                                                     <th className="px-5 py-3 font-semibold text-right">Status</th>
+                                                 </tr>
+                                             </thead>
+                                             <tbody className="divide-y divide-border/40 text-xs">
+                                                 {paginatedRevenue.map((m) => {
+                                                     const goal = m.goal || Number(form.monthlyBudgetGoal) || 200000;
+                                                     const pct = goal > 0 ? Math.min(Math.round((m.revenueBdt / goal) * 100), 999) : 0;
+                                                     const isAchieved = goal > 0 && m.revenueBdt >= goal;
 
-                                                    return (
-                                                        <tr key={m.monthKey} className={cn("hover:bg-muted/20 transition-colors", m.isCurrent && "bg-indigo-500/5")}>
-                                                            <td className="px-5 py-3.5 font-medium whitespace-nowrap">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="font-bold text-foreground text-sm">
-                                                                        {m.monthName}
-                                                                    </span>
-                                                                    {m.isCurrent && (
-                                                                        <Badge className="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 text-[10px] px-1.5 py-0">
-                                                                            Current Month
-                                                                        </Badge>
-                                                                    )}
-                                                                </div>
-                                                                <span className="text-[11px] text-muted-foreground">
-                                                                    {m.transactionCount} transaction{m.transactionCount === 1 ? "" : "s"}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-5 py-3.5 text-right font-extrabold text-sm tabular-nums text-foreground whitespace-nowrap">
-                                                                ${m.revenueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                            </td>
-                                                            <td className="px-5 py-3.5 text-right font-bold text-xs tabular-nums text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-                                                                ৳{m.revenueBdt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                            </td>
-                                                            <td className="px-5 py-3.5 text-right font-medium text-xs tabular-nums text-muted-foreground whitespace-nowrap">
-                                                                {goal > 0 ? `$${goal.toLocaleString()}` : <span className="text-muted-foreground/50">No goal</span>}
-                                                            </td>
-                                                            <td className="px-5 py-3.5">
-                                                                <div className="space-y-1">
-                                                                    <div className="flex items-center justify-between text-[11px] font-bold">
-                                                                        <span className={cn(isAchieved ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
-                                                                            {pct}%
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden">
-                                                                        <div
-                                                                            className={cn(
-                                                                                "h-full rounded-full transition-all duration-500",
-                                                                                pct >= 100 ? "bg-emerald-500" : pct >= 50 ? "bg-indigo-500" : "bg-violet-500"
-                                                                            )}
-                                                                            style={{ width: `${Math.min(pct, 100)}%` }}
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-5 py-3.5 text-right whitespace-nowrap">
-                                                                {isAchieved ? (
-                                                                    <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[11px] font-semibold gap-1">
-                                                                        <Sparkles className="h-3 w-3" />
-                                                                        Goal Reached
-                                                                    </Badge>
-                                                                ) : m.isCurrent ? (
-                                                                    <Badge className="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 text-[11px] font-semibold gap-1">
-                                                                        <TrendingUp className="h-3 w-3" />
-                                                                        In Progress
-                                                                    </Badge>
-                                                                ) : (
-                                                                    <Badge variant="outline" className="text-muted-foreground text-[11px] font-medium">
-                                                                        Under Target
-                                                                    </Badge>
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                     return (
+                                                         <tr key={m.monthKey} className={cn("hover:bg-muted/20 transition-colors", m.isCurrent && "bg-indigo-500/5")}>
+                                                             <td className="px-5 py-3.5 font-medium whitespace-nowrap">
+                                                                 <div className="flex items-center gap-2">
+                                                                     <span className="font-bold text-foreground text-sm">
+                                                                         {m.monthName}
+                                                                     </span>
+                                                                     {m.isCurrent && (
+                                                                         <Badge className="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 text-[10px] px-1.5 py-0">
+                                                                             Current Month
+                                                                         </Badge>
+                                                                     )}
+                                                                 </div>
+                                                                 <span className="text-[11px] text-muted-foreground">
+                                                                     {m.transactionCount} transaction{m.transactionCount === 1 ? "" : "s"}
+                                                                 </span>
+                                                             </td>
+                                                             <td className="px-5 py-3.5 text-right font-extrabold text-sm tabular-nums text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                                                                 ৳{m.revenueBdt.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                                                             </td>
+                                                             <td className="px-5 py-3.5 text-right font-medium text-xs tabular-nums text-muted-foreground whitespace-nowrap">
+                                                                 {goal > 0 ? `৳${goal.toLocaleString()}` : <span className="text-muted-foreground/50">No goal</span>}
+                                                             </td>
+                                                             <td className="px-5 py-3.5">
+                                                                 <div className="space-y-1">
+                                                                     <div className="flex items-center justify-between text-[11px] font-bold">
+                                                                         <span className={cn(isAchieved ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
+                                                                             {pct}%
+                                                                         </span>
+                                                                     </div>
+                                                                     <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden">
+                                                                         <div
+                                                                             className={cn(
+                                                                                 "h-full rounded-full transition-all duration-500",
+                                                                                 pct >= 100 ? "bg-emerald-500" : pct >= 50 ? "bg-indigo-500" : "bg-violet-500"
+                                                                             )}
+                                                                             style={{ width: `${Math.min(pct, 100)}%` }}
+                                                                         />
+                                                                     </div>
+                                                                 </div>
+                                                             </td>
+                                                             <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                                                                 {isAchieved ? (
+                                                                     <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[11px] font-semibold gap-1">
+                                                                         <Sparkles className="h-3 w-3" />
+                                                                         Goal Reached
+                                                                     </Badge>
+                                                                 ) : m.isCurrent ? (
+                                                                     <Badge className="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 text-[11px] font-semibold gap-1">
+                                                                         <TrendingUp className="h-3 w-3" />
+                                                                         In Progress
+                                                                     </Badge>
+                                                                 ) : (
+                                                                     <Badge variant="outline" className="text-muted-foreground text-[11px] font-medium">
+                                                                         Under Target
+                                                                     </Badge>
+                                                                 )}
+                                                             </td>
+                                                         </tr>
+                                                     );
+                                                 })}
+                                             </tbody>
+                                         </table>
+                                     </div>
 
-                                    {/* Mobile Card List */}
-                                    <div className="md:hidden divide-y divide-border/50">
-                                        {paginatedRevenue.map((m) => {
-                                            const goal = m.goal || Number(form.monthlyBudgetGoal) || 0;
-                                            const pct = goal > 0 ? Math.min(Math.round((m.revenueUsd / goal) * 100), 999) : 0;
-                                            const isAchieved = goal > 0 && m.revenueUsd >= goal;
+                                     {/* Mobile Card List */}
+                                     <div className="md:hidden divide-y divide-border/50">
+                                         {paginatedRevenue.map((m) => {
+                                             const goal = m.goal || Number(form.monthlyBudgetGoal) || 200000;
+                                             const pct = goal > 0 ? Math.min(Math.round((m.revenueBdt / goal) * 100), 999) : 0;
+                                             const isAchieved = goal > 0 && m.revenueBdt >= goal;
 
-                                            return (
-                                                <div key={m.monthKey} className="p-4 space-y-3">
-                                                    <div className="flex items-start justify-between gap-2">
-                                                        <div>
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="font-bold text-foreground text-sm">
-                                                                    {m.monthName}
-                                                                </span>
-                                                                {m.isCurrent && (
-                                                                    <Badge className="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 text-[9px] px-1 py-0">
-                                                                        Current
-                                                                    </Badge>
-                                                                )}
-                                                            </div>
-                                                            <span className="text-[11px] text-muted-foreground">
-                                                                {m.transactionCount} transaction{m.transactionCount === 1 ? "" : "s"}
-                                                            </span>
-                                                        </div>
-                                                        {isAchieved ? (
-                                                            <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-semibold gap-1">
-                                                                <Sparkles className="h-2.5 w-2.5" />
-                                                                Reached
-                                                            </Badge>
-                                                        ) : m.isCurrent ? (
-                                                            <Badge className="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 text-[10px] font-semibold">
-                                                                Active
-                                                            </Badge>
-                                                        ) : (
-                                                            <Badge variant="outline" className="text-muted-foreground text-[10px]">
-                                                                Ended
-                                                            </Badge>
-                                                        )}
-                                                    </div>
+                                             return (
+                                                 <div key={m.monthKey} className="p-4 space-y-3">
+                                                     <div className="flex items-start justify-between gap-2">
+                                                         <div>
+                                                             <div className="flex items-center gap-1.5">
+                                                                 <span className="font-bold text-foreground text-sm">
+                                                                     {m.monthName}
+                                                                 </span>
+                                                                 {m.isCurrent && (
+                                                                     <Badge className="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 text-[9px] px-1 py-0">
+                                                                         Current
+                                                                     </Badge>
+                                                                 )}
+                                                             </div>
+                                                             <span className="text-[11px] text-muted-foreground">
+                                                                 {m.transactionCount} transaction{m.transactionCount === 1 ? "" : "s"}
+                                                             </span>
+                                                         </div>
+                                                         {isAchieved ? (
+                                                             <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-semibold gap-1">
+                                                                 <Sparkles className="h-2.5 w-2.5" />
+                                                                 Reached
+                                                             </Badge>
+                                                         ) : m.isCurrent ? (
+                                                             <Badge className="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30 text-[10px] font-semibold">
+                                                                 Active
+                                                             </Badge>
+                                                         ) : (
+                                                             <Badge variant="outline" className="text-muted-foreground text-[10px]">
+                                                                 Ended
+                                                             </Badge>
+                                                         )}
+                                                     </div>
 
-                                                    <div className="grid grid-cols-2 gap-2 bg-muted/20 p-2.5 rounded-lg text-xs">
-                                                        <div>
-                                                            <span className="text-[10px] uppercase font-bold text-muted-foreground">USD Revenue</span>
-                                                            <p className="font-black text-foreground tabular-nums text-sm">
-                                                                ${m.revenueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                            </p>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <span className="text-[10px] uppercase font-bold text-muted-foreground">BDT Revenue</span>
-                                                            <p className="font-black text-emerald-600 dark:text-emerald-400 tabular-nums text-sm">
-                                                                ৳{m.revenueBdt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                            </p>
-                                                        </div>
-                                                    </div>
+                                                     <div className="bg-muted/20 p-2.5 rounded-lg text-xs">
+                                                         <span className="text-[10px] uppercase font-bold text-muted-foreground">Monthly Revenue</span>
+                                                         <p className="font-black text-emerald-600 dark:text-emerald-400 tabular-nums text-sm">
+                                                             ৳{m.revenueBdt.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                                                         </p>
+                                                     </div>
 
-                                                    <div className="space-y-1">
-                                                        <div className="flex items-center justify-between text-[11px]">
-                                                            <span className="text-muted-foreground">
-                                                                Target: {goal > 0 ? `$${goal.toLocaleString()}` : "None"}
-                                                            </span>
-                                                            <span className="font-bold text-foreground tabular-nums">
-                                                                {pct}%
-                                                            </span>
-                                                        </div>
-                                                        <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden">
-                                                            <div
-                                                                className={cn(
-                                                                    "h-full rounded-full",
-                                                                    pct >= 100 ? "bg-emerald-500" : pct >= 50 ? "bg-indigo-500" : "bg-violet-500"
-                                                                )}
-                                                                style={{ width: `${Math.min(pct, 100)}%` }}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                                     <div className="space-y-1">
+                                                         <div className="flex items-center justify-between text-[11px]">
+                                                             <span className="text-muted-foreground">
+                                                                 Target: {goal > 0 ? `৳${goal.toLocaleString()}` : "None"}
+                                                             </span>
+                                                             <span className="font-bold text-foreground tabular-nums">
+                                                                 {pct}%
+                                                             </span>
+                                                         </div>
+                                                         <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden">
+                                                             <div
+                                                                 className={cn(
+                                                                     "h-full rounded-full",
+                                                                     pct >= 100 ? "bg-emerald-500" : pct >= 50 ? "bg-indigo-500" : "bg-violet-500"
+                                                                 )}
+                                                                 style={{ width: `${Math.min(pct, 100)}%` }}
+                                                             />
+                                                         </div>
+                                                     </div>
+                                                 </div>
+                                             );
+                                         })}
+                                     </div>
 
                                     {/* Pagination Controls when data > 10 */}
                                     {revenueHistory.length > REVENUE_PER_PAGE && (

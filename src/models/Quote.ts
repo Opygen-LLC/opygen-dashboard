@@ -193,7 +193,7 @@ const QuoteSchema = new Schema<IQuote>(
         phases: { type: [QuotePhaseSchema], default: [] },
         paymentSchedule: { type: [QuotePaymentScheduleSchema], default: [] },
         termsAndConditions: { type: [QuoteTermItemSchema], default: [] },
-        currency: { type: String, enum: ["USD", "BDT", "EUR"], default: "USD" },
+        currency: { type: String, enum: ["USD", "BDT", "EUR"], default: "BDT" },
         advanceType: { type: String, enum: ["percentage", "fixed"], default: "percentage" },
         advanceValue: { type: Number, min: 0 },
         projectDuration: { type: String, default: "6-8 Weeks", trim: true },

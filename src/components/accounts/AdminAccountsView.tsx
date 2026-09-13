@@ -267,17 +267,11 @@ export default function AdminAccountsView() {
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground z-[160]">
                                 <SelectItem value="default" className="h-10">Default (Provider Name)</SelectItem>
-                                <SelectItem value="price_desc" className="h-10 font-semibold text-emerald-600 dark:text-emerald-400">
-                                    Price: High to Low (USD $)
-                                </SelectItem>
-                                <SelectItem value="price_asc" className="h-10">
-                                    Price: Low to High (USD $)
-                                </SelectItem>
                                 <SelectItem value="price_bdt_desc" className="h-10 font-semibold text-emerald-600 dark:text-emerald-400">
-                                    Price: High to Low (BDT ৳)
+                                    Balance: High to Low (৳)
                                 </SelectItem>
                                 <SelectItem value="price_bdt_asc" className="h-10">
-                                    Price: Low to High (BDT ৳)
+                                    Balance: Low to High (৳)
                                 </SelectItem>
                             </SelectContent>
                         </Select>
@@ -303,7 +297,7 @@ export default function AdminAccountsView() {
                                     Routing/Branch
                                 </TableHead>
                                 <TableHead className="font-semibold text-foreground/80">
-                                    Balance (USD / BDT)
+                                    Balance (৳)
                                 </TableHead>
                                 <TableHead className="font-semibold text-foreground/80 text-right">
                                     Actions
@@ -467,14 +461,9 @@ export default function AdminAccountsView() {
                                                 )}
                                             </TableCell>
                                             <TableCell>
-                                                <div className="flex flex-col gap-0.5">
-                                                    <span className="font-bold text-sm text-foreground">
-                                                        ${Number(account.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                    </span>
-                                                    <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-                                                        ৳{Number(account.balanceInBdt || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                    </span>
-                                                </div>
+                                                <span className="font-bold text-sm text-foreground">
+                                                    ৳{Number(account.balanceInBdt || account.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <Button

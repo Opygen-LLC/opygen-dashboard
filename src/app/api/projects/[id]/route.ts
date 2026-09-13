@@ -70,17 +70,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    const updatedBudget = updates.budget !== undefined ? updates.budget : project.budget;
-    
-    // Removed the block that deletes payments if the budget changes
-    const updatedPayments = updates.payments !== undefined ? updates.payments : project.payments;
-    if (updatedPayments && updatedBudget !== undefined && updatedBudget > 0) {
-      const totalPayments = updatedPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
-      if (totalPayments > updatedBudget) {
-        return NextResponse.json(
-          { error: `Total payment milestones ($${totalPayments.toLocaleString()}) cannot exceed the project budget ($${updatedBudget.toLocaleString()})` },
-          { status: 400 }
-        );
+    const paymentsToCheck = updates.payments !== undefined ? updates.payments : project.payments;
+    const totalPayments = Array.isArray(paymentsToCheck)
+      ? paymentsToCheck.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0)
+      : 0;
+
+    if ('budget' in body && body.budget !== undefined && body.budget !== null) {
+      updates.budget = Math.max(Number(body.budget), totalPayments);
+    } else if (updates.payments !== undefined) {
+      if (!project.budget || totalPayments > project.budget) {
+        updates.budget = totalPayments;
       }
     }
 
@@ -186,7 +185,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         project: project._id,
         user: session.user.id,
         type: 'details_change',
-        message: `updated budget to $${Number(updates.budget).toLocaleString()}`,
+        message: `updated budget to ৳${Number(updates.budget).toLocaleString()}`,
       });
       project.budget = updates.budget;
     }

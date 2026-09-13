@@ -82,12 +82,9 @@ export async function POST(req: NextRequest) {
 
     const projectData = parseResult.data;
 
-    const totalPayments = (projectData.payments || []).reduce((sum: number, p: any) => sum + Number(p.amount), 0);
-    if (projectData.budget && projectData.budget > 0 && totalPayments > projectData.budget) {
-      return NextResponse.json(
-        { error: `Total payment milestones ($${totalPayments.toLocaleString()}) cannot exceed the project budget ($${(projectData.budget || 0).toLocaleString()})` },
-        { status: 400 }
-      );
+    const totalPayments = (projectData.payments || []).reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+    if (totalPayments > 0 && (!projectData.budget || totalPayments > projectData.budget)) {
+      projectData.budget = totalPayments;
     }
 
     const project = await Project.create({

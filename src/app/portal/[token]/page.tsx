@@ -22,7 +22,7 @@ export default async function ClientPortalPage({
 
     await dbConnect();
 
-    let projectDoc = await Project.findById(id).populate(
+    const projectDoc = await Project.findById(id).populate(
         "assignees",
         "name avatarUrl role email",
     );

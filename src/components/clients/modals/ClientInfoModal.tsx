@@ -221,9 +221,9 @@ export function ClientInfoModal({ isOpen, onClose, client, onEdit }: ClientInfoM
                                     Estimated Deal Value
                                 </h4>
                                 <p className="text-2xl font-black text-foreground tracking-tight">
-                                    {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(client.minAmount || 0)} 
+                                    ৳{Number(client.minAmount || 0).toLocaleString()} 
                                     <span className="text-muted-foreground font-medium text-xl mx-2">to</span> 
-                                    {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(client.maxAmount || 0)}
+                                    ৳{Number(client.maxAmount || 0).toLocaleString()}
                                 </p>
                             </div>
 

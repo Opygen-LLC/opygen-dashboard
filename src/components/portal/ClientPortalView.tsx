@@ -157,7 +157,7 @@ export function ClientPortalView({ project }: ClientPortalViewProps) {
                                     Total Budget
                                 </p>
                                 <p className="text-2xl font-extrabold text-foreground mt-0.5">
-                                    ${totalBudget.toLocaleString()}
+                                    ৳{totalBudget.toLocaleString()}
                                 </p>
                             </div>
                         </CardContent>
@@ -173,7 +173,7 @@ export function ClientPortalView({ project }: ClientPortalViewProps) {
                                     Amount Paid
                                 </p>
                                 <p className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                                    ${paidAmount.toLocaleString()}
+                                    ৳{paidAmount.toLocaleString()}
                                 </p>
                             </div>
                         </CardContent>
@@ -189,7 +189,7 @@ export function ClientPortalView({ project }: ClientPortalViewProps) {
                                     Pending Balance
                                 </p>
                                 <p className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-0.5">
-                                    ${pendingAmount.toLocaleString()}
+                                    ৳{pendingAmount.toLocaleString()}
                                 </p>
                             </div>
                         </CardContent>
@@ -270,7 +270,7 @@ export function ClientPortalView({ project }: ClientPortalViewProps) {
                                                         {label}
                                                     </td>
                                                     <td className="p-4 font-bold text-foreground">
-                                                        $
+                                                        ৳
                                                         {(
                                                             p.amount || 0
                                                         ).toLocaleString()}

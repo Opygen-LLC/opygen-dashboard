@@ -32,12 +32,18 @@ export default function MonthlyBudgetBar({ monthlyCollected, monthlyCollectedBdt
         staleTime: 1000 * 60 * 2,
     });
 
-    const goal: number = settings?.monthlyBudgetGoal ?? 0;
+    const goal: number = settings?.monthlyBudgetGoal && Number(settings.monthlyBudgetGoal) > 0
+        ? Number(settings.monthlyBudgetGoal)
+        : 200000;
+
+    const collected = (monthlyCollectedBdt !== undefined && monthlyCollectedBdt > 0)
+        ? monthlyCollectedBdt
+        : (monthlyCollected ?? 0);
 
     /* ── derived values ── */
-    const pct          = goal > 0 ? Math.min((monthlyCollected / goal) * 100, 100) : 0;
-    const overAchieved = goal > 0 && monthlyCollected > goal;
-    const remaining    = Math.max(goal - monthlyCollected, 0);
+    const pct          = goal > 0 ? Math.min((collected / goal) * 100, 100) : 0;
+    const overAchieved = goal > 0 && collected > goal;
+    const remaining    = Math.max(goal - collected, 0);
 
     const barColor =
         pct >= 100 ? "from-emerald-400 to-emerald-600" :
@@ -97,19 +103,14 @@ export default function MonthlyBudgetBar({ monthlyCollected, monthlyCollectedBdt
                         <div className="flex flex-col gap-0.5">
                             <div className="flex items-baseline gap-1.5 flex-wrap">
                                 <span className="text-3xl font-extrabold tracking-tight text-foreground">
-                                    ${monthlyCollected.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                                    ৳{collected.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                                 </span>
                                 {goal > 0 && (
                                     <span className="text-sm font-medium text-muted-foreground">
-                                        / ${goal.toLocaleString()}
+                                        / ৳{goal.toLocaleString()}
                                     </span>
                                 )}
                             </div>
-                            {monthlyCollectedBdt !== undefined && monthlyCollectedBdt > 0 && (
-                                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                                    ৳{monthlyCollectedBdt.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })} BDT earned
-                                </span>
-                            )}
                         </div>
                         <div className="text-right">
                             {goal > 0 ? (
@@ -119,7 +120,7 @@ export default function MonthlyBudgetBar({ monthlyCollected, monthlyCollectedBdt
                                     </span>
                                     {!overAchieved && remaining > 0 && (
                                         <p className="text-[10px] text-muted-foreground leading-tight">
-                                            ${remaining.toLocaleString()} remaining
+                                            ৳{remaining.toLocaleString()} remaining
                                         </p>
                                     )}
                                 </>

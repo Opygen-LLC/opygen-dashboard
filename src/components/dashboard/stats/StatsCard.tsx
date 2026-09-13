@@ -51,7 +51,7 @@ export function StatsCard({
                     <div className="space-y-1">
                         <p className="text-xs font-semibold tracking-wide text-muted-foreground">{title}</p>
                         <div className="text-3xl font-extrabold tracking-tight text-foreground flex items-baseline gap-1">
-                            {isCurrency && <span className="text-xl text-muted-foreground/60 mr-0.5">$</span>}
+                            {isCurrency && <span className="text-xl text-muted-foreground/60 mr-0.5">৳</span>}
                             {typeof value === 'number' ? <AnimatedCounter value={value} /> : value}
                         </div>
                     </div>

@@ -64,7 +64,7 @@ export async function GET() {
             website: "",
             address: "",
             socials: { facebook: "", instagram: "", linkedin: "", youtube: "", x: "" },
-            monthlyBudgetGoal: 0,
+            monthlyBudgetGoal: 200000,
             monthlyRevenueGoals: {},
         };
 
@@ -133,7 +133,9 @@ export async function GET() {
         // Sort keys descending (newest first)
         const sortedKeys = Array.from(monthMap.keys()).sort().reverse();
 
-        const defaultGoal = settings?.monthlyBudgetGoal ?? 0;
+        const defaultGoal = (settings?.monthlyBudgetGoal && Number(settings.monthlyBudgetGoal) > 0)
+            ? Number(settings.monthlyBudgetGoal)
+            : 200000;
         const customGoals = settings?.monthlyRevenueGoals
             ? settings.monthlyRevenueGoals instanceof Map
                 ? Object.fromEntries(settings.monthlyRevenueGoals)
@@ -143,11 +145,11 @@ export async function GET() {
         const monthlyRevenueHistory = sortedKeys.map((key) => {
             const data = monthMap.get(key)!;
             const goal = customGoals[key] ?? defaultGoal;
-            const pct = goal > 0 ? Math.min(Math.round((data.revenueUsd / goal) * 100), 999) : 0;
+            const pct = goal > 0 ? Math.min(Math.round((data.revenueBdt / goal) * 100), 999) : 0;
             const isCurrent = key === curKey;
 
             let status: "achieved" | "in_progress" | "missed" = "in_progress";
-            if (goal > 0 && data.revenueUsd >= goal) {
+            if (goal > 0 && data.revenueBdt >= goal) {
                 status = "achieved";
             } else if (!isCurrent) {
                 status = "missed";
@@ -168,8 +170,14 @@ export async function GET() {
             };
         });
 
+        const resolvedSettings = settings ? (typeof settings.toObject === 'function' ? settings.toObject() : settings) : defaults;
+
         const responseData = {
-            ...(settings ?? defaults),
+            ...defaults,
+            ...resolvedSettings,
+            monthlyBudgetGoal: resolvedSettings.monthlyBudgetGoal && Number(resolvedSettings.monthlyBudgetGoal) > 0
+                ? Number(resolvedSettings.monthlyBudgetGoal)
+                : 200000,
             monthlyRevenueHistory,
         };
 

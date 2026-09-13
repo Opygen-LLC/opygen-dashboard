@@ -283,7 +283,7 @@ export function generateQuotePDF(quote: any, companySettings?: any): jsPDF {
 
         autoTable(doc, {
             startY: y,
-            head: [["#", "Deliverable / Description", "Phase", `Amount (${quote.currency || "USD"})`]],
+            head: [["#", "Deliverable / Description", "Phase", `Amount (${quote.currency || "BDT"})`]],
             body: scopeRows,
             theme: "plain",
             margin: { left: margin, right: margin },
@@ -348,7 +348,7 @@ export function generateQuotePDF(quote: any, companySettings?: any): jsPDF {
 
         autoTable(doc, {
             startY: y,
-            head: [["PMT #", "Milestone / Trigger", "Calculation", `Amount (${quote.currency || "USD"})`]],
+            head: [["PMT #", "Milestone / Trigger", "Calculation", `Amount (${quote.currency || "BDT"})`]],
             body: pmtRows,
             theme: "plain",
             margin: { left: margin, right: margin },

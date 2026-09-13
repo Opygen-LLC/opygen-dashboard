@@ -326,6 +326,12 @@ export default function UserProfileView() {
   const saveAccountMutation = useMutation({
     mutationFn: async (data: any) => {
       const currentAccounts = reduxUser.accounts ? [...reduxUser.accounts] : [];
+      const bdtAmount = data.balanceInBdt ?? data.balance ?? 0;
+      const accountData = {
+        ...data,
+        balance: bdtAmount,
+        balanceInBdt: bdtAmount,
+      };
       if (accountToEdit) {
         const index = currentAccounts.findIndex(
           (a: any) => a._id === accountToEdit._id,
@@ -333,11 +339,11 @@ export default function UserProfileView() {
         if (index !== -1) {
           currentAccounts[index] = {
             ...currentAccounts[index],
-            ...data,
+            ...accountData,
           };
         }
       } else {
-        currentAccounts.push(data);
+        currentAccounts.push(accountData);
       }
 
       const res = await fetch("/api/users/profile", {
@@ -1562,23 +1568,6 @@ export default function UserProfileView() {
                           <span
                             className={cn(
                               "text-xl font-black tabular-nums",
-                              balanceValue >= 0
-                                ? "text-emerald-600 dark:text-emerald-400"
-                                : "text-rose-600 dark:text-rose-400",
-                            )}
-                          >
-                            {balanceValue >= 0 ? "$" : "-$"}
-                            {Math.abs(balanceValue).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </span>
-                          <span className="text-muted-foreground/40 font-light">
-                            |
-                          </span>
-                          <span
-                            className={cn(
-                              "text-base font-bold tabular-nums",
                               balanceValueBdt >= 0
                                 ? "text-emerald-600 dark:text-emerald-400"
                                 : "text-rose-600 dark:text-rose-400",
@@ -1605,10 +1594,6 @@ export default function UserProfileView() {
                             Total Credited:
                           </span>
                           <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                            ${(statementData?.summary?.totalIncome ?? pageIncome).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                          <span className="text-muted-foreground/40 font-light">|</span>
-                          <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
                             ৳{(statementData?.summary?.totalIncomeBdt ?? pageIncomeBdt).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </span>
@@ -1617,10 +1602,6 @@ export default function UserProfileView() {
                             <ArrowUpRight className="h-3.5 w-3.5 text-rose-500" />
                             Total Deducted:
                           </span>
-                          <span className="font-bold text-rose-600 dark:text-rose-400 tabular-nums">
-                            ${(statementData?.summary?.totalExpense ?? pageExpense).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                          <span className="text-muted-foreground/40 font-light">|</span>
                           <span className="font-bold text-rose-600 dark:text-rose-400 tabular-nums">
                             ৳{(statementData?.summary?.totalExpenseBdt ?? pageExpenseBdt).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
@@ -1665,10 +1646,7 @@ export default function UserProfileView() {
                                   Type
                                 </th>
                                 <th className="px-6 py-4 font-semibold text-right">
-                                  Amount ($ USD)
-                                </th>
-                                <th className="px-6 py-4 font-semibold text-right">
-                                  Amount (৳ BDT)
+                                  Amount (৳)
                                 </th>
                               </tr>
                             </thead>
@@ -1751,26 +1729,8 @@ export default function UserProfileView() {
                                             : "text-rose-600 dark:text-rose-400",
                                         )}
                                       >
-                                        {isIncome ? "+" : "-"}$
-                                        {Number(t.amount || 0).toLocaleString(
-                                          undefined,
-                                          {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                          },
-                                        )}
-                                      </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right font-bold tabular-nums whitespace-nowrap">
-                                      <span
-                                        className={cn(
-                                          isIncome
-                                            ? "text-emerald-600 dark:text-emerald-400"
-                                            : "text-rose-600 dark:text-rose-400",
-                                        )}
-                                      >
                                         {isIncome ? "+" : "-"}৳
-                                        {bdtVal.toLocaleString(undefined, {
+                                        {(bdtVal || Number(t.amount || 0)).toLocaleString(undefined, {
                                           minimumFractionDigits: 2,
                                           maximumFractionDigits: 2,
                                         })}
@@ -1837,18 +1797,8 @@ export default function UserProfileView() {
                                     )}
                                   >
                                     <span className="inline-flex items-center gap-1">
-                                      {isIncome ? "+" : "-"}$
-                                      {Number(t.amount || 0).toLocaleString(
-                                        undefined,
-                                        {
-                                          minimumFractionDigits: 2,
-                                          maximumFractionDigits: 2,
-                                        },
-                                      )}
-                                    </span>
-                                    <span className="text-xs font-semibold opacity-90">
                                       {isIncome ? "+" : "-"}৳
-                                      {bdtVal.toLocaleString(undefined, {
+                                      {(bdtVal || Number(t.amount || 0)).toLocaleString(undefined, {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2,
                                       })}
@@ -2068,12 +2018,8 @@ export default function UserProfileView() {
                             <div className="flex items-center justify-between pt-2 border-t border-border/50">
                               <span className="text-xs text-muted-foreground font-medium">Balance</span>
                               <div className="flex items-center gap-1.5 font-bold text-xs">
-                                <span className="text-foreground">
-                                  ${Number(acc.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </span>
-                                <span className="text-muted-foreground/50">|</span>
                                 <span className="text-indigo-600 dark:text-indigo-400">
-                                  ৳{Number(acc.balanceInBdt || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  ৳{Number(acc.balanceInBdt || acc.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </span>
                               </div>
                             </div>
@@ -2148,7 +2094,7 @@ export default function UserProfileView() {
                               Branch/Routing
                             </th>
                             <th className="px-4 py-3 border-b border-border">
-                              Balance (USD / BDT)
+                              Balance (৳)
                             </th>
                             <th className="px-4 py-3 border-b border-border text-right">
                               Actions
@@ -2215,14 +2161,9 @@ export default function UserProfileView() {
                                 )}
                               </td>
                               <td className="px-4 py-3">
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="font-bold text-sm text-foreground">
-                                    ${Number(acc.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                  </span>
-                                  <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-                                    ৳{Number(acc.balanceInBdt || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                  </span>
-                                </div>
+                                <span className="font-bold text-sm text-foreground">
+                                  ৳{Number(acc.balanceInBdt || acc.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
                               </td>
                               <td className="px-4 py-3 text-right">
                                 <div className="flex justify-end gap-1">
@@ -2464,25 +2405,19 @@ export default function UserProfileView() {
                     </>
                   )}
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Balance ($ USD)</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        {...registerAccount("balance", { valueAsNumber: true })}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Balance (৳ BDT)</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        {...registerAccount("balanceInBdt", { valueAsNumber: true })}
-                        placeholder="0.00"
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label>Balance (৳)</Label>
+                    <Input
+                      type="number"
+                      step="any"
+                      {...registerAccount("balanceInBdt", {
+                        valueAsNumber: true,
+                        onChange: (e) => {
+                          setAccountValue("balance", parseFloat(e.target.value) || 0);
+                        },
+                      })}
+                      placeholder="0.00"
+                    />
                   </div>
 
                   <div className="pt-4 flex justify-end gap-3">

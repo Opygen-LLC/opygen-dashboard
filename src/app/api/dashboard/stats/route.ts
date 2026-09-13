@@ -6,6 +6,9 @@ import dbConnect from "@/lib/db";
 import Project from "@/models/Project";
 import User from "@/models/User";
 import Transaction from "@/models/Transaction";
+import Client from "@/models/Client";
+import Quote from "@/models/Quote";
+import { DemoWebsite } from "@/models/DemoWebsite";
 import { TransactionType } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +39,7 @@ export async function GET(request: Request) {
 
         const projectFilter = startDate ? { createdAt: { $gte: startDate } } : {};
         const projects = await Project.find(projectFilter);
-        const users = await User.find({}, "name avatarUrl");
+        const users = await User.find({}, "name avatarUrl accounts role");
 
         const totalProjects = projects.length;
         const inProgress = projects.filter(
@@ -73,15 +76,11 @@ export async function GET(request: Request) {
 
             if (p.payments) {
                 p.payments.forEach((pay: any) => {
-                    // Always calculate pending from the filtered projects list
                     if (pay.status === "pending") {
                         totalRevenuePending += Number(pay.amount || 0);
                     } else if (pay.status === "paid") {
                         const pd = pay.paymentDate ? new Date(pay.paymentDate) : null;
-                        
-                        // For Revenue Received, we only count it if it was received within the date range
                         const isWithinRange = !startDate || (pd && pd >= startDate);
-                        
                         if (isWithinRange) {
                             totalRevenueReceived += Number(pay.amount || 0);
                         }
@@ -90,18 +89,88 @@ export async function GET(request: Request) {
             }
         });
 
-        // Monthly revenue goal collection is based on Finance income transactions (not project payments)
-        const currentMonthIncomeTxs = await Transaction.find({
-            type: TransactionType.INCOME,
+        // 1. Finance & Treasury Aggregations
+        const accountsList: any[] = [];
+        let totalLiquidityBdt = 0;
+        users.forEach((u) => {
+            if (u.accounts && Array.isArray(u.accounts)) {
+                u.accounts.forEach((acc: any) => {
+                    const balBdt = Number(acc.balanceInBdt ?? acc.balance ?? 0);
+                    totalLiquidityBdt += balBdt;
+                    accountsList.push({
+                        _id: String(acc._id || Math.random()),
+                        providerName: acc.providerName || "Bank",
+                        accountName: acc.accountName || "",
+                        accountNumber: acc.accountNumber || "",
+                        type: acc.type || "bank",
+                        balanceInBdt: balBdt,
+                        userName: u.name,
+                    });
+                });
+            }
+        });
+
+        // Current month transactions (income and expense)
+        const currentMonthTxs = await Transaction.find({
             date: { $gte: monthStart, $lte: monthEnd },
         }).lean();
 
-        let monthlyCollected = 0;
-        let monthlyCollectedBdt = 0;
-        for (const tx of currentMonthIncomeTxs) {
-            monthlyCollected += Number(tx.amount || 0);
-            monthlyCollectedBdt += Number(tx.amountInBdt || 0);
+        let monthlyIncomeBdt = 0;
+        let monthlyExpenseBdt = 0;
+        for (const tx of currentMonthTxs) {
+            const amt = Number(tx.amountInBdt ?? tx.amount ?? 0);
+            if (tx.type === TransactionType.INCOME) {
+                monthlyIncomeBdt += amt;
+            } else if (tx.type === TransactionType.EXPENSE) {
+                monthlyExpenseBdt += amt;
+            }
         }
+        const monthlyNetBdt = monthlyIncomeBdt - monthlyExpenseBdt;
+
+        // Keep monthlyCollected and monthlyCollectedBdt for MonthlyBudgetBar
+        const monthlyCollected = monthlyIncomeBdt;
+        const monthlyCollectedBdt = monthlyIncomeBdt;
+
+        // Recent 5 transactions
+        const recentTransactions = await Transaction.find()
+            .sort({ date: -1, createdAt: -1 })
+            .limit(5)
+            .lean();
+
+        // 2. Client CRM Pipeline
+        const clients = await Client.find().lean();
+        const totalClients = clients.length;
+        const confirmedClients = clients.filter((c: any) => c.status === "Confirmed").length;
+        const activePipelineClients = clients.filter((c: any) => !["Lost", "Cancelled", "Confirmed"].includes(c.status));
+        const pipelineDealValueMin = activePipelineClients.reduce((sum: number, c: any) => sum + Number(c.minAmount || 0), 0);
+        const pipelineDealValueMax = activePipelineClients.reduce((sum: number, c: any) => sum + Number(c.maxAmount || c.minAmount || 0), 0);
+
+        const clientStatusCounts: Record<string, number> = {};
+        clients.forEach((c: any) => {
+            if (c.status) {
+                clientStatusCounts[c.status] = (clientStatusCounts[c.status] || 0) + 1;
+            }
+        });
+
+        // 3. Quotes / Proposals
+        const totalQuotes = await Quote.countDocuments();
+        const recentQuotes = await Quote.find()
+            .sort({ createdAt: -1 })
+            .limit(4)
+            .select("quoteNumber projectName clientName projectPrice currency createdAt")
+            .lean();
+
+        // 4. Demo Websites
+        const totalDemoWebsites = await DemoWebsite.countDocuments();
+
+        // 5. Active In-flight Projects
+        const activeProjects = await Project.find({
+            status: { $in: ["in_progress", "in_review", "todo"] },
+        })
+            .sort({ updatedAt: -1 })
+            .limit(4)
+            .populate("assignees", "name avatarUrl")
+            .lean();
 
         // Status breakdown (Pie Chart data)
         const statusLabels: Record<string, string> = {
@@ -189,10 +258,57 @@ export async function GET(request: Request) {
                     totalRevenuePending,
                     monthlyCollected,
                     monthlyCollectedBdt,
+                    totalLiquidityBdt,
+                    monthlyIncomeBdt,
+                    monthlyExpenseBdt,
+                    monthlyNetBdt,
+                    totalClients,
+                    confirmedClients,
+                    pipelineDealValueMin,
+                    pipelineDealValueMax,
+                    totalQuotes,
+                    totalDemoWebsites,
                 },
                 statusBreakdown,
                 workload,
                 completionTrend: trendData,
+                accountsSummary: accountsList.sort((a, b) => b.balanceInBdt - a.balanceInBdt).slice(0, 6),
+                recentTransactions: recentTransactions.map((tx: any) => ({
+                    _id: String(tx._id),
+                    type: tx.type,
+                    category: tx.category,
+                    amount: Number(tx.amountInBdt ?? tx.amount ?? 0),
+                    description: tx.description || tx.title || "",
+                    date: tx.date,
+                    accountName: tx.accountName || "",
+                })),
+                activeProjects: activeProjects.map((p: any) => {
+                    const totalPayments = (p.payments || []).reduce((sum: number, pay: any) => sum + Number(pay.amount || 0), 0);
+                    const paidPayments = (p.payments || []).filter((pay: any) => pay.status === "paid").reduce((sum: number, pay: any) => sum + Number(pay.amount || 0), 0);
+                    return {
+                        _id: String(p._id),
+                        title: p.title,
+                        clientName: p.clientName || "",
+                        status: p.status,
+                        priority: p.priority,
+                        budget: p.budget || totalPayments,
+                        paidPayments,
+                        dueDate: p.dueDate,
+                        assignees: p.assignees || [],
+                        paymentsCount: (p.payments || []).length,
+                        progressPercent: totalPayments > 0 ? Math.min(100, Math.round((paidPayments / totalPayments) * 100)) : 0,
+                    };
+                }),
+                recentQuotes: recentQuotes.map((q: any) => ({
+                    _id: String(q._id),
+                    quoteNumber: q.quoteNumber,
+                    projectName: q.projectName,
+                    clientName: q.clientName,
+                    projectPrice: q.projectPrice,
+                    currency: q.currency || "BDT",
+                    createdAt: q.createdAt,
+                })),
+                clientStatusCounts,
             },
             {
                 headers: {

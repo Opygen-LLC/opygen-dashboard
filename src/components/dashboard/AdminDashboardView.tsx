@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
@@ -16,11 +17,19 @@ import {
     CreditCard,
     Activity,
     Users,
-    User,
     BarChart2,
     ArrowUpRight,
+    ArrowDownRight,
     Calendar,
+    DollarSign,
+    Plus,
+    FileText,
+    Globe,
+    Building2,
+    Landmark,
+    ChevronRight,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
     Select,
@@ -52,43 +61,11 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import AnimatedCounter from "@/components/dashboard/AnimatedCounter";
 import MonthlyBudgetBar from "@/components/dashboard/MonthlyBudgetBar";
 import { StatsGrid } from "@/components/dashboard/stats/StatsGrid";
 import { StatsCard } from "@/components/dashboard/stats/StatsCard";
 import { ClientInfoModal } from "@/components/clients/modals/ClientInfoModal";
 import { ClientFormModal } from "@/components/clients/modals/ClientFormModal";
-
-/* ─── Animation Variants ─── */
-const fadeUp = {
-    hidden: { opacity: 0, y: 24 },
-    show: (i: number) => ({
-        opacity: 1,
-        y: 0,
-        transition: {
-            delay: i * 0.08,
-            duration: 0.45,
-            ease: [0.22, 1, 0.36, 1],
-        },
-    }),
-};
-
-const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-        opacity: 1,
-        transition: { staggerChildren: 0.09 },
-    },
-} as const;
-
-const itemVariants = {
-    hidden: { opacity: 0, y: 18 },
-    show: {
-        opacity: 1,
-        y: 0,
-        transition: { type: "spring", stiffness: 120, damping: 18 },
-    },
-} as const;
 
 /* ─── Custom Tooltip ─── */
 const CustomTooltip = ({ active, payload, label, isDark }: any) => {
@@ -194,9 +171,6 @@ export default function AdminDashboardPage() {
     /* ─── Chart theme tokens ─── */
     const axisColor = isDark ? "#64748b" : "#94a3b8";
     const gridColor = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)";
-    const tooltipBg = isDark ? "#0f172a" : "#ffffff";
-    const tooltipBorder = isDark ? "#1e293b" : "#e2e8f0";
-    const tooltipColor = isDark ? "#f8fafc" : "#0f172a";
     const cursorFill = isDark ? "#1e293b" : "#f1f5f9";
 
     /* ─── Loading skeleton ─── */
@@ -204,13 +178,18 @@ export default function AdminDashboardPage() {
         return (
             <div className="space-y-8 animate-in fade-in duration-500">
                 <div className="h-44 w-full rounded-3xl bg-muted/30 animate-pulse" />
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                    {[1, 2, 3].map((i) => (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <Skeleton key={i} className="h-10 w-full rounded-xl" />
+                    ))}
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                    {[1, 2, 3, 4].map((i) => (
                         <Skeleton key={i} className="h-32 w-full rounded-2xl" />
                     ))}
                 </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {[1, 2, 3, 4].map((i) => (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    {[1, 2, 3].map((i) => (
                         <Skeleton key={i} className="h-32 w-full rounded-2xl" />
                     ))}
                 </div>
@@ -235,7 +214,7 @@ export default function AdminDashboardPage() {
                         Error Loading Dashboard
                     </h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                        Could not retrieve project statistics.
+                        Could not retrieve dashboard statistics.
                     </p>
                 </div>
                 <Button
@@ -248,19 +227,85 @@ export default function AdminDashboardPage() {
         );
     }
 
-    const { summary, statusBreakdown, workload, completionTrend } = stats;
+    const {
+        summary = {},
+        statusBreakdown = [],
+        workload = [],
+        completionTrend = [],
+        accountsSummary = [],
+        recentTransactions = [],
+        activeProjects = [],
+        recentQuotes = [],
+    } = stats;
 
-    /* ─── Card data ─── */
-    const financialCards = [
+    /* ─── Financial KPI Cards ─── */
+    const treasuryCards = [
+        {
+            title: "Total Liquid Cash",
+            value: summary.totalLiquidityBdt || 0,
+            description: "Combined balance in bank & mobile accounts",
+            icon: Landmark,
+            accent: "from-emerald-500/15 to-teal-500/10",
+            iconBg: "bg-emerald-500/10",
+            iconColor: "text-emerald-500",
+            trend: "Available",
+            isCurrency: true,
+        },
+        {
+            title: "This Month Income",
+            value: summary.monthlyIncomeBdt || 0,
+            description: "Total revenue income collected this month",
+            icon: ArrowDownRight,
+            accent: "from-indigo-500/15 to-blue-500/10",
+            iconBg: "bg-indigo-500/10",
+            iconColor: "text-indigo-500",
+            trend: "Inflow",
+            isCurrency: true,
+        },
+        {
+            title: "This Month Burn",
+            value: summary.monthlyExpenseBdt || 0,
+            description: "Operating expenditures logged this month",
+            icon: ArrowUpRight,
+            accent: "from-rose-500/15 to-pink-500/10",
+            iconBg: "bg-rose-500/10",
+            iconColor: "text-rose-500",
+            trend: "Outflow",
+            isCurrency: true,
+        },
+        {
+            title: "Net Cash Flow",
+            value: summary.monthlyNetBdt || 0,
+            description: "Net monthly operating balance",
+            icon: TrendingUp,
+            accent:
+                (summary.monthlyNetBdt || 0) >= 0
+                    ? "from-emerald-500/15 to-teal-500/10"
+                    : "from-rose-500/15 to-orange-500/10",
+            iconBg:
+                (summary.monthlyNetBdt || 0) >= 0
+                    ? "bg-emerald-500/10"
+                    : "bg-rose-500/10",
+            iconColor:
+                (summary.monthlyNetBdt || 0) >= 0
+                    ? "text-emerald-500"
+                    : "text-rose-500",
+            trend: (summary.monthlyNetBdt || 0) >= 0 ? "Surplus" : "Deficit",
+            isCurrency: true,
+        },
+    ];
+
+    const projectBillingCards = [
         {
             title: "Pipeline Budget",
             value: summary.totalBudget || 0,
-            description: "Total billing budget of active projects",
+            description: "Total contracted budget of active projects",
             icon: Wallet,
             accent: "from-indigo-500/15 to-violet-500/10",
             iconBg: "bg-indigo-500/10",
             iconColor: "text-indigo-500",
             trend: "+12%",
+            isCurrency: true,
         },
         {
             title: "Payments Collected",
@@ -271,24 +316,26 @@ export default function AdminDashboardPage() {
             iconBg: "bg-emerald-500/10",
             iconColor: "text-emerald-500",
             trend: "+8%",
+            isCurrency: true,
         },
         {
-            title: "Outstanding",
+            title: "Milestone Outstanding",
             value: summary.totalRevenuePending || 0,
-            description: "Billing awaiting completion approval",
+            description: "Billing awaiting completion sign-off",
             icon: CreditCard,
             accent: "from-amber-500/15 to-orange-500/10",
             iconBg: "bg-amber-500/10",
             iconColor: "text-amber-500",
             trend: null,
+            isCurrency: true,
         },
     ];
 
     const projectCards = [
         {
             title: "Total Projects",
-            value: summary.totalProjects,
-            description: "All tracked projects",
+            value: summary.totalProjects || 0,
+            description: "All client projects in pipeline",
             icon: FolderKanban,
             accent: "from-indigo-500/10 to-purple-500/10",
             iconBg: "bg-indigo-500/10",
@@ -296,8 +343,8 @@ export default function AdminDashboardPage() {
         },
         {
             title: "In Development",
-            value: summary.inProgress,
-            description: "Active builds in progress",
+            value: summary.inProgress || 0,
+            description: "Active engineering builds in progress",
             icon: Activity,
             accent: "from-sky-500/10 to-blue-500/10",
             iconBg: "bg-sky-500/10",
@@ -305,8 +352,8 @@ export default function AdminDashboardPage() {
         },
         {
             title: "Completed",
-            value: summary.completed,
-            description: "Successfully delivered",
+            value: summary.completed || 0,
+            description: "Successfully delivered projects",
             icon: CheckCircle2,
             accent: "from-emerald-500/10 to-teal-500/10",
             iconBg: "bg-emerald-500/10",
@@ -314,13 +361,52 @@ export default function AdminDashboardPage() {
         },
         {
             title: "Overdue",
-            value: summary.overdue,
-            description: "Past their due dates",
+            value: summary.overdue || 0,
+            description: "Projects past targeted completion date",
             icon: AlertTriangle,
             accent: "from-rose-500/10 to-red-500/10",
             iconBg: "bg-rose-500/10",
             iconColor: "text-rose-500",
-            badge: summary.overdue > 0,
+            badge: (summary.overdue || 0) > 0,
+        },
+    ];
+
+    const crmCards = [
+        {
+            title: "Total Leads Tracked",
+            value: summary.totalClients || 0,
+            description: "Prospective and current clients in CRM",
+            icon: Users,
+            iconBg: "bg-indigo-500/10",
+            iconColor: "text-indigo-500",
+        },
+        {
+            title: "Confirmed Deals",
+            value: summary.confirmedClients || 0,
+            description: "Successfully closed client contracts",
+            icon: CheckCircle2,
+            iconBg: "bg-emerald-500/10",
+            iconColor: "text-emerald-500",
+        },
+        {
+            title: "Active Pipeline Value",
+            value:
+                (summary.pipelineDealValueMin || 0) ===
+                (summary.pipelineDealValueMax || 0)
+                    ? `৳${(summary.pipelineDealValueMin || 0).toLocaleString()}`
+                    : `৳${(summary.pipelineDealValueMin || 0).toLocaleString()} - ৳${(summary.pipelineDealValueMax || 0).toLocaleString()}`,
+            description: "Estimated value of prospective deals",
+            icon: DollarSign,
+            iconBg: "bg-amber-500/10",
+            iconColor: "text-amber-500",
+        },
+        {
+            title: "Client Proposals",
+            value: summary.totalQuotes || 0,
+            description: "Formal proposals & price quotes drafted",
+            icon: FileText,
+            iconBg: "bg-purple-500/10",
+            iconColor: "text-purple-500",
         },
     ];
 
@@ -359,14 +445,14 @@ export default function AdminDashboardPage() {
                             className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-bold tracking-wide text-indigo-600 dark:text-indigo-400"
                         >
                             <Sparkles className="h-3 w-3" />
-                            Co-Founder Workspace
+                            Co-Founder Command Center
                         </motion.span>
                         <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
                             Admin &amp; Analytics Dashboard
                         </h1>
                         <p className="max-w-lg text-sm leading-relaxed text-muted-foreground">
-                            Track Opygen's ongoing software developments, team
-                            workload, and financial collections in real-time.
+                            Holistic view of Opygen's ongoing software engineering,
+                            treasury liquidity, client CRM pipeline, and team workload.
                         </p>
                     </div>
 
@@ -375,13 +461,13 @@ export default function AdminDashboardPage() {
                         <div className="flex items-center justify-center gap-2 sm:gap-3 rounded-md border border-border/60 bg-card/60 px-3 sm:px-4 py-3 sm:py-2.5 backdrop-blur-sm text-[10px] sm:text-xs font-semibold text-muted-foreground divide-x divide-border/60 w-full sm:w-auto">
                             <span className="pr-2 sm:pr-3 whitespace-nowrap">
                                 <span className="text-foreground font-bold text-xs sm:text-sm">
-                                    {summary.totalProjects}
+                                    {summary.totalProjects || 0}
                                 </span>{" "}
                                 Projects
                             </span>
                             <span className="px-2 sm:px-3 whitespace-nowrap">
                                 <span className="text-emerald-500 font-bold text-xs sm:text-sm">
-                                    {summary.completed}
+                                    {summary.completed || 0}
                                 </span>{" "}
                                 Done
                             </span>
@@ -438,22 +524,82 @@ export default function AdminDashboardPage() {
                 </div>
             </motion.div>
 
-            {/* ─── Financial KPI Cards ─── */}
-            <div className="space-y-3">
-                <div className="flex items-center gap-2 px-0.5">
-                    <BarChart2 className="h-4 w-4 text-indigo-500" />
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                        Financial Overview
-                    </h2>
+            {/* ─── Executive Quick Actions Bar ─── */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                <Link
+                    href="/admin-dashboard/projects"
+                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-border/70 bg-card/80 hover:bg-indigo-500/10 hover:border-indigo-500/30 transition-all text-xs font-bold text-foreground group shadow-xs hover:scale-[1.02] active:scale-[0.98]"
+                >
+                    <FolderKanban className="h-3.5 w-3.5 text-indigo-500 group-hover:scale-110 transition-transform" />
+                    <span>+ New Project</span>
+                </Link>
+                <button
+                    type="button"
+                    onClick={() => {
+                        setEditingClient(null);
+                        setIsEditModalOpen(true);
+                    }}
+                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-border/70 bg-card/80 hover:bg-purple-500/10 hover:border-purple-500/30 transition-all text-xs font-bold text-foreground group shadow-xs hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                >
+                    <Users className="h-3.5 w-3.5 text-purple-500 group-hover:scale-110 transition-transform" />
+                    <span>+ New Client</span>
+                </button>
+                <Link
+                    href="/admin-dashboard/finance"
+                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-border/70 bg-card/80 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all text-xs font-bold text-foreground group shadow-xs hover:scale-[1.02] active:scale-[0.98]"
+                >
+                    <Plus className="h-3.5 w-3.5 text-emerald-500 group-hover:scale-110 transition-transform" />
+                    <span>Log Finance</span>
+                </Link>
+                <Link
+                    href="/admin-dashboard/quotes"
+                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-border/70 bg-card/80 hover:bg-teal-500/10 hover:border-teal-500/30 transition-all text-xs font-bold text-foreground group shadow-xs hover:scale-[1.02] active:scale-[0.98]"
+                >
+                    <FileText className="h-3.5 w-3.5 text-teal-500 group-hover:scale-110 transition-transform" />
+                    <span>Create Quote</span>
+                </Link>
+                <Link
+                    href="/admin-dashboard/accounts"
+                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-border/70 bg-card/80 hover:bg-amber-500/10 hover:border-amber-500/30 transition-all text-xs font-bold text-foreground group shadow-xs hover:scale-[1.02] active:scale-[0.98]"
+                >
+                    <CreditCard className="h-3.5 w-3.5 text-amber-500 group-hover:scale-110 transition-transform" />
+                    <span>Bank Accounts</span>
+                </Link>
+                <Link
+                    href="/admin-dashboard/demo-websites"
+                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-border/70 bg-card/80 hover:bg-sky-500/10 hover:border-sky-500/30 transition-all text-xs font-bold text-foreground group shadow-xs hover:scale-[1.02] active:scale-[0.98]"
+                >
+                    <Globe className="h-3.5 w-3.5 text-sky-500 group-hover:scale-110 transition-transform" />
+                    <span>Demo Sites ({summary.totalDemoWebsites || 0})</span>
+                </Link>
+            </div>
+
+            {/* ─── SECTION 1: Financial & Treasury Pulse ─── */}
+            <div className="space-y-4">
+                <div className="flex items-center justify-between px-0.5">
+                    <div className="flex items-center gap-2">
+                        <BarChart2 className="h-4 w-4 text-indigo-500" />
+                        <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                            Financial &amp; Treasury Overview
+                        </h2>
+                    </div>
+                    <Link
+                        href="/admin-dashboard/finance"
+                        className="text-xs font-bold text-indigo-500 hover:text-indigo-600 flex items-center gap-1 hover:underline"
+                    >
+                        Go to Finance <ChevronRight className="h-3.5 w-3.5" />
+                    </Link>
                 </div>
 
+                {/* Monthly Revenue Goal Box — UNCHANGED & PRESERVED */}
                 <MonthlyBudgetBar
                     monthlyCollected={summary.monthlyCollected ?? 0}
                     monthlyCollectedBdt={summary.monthlyCollectedBdt ?? 0}
                 />
 
-                <StatsGrid columns={3}>
-                    {financialCards.map((card, i) => (
+                {/* Treasury KPI Cards (4 columns) */}
+                <StatsGrid columns={4}>
+                    {treasuryCards.map((card) => (
                         <StatsCard
                             key={card.title}
                             title={card.title}
@@ -467,18 +613,161 @@ export default function AdminDashboardPage() {
                         />
                     ))}
                 </StatsGrid>
+
+                {/* Project Milestone Billing Cards (3 columns) */}
+                <StatsGrid columns={3}>
+                    {projectBillingCards.map((card) => (
+                        <StatsCard
+                            key={card.title}
+                            title={card.title}
+                            value={card.value}
+                            description={card.description}
+                            icon={card.icon}
+                            iconBg={card.iconBg}
+                            iconColor={card.iconColor}
+                            trend={card.trend}
+                            isCurrency={true}
+                        />
+                    ))}
+                </StatsGrid>
+
+                {/* Treasury Pulse: Bank Accounts Strip + Recent Financial Activity */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    {/* Bank & Mobile Banking Accounts Strip */}
+                    <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm flex flex-col overflow-hidden">
+                        <CardHeader className="border-b border-border/40 p-5 pb-3 flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <Building2 className="h-4 w-4 text-emerald-500" />
+                                    Accounts &amp; Treasury Balances
+                                </CardTitle>
+                                <CardDescription className="text-xs mt-0.5">
+                                    Live balance across verified company accounts
+                                </CardDescription>
+                            </div>
+                            <Link
+                                href="/admin-dashboard/accounts"
+                                className="text-xs font-bold text-indigo-500 hover:text-indigo-600 flex items-center gap-1 hover:underline"
+                            >
+                                View all <ChevronRight className="h-3.5 w-3.5" />
+                            </Link>
+                        </CardHeader>
+                        <CardContent className="p-4 flex-1">
+                            {(!accountsSummary || accountsSummary.length === 0) ? (
+                                <div className="text-center py-8 text-xs text-muted-foreground">
+                                    No active accounts registered yet.
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {accountsSummary.map((acc: any) => (
+                                        <div
+                                            key={acc._id}
+                                            className="p-3 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors flex items-center justify-between gap-3"
+                                        >
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-bold text-foreground truncate">
+                                                    {acc.providerName}
+                                                </p>
+                                                <p className="text-[10px] text-muted-foreground font-mono truncate">
+                                                    {acc.accountNumber} • {acc.userName}
+                                                </p>
+                                            </div>
+                                            <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 shrink-0">
+                                                ৳{Number(acc.balanceInBdt || 0).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Recent Financial Activity Feed */}
+                    <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm flex flex-col overflow-hidden">
+                        <CardHeader className="border-b border-border/40 p-5 pb-3 flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <Activity className="h-4 w-4 text-indigo-500" />
+                                    Recent Financial Activity
+                                </CardTitle>
+                                <CardDescription className="text-xs mt-0.5">
+                                    Latest transactions posted to company ledger
+                                </CardDescription>
+                            </div>
+                            <Link
+                                href="/admin-dashboard/finance"
+                                className="text-xs font-bold text-indigo-500 hover:text-indigo-600 flex items-center gap-1 hover:underline"
+                            >
+                                All Finance <ChevronRight className="h-3.5 w-3.5" />
+                            </Link>
+                        </CardHeader>
+                        <CardContent className="p-0 flex-1 overflow-y-auto" style={{ maxHeight: "260px" }}>
+                            {(!recentTransactions || recentTransactions.length === 0) ? (
+                                <div className="text-center py-8 text-xs text-muted-foreground">
+                                    No transactions recorded recently.
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-border/40">
+                                    {recentTransactions.map((tx: any) => {
+                                        const isIncome = tx.type === "income";
+                                        return (
+                                            <div
+                                                key={tx._id}
+                                                className="px-4 py-2.5 flex items-center justify-between gap-3 hover:bg-muted/20 transition-colors"
+                                            >
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    <div className={cn(
+                                                        "h-7 w-7 rounded-lg flex items-center justify-center shrink-0 text-xs",
+                                                        isIncome ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                                                    )}>
+                                                        {isIncome ? <ArrowDownRight className="h-3.5 w-3.5" /> : <ArrowUpRight className="h-3.5 w-3.5" />}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs font-bold text-foreground truncate">
+                                                            {tx.description || tx.category}
+                                                        </p>
+                                                        <p className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                                                            <span className="capitalize">{tx.category}</span>
+                                                            {tx.accountName && <span>• {tx.accountName}</span>}
+                                                            {tx.date && <span>• {new Date(tx.date).toLocaleDateString()}</span>}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <span className={cn(
+                                                    "text-xs font-black tabular-nums shrink-0",
+                                                    isIncome ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                                                )}>
+                                                    {isIncome ? "+৳" : "-৳"}{Number(tx.amount || 0).toLocaleString()}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
 
-            {/* ─── Project Stat Cards ─── */}
-            <div className="space-y-3">
-                <div className="flex items-center gap-2 px-0.5">
-                    <FolderKanban className="h-4 w-4 text-indigo-500" />
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                        Project Statistics
-                    </h2>
+            {/* ─── SECTION 2: Project Operations & Workload ─── */}
+            <div className="space-y-4">
+                <div className="flex items-center justify-between px-0.5">
+                    <div className="flex items-center gap-2">
+                        <FolderKanban className="h-4 w-4 text-indigo-500" />
+                        <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                            Project Operations &amp; Workload
+                        </h2>
+                    </div>
+                    <Link
+                        href="/admin-dashboard/projects"
+                        className="text-xs font-bold text-indigo-500 hover:text-indigo-600 flex items-center gap-1 hover:underline"
+                    >
+                        View Projects <ChevronRight className="h-3.5 w-3.5" />
+                    </Link>
                 </div>
+
                 <StatsGrid columns={4}>
-                    {projectCards.map((card, i) => (
+                    {projectCards.map((card) => (
                         <StatsCard
                             key={card.title}
                             title={card.title}
@@ -492,28 +781,9 @@ export default function AdminDashboardPage() {
                         />
                     ))}
                 </StatsGrid>
-            </div>
 
-            {/* ─── Charts + Follow-ups Row ─── */}
-            {mounted && (
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                        delay: 0.3,
-                        duration: 0.5,
-                        ease: [0.22, 1, 0.36, 1],
-                    }}
-                    className="space-y-3"
-                >
-                    <div className="flex items-center gap-2 px-0.5">
-                        <TrendingUp className="h-4 w-4 text-indigo-500" />
-                        <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                            Analytics &amp; Insights
-                        </h2>
-                    </div>
-
-                    {/* Top row: Donut + Bar */}
+                {/* Donut + Bar Charts */}
+                {mounted && (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         {/* Donut – Status Breakdown */}
                         <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl transition-all duration-300">
@@ -676,374 +946,462 @@ export default function AdminDashboardPage() {
                             </CardContent>
                         </Card>
                     </div>
+                )}
 
-                    {/* Middle row: Today's Meetings + Today's Follow-ups */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                        {/* Today's Meetings */}
-                        <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden">
-                            <CardHeader className="border-b border-border/40 p-5 pb-4 bg-gradient-to-r from-purple-500/5 to-transparent shrink-0">
-                                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                    <div className="h-7 w-7 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                                        <Calendar className="h-4 w-4 text-purple-500" />
-                                    </div>
-                                    Today's Meetings
-                                    {todayMeetings.length > 0 && (
-                                        <span className="ml-auto inline-flex items-center justify-center h-5 w-5 rounded-full bg-purple-500 text-white text-[10px] font-extrabold">
-                                            {todayMeetings.length}
-                                        </span>
-                                    )}
-                                </CardTitle>
-                                <CardDescription className="text-xs">
-                                    Clients with meetings scheduled today
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent
-                                className="p-0 flex-1 overflow-y-auto"
-                                style={{ maxHeight: "296px" }}
-                            >
-                                {todayMeetings.length === 0 ? (
-                                    <div className="flex h-full flex-col items-center justify-center gap-3 p-10 text-center">
-                                        <div className="h-14 w-14 rounded-full bg-purple-500/10 flex items-center justify-center">
-                                            <Calendar className="h-7 w-7 text-purple-500" />
-                                        </div>
-                                        <p className="text-sm font-semibold text-muted-foreground">
-                                            All clear — no meetings today!
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <ul className="divide-y divide-border/40">
-                                        {todayMeetings.map(
-                                            (client: any, idx: number) => (
-                                                <motion.li
-                                                    key={client._id}
-                                                    initial={{
-                                                        opacity: 0,
-                                                        x: -8,
-                                                    }}
-                                                    animate={{
-                                                        opacity: 1,
-                                                        x: 0,
-                                                    }}
-                                                    transition={{
-                                                        delay: 0.05 * idx,
-                                                    }}
-                                                    className="group flex flex-col gap-2.5 p-4 hover:bg-muted/30 transition-colors duration-200 cursor-pointer"
-                                                    onClick={() => {
-                                                        setInfoClient(client);
-                                                        setIsInfoModalOpen(
-                                                            true,
-                                                        );
-                                                    }}
-                                                >
-                                                    <div className="flex items-start justify-between gap-3">
-                                                        <div className="flex items-center gap-2.5 min-w-0">
-                                                            <div className="h-8 w-8 shrink-0 rounded-full bg-purple-500/10 flex items-center justify-center">
-                                                                <Users className="h-3.5 w-3.5 text-purple-500" />
-                                                            </div>
-                                                            <h4 className="font-bold text-sm text-foreground group-hover:text-purple-500 transition-colors truncate">
-                                                                {client.name}
-                                                            </h4>
-                                                        </div>
-                                                        <div className="flex shrink-0 flex-col items-end gap-1 text-[10px]">
-                                                            {client.number && (
-                                                                <span className="rounded-md bg-accent/50 px-2 py-0.5 font-medium text-muted-foreground">
-                                                                    {client.number}
-                                                                </span>
-                                                            )}
-                                                            {client.socialMediaLink && (
-                                                                <a
-                                                                    href={client.socialMediaLink}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="rounded-md bg-purple-500/10 px-2 py-0.5 font-medium text-purple-500 hover:underline transition-colors"
-                                                                >
-                                                                    Social ↗
-                                                                </a>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    {client.notes && (
-                                                        <p className="text-[11px] leading-relaxed text-muted-foreground bg-background/50 rounded-lg px-2.5 py-1.5 border border-border/40">
-                                                            <span className="font-semibold text-foreground/70">
-                                                                Note:{" "}
-                                                            </span>
-                                                            {client.notes}
-                                                        </p>
-                                                    )}
-                                                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/20 mt-0.5">
-                                                        <span className="flex items-center gap-1.5 text-xs font-medium">
-                                                            <User className="h-3 w-3 text-purple-500/80" />
-                                                            <span className="text-muted-foreground">Call Assigned:</span>{" "}
-                                                            <span className="text-purple-600 dark:text-purple-400 font-bold">
-                                                                {client.assignedTo
-                                                                    ? typeof client.assignedTo === "object"
-                                                                        ? client.assignedTo.name || "N/A"
-                                                                        : client.assignedTo
-                                                                    : "Unassigned"}
-                                                            </span>
-                                                        </span>
-                                                        <span className="flex items-center gap-1.5 text-xs font-medium">
-                                                            <span className="text-muted-foreground">By:</span>{" "}
-                                                            <span className="text-foreground font-semibold">
-                                                                {typeof client.lastUpdatedBy === "object"
-                                                                    ? client.lastUpdatedBy?.name || "N/A"
-                                                                    : client.lastUpdatedBy || "N/A"}
-                                                            </span>
-                                                        </span>
-                                                        {client.updatedAt && (
-                                                            <span className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-                                                                <Clock className="h-3 w-3 text-purple-500/80" />
-                                                                {new Date(client.updatedAt).toLocaleString("en-US", {
-                                                                    month: "short",
-                                                                    day: "numeric",
-                                                                    hour: "numeric",
-                                                                    minute: "2-digit",
-                                                                    hour12: true,
-                                                                })}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </motion.li>
-                                            ),
-                                        )}
-                                    </ul>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        {/* Today's Follow-ups */}
-                        <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden">
-                            <CardHeader className="border-b border-border/40 p-5 pb-4 bg-gradient-to-r from-amber-500/5 to-transparent shrink-0">
-                                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                    <div className="h-7 w-7 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                                        <Clock className="h-4 w-4 text-amber-500" />
-                                    </div>
-                                    Today's Follow-ups
-                                    {todayFollowUps.length > 0 && (
-                                        <span className="ml-auto inline-flex items-center justify-center h-5 w-5 rounded-full bg-amber-500 text-white text-[10px] font-extrabold">
-                                            {todayFollowUps.length}
-                                        </span>
-                                    )}
-                                </CardTitle>
-                                <CardDescription className="text-xs">
-                                    Clients requiring immediate attention today
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent
-                                className="p-0 flex-1 overflow-y-auto"
-                                style={{ maxHeight: "296px" }}
-                            >
-                                {todayFollowUps.length === 0 ? (
-                                    <div className="flex h-full flex-col items-center justify-center gap-3 p-10 text-center">
-                                        <div className="h-14 w-14 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                                            <CheckCircle2 className="h-7 w-7 text-emerald-500" />
-                                        </div>
-                                        <p className="text-sm font-semibold text-muted-foreground">
-                                            All clear — no follow-ups today!
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <ul className="divide-y divide-border/40">
-                                        {todayFollowUps.map(
-                                            (client: any, idx: number) => (
-                                                <motion.li
-                                                    key={client._id}
-                                                    initial={{
-                                                        opacity: 0,
-                                                        x: -8,
-                                                    }}
-                                                    animate={{
-                                                        opacity: 1,
-                                                        x: 0,
-                                                    }}
-                                                    transition={{
-                                                        delay: 0.05 * idx,
-                                                    }}
-                                                    className="group flex flex-col gap-2.5 p-4 hover:bg-muted/30 transition-colors duration-200 cursor-pointer"
-                                                    onClick={() => {
-                                                        setInfoClient(client);
-                                                        setIsInfoModalOpen(
-                                                            true,
-                                                        );
-                                                    }}
-                                                >
-                                                    <div className="flex items-start justify-between gap-3">
-                                                        <div className="flex items-center gap-2.5 min-w-0">
-                                                            <div className="h-8 w-8 shrink-0 rounded-full bg-indigo-500/10 flex items-center justify-center">
-                                                                <Users className="h-3.5 w-3.5 text-indigo-500" />
-                                                            </div>
-                                                            <h4 className="font-bold text-sm text-foreground group-hover:text-indigo-500 transition-colors truncate">
-                                                                {client.name}
-                                                            </h4>
-                                                        </div>
-                                                        <div className="flex shrink-0 flex-col items-end gap-1 text-[10px]">
-                                                            {client.number && (
-                                                                <span className="rounded-md bg-accent/50 px-2 py-0.5 font-medium text-muted-foreground">
-                                                                    {
-                                                                        client.number
-                                                                    }
-                                                                </span>
-                                                            )}
-                                                            {client.socialMediaLink && (
-                                                                <a
-                                                                    href={
-                                                                        client.socialMediaLink
-                                                                    }
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="rounded-md bg-indigo-500/10 px-2 py-0.5 font-medium text-indigo-500 hover:underline transition-colors"
-                                                                >
-                                                                    Social ↗
-                                                                </a>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    {client.notes && (
-                                                        <p className="text-[11px] leading-relaxed text-muted-foreground bg-background/50 rounded-lg px-2.5 py-1.5 border border-border/40">
-                                                            <span className="font-semibold text-foreground/70">
-                                                                Note:{" "}
-                                                            </span>
-                                                            {client.notes}
-                                                        </p>
-                                                    )}
-                                                    <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/20 mt-0.5">
-                                                        <span className="flex items-center gap-1.5 text-xs font-medium">
-                                                            <User className="h-3 w-3 text-indigo-500/80" />
-                                                            <span className="text-muted-foreground">Call Assigned:</span>{" "}
-                                                            <span className="text-indigo-600 dark:text-indigo-400 font-bold">
-                                                                {client.assignedTo
-                                                                    ? typeof client.assignedTo === "object"
-                                                                        ? client.assignedTo.name || "N/A"
-                                                                        : client.assignedTo
-                                                                    : "Unassigned"}
-                                                            </span>
-                                                        </span>
-                                                        <span className="flex items-center gap-1.5 text-xs font-medium">
-                                                            <span className="text-muted-foreground">By:</span>{" "}
-                                                            <span className="text-foreground font-semibold">
-                                                                {typeof client.lastUpdatedBy === "object"
-                                                                    ? client.lastUpdatedBy?.name || "N/A"
-                                                                    : client.lastUpdatedBy || "N/A"}
-                                                            </span>
-                                                        </span>
-                                                        {client.updatedAt && (
-                                                            <span className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-                                                                <Clock className="h-3 w-3 text-amber-500/80" />
-                                                                {new Date(client.updatedAt).toLocaleString("en-US", {
-                                                                    month: "short",
-                                                                    day: "numeric",
-                                                                    hour: "numeric",
-                                                                    minute: "2-digit",
-                                                                    hour12: true,
-                                                                })}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </motion.li>
-                                            ),
-                                        )}
-                                    </ul>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    {/* Full Width Bottom row: Area trend */}
-                    <div className="w-full">
-                        {/* Area – Completion Trend */}
-                        <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl transition-all duration-300">
-                            <CardHeader className="border-b border-border/40 p-5 pb-4">
-                                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                    <TrendingUp className="h-4 w-4 text-emerald-500" />
-                                    Completion Trend
-                                </CardTitle>
-                                <CardDescription className="text-xs">
-                                    Projects completed day-by-day (last 30 days)
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="p-5">
-                                <div className="h-64">
-                                    <ResponsiveContainer
-                                        width="100%"
-                                        height="100%"
+                {/* Active Deliverables in Flight */}
+                <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm flex flex-col overflow-hidden">
+                    <CardHeader className="border-b border-border/40 p-5 pb-3 flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                <FolderKanban className="h-4 w-4 text-indigo-500" />
+                                Active Deliverables in Flight
+                            </CardTitle>
+                            <CardDescription className="text-xs mt-0.5">
+                                Key ongoing builds with milestone progression
+                            </CardDescription>
+                        </div>
+                        <Link
+                            href="/admin-dashboard/projects"
+                            className="text-xs font-bold text-indigo-500 hover:text-indigo-600 flex items-center gap-1 hover:underline"
+                        >
+                            Open Kanban <ChevronRight className="h-3.5 w-3.5" />
+                        </Link>
+                    </CardHeader>
+                    <CardContent className="p-4">
+                        {(!activeProjects || activeProjects.length === 0) ? (
+                            <div className="text-center py-8 text-xs text-muted-foreground">
+                                No active development builds at this time.
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {activeProjects.map((p: any) => (
+                                    <div
+                                        key={p._id}
+                                        className="p-3.5 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 transition-all flex flex-col justify-between space-y-3"
                                     >
-                                        <AreaChart
-                                            data={completionTrend}
-                                            margin={{
-                                                top: 8,
-                                                right: 8,
-                                                left: -24,
-                                                bottom: 0,
-                                            }}
-                                        >
-                                            <defs>
-                                                <linearGradient
-                                                    id="colorCompleted"
-                                                    x1="0"
-                                                    y1="0"
-                                                    x2="0"
-                                                    y2="1"
-                                                >
-                                                    <stop
-                                                        offset="0%"
-                                                        stopColor="#10b981"
-                                                        stopOpacity={0.35}
-                                                    />
-                                                    <stop
-                                                        offset="100%"
-                                                        stopColor="#10b981"
-                                                        stopOpacity={0}
-                                                    />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid
-                                                vertical={false}
-                                                stroke={gridColor}
-                                            />
-                                            <XAxis
-                                                dataKey="date"
-                                                stroke={axisColor}
-                                                fontSize={10}
-                                                tickLine={false}
-                                                axisLine={false}
-                                            />
-                                            <YAxis
-                                                stroke={axisColor}
-                                                fontSize={10}
-                                                tickLine={false}
-                                                axisLine={false}
-                                                allowDecimals={false}
-                                            />
-                                            <Tooltip
-                                                content={
-                                                    <CustomTooltip
-                                                        isDark={isDark}
-                                                    />
-                                                }
-                                            />
-                                            <Area
-                                                type="monotone"
-                                                dataKey="completed"
-                                                name="Completed"
-                                                stroke="#10b981"
-                                                strokeWidth={2.5}
-                                                fill="url(#colorCompleted)"
-                                                dot={false}
-                                                activeDot={{
-                                                    r: 5,
-                                                    fill: "#10b981",
-                                                    strokeWidth: 0,
-                                                }}
-                                            />
-                                        </AreaChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-                </motion.div>
-            )}
+                                        <div>
+                                            <div className="flex items-start justify-between gap-2">
+                                                <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                                                    {p.status.replace("_", " ")}
+                                                </span>
+                                                {p.priority && (
+                                                    <span className={cn(
+                                                        "text-[9px] font-bold uppercase px-1.5 py-0.5 rounded",
+                                                        p.priority === "high"
+                                                            ? "bg-rose-500/10 text-rose-500"
+                                                            : p.priority === "medium"
+                                                              ? "bg-amber-500/10 text-amber-500"
+                                                              : "bg-slate-500/10 text-slate-500"
+                                                    )}>
+                                                        {p.priority}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <h4 className="font-bold text-xs text-foreground mt-2 line-clamp-1">
+                                                {p.title}
+                                            </h4>
+                                            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                                                {p.clientName ? `Client: ${p.clientName}` : "Internal Initiative"}
+                                            </p>
+                                        </div>
 
+                                        <div className="space-y-1.5">
+                                            <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+                                                <span>Milestones</span>
+                                                <span className="font-bold text-foreground">
+                                                    ৳{Number(p.paidPayments || 0).toLocaleString()} / ৳{Number(p.budget || 0).toLocaleString()}
+                                                </span>
+                                            </div>
+                                            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full"
+                                                    style={{ width: `${p.progressPercent || 0}%` }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1 border-t border-border/40">
+                                            <span className="flex items-center gap-1">
+                                                <Calendar className="h-3 w-3" />
+                                                {p.dueDate
+                                                    ? new Date(p.dueDate).toLocaleDateString("en-US", {
+                                                          month: "short",
+                                                          day: "numeric",
+                                                      })
+                                                    : "No deadline"}
+                                            </span>
+                                            <div className="flex items-center -space-x-1.5">
+                                                {(p.assignees || []).slice(0, 3).map((a: any, idx: number) => (
+                                                    <div
+                                                        key={idx}
+                                                        title={a.name}
+                                                        className="h-5 w-5 rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-card flex items-center justify-center text-[9px] font-bold overflow-hidden"
+                                                    >
+                                                        {a.name?.charAt(0) || "U"}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Area – Completion Trend */}
+                {mounted && (
+                    <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl transition-all duration-300">
+                        <CardHeader className="border-b border-border/40 p-5 pb-4">
+                            <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                <TrendingUp className="h-4 w-4 text-emerald-500" />
+                                Project Completion Trend
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                                Projects completed day-by-day (last 30 days)
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-5">
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart
+                                        data={completionTrend}
+                                        margin={{
+                                            top: 8,
+                                            right: 8,
+                                            left: -24,
+                                            bottom: 0,
+                                        }}
+                                    >
+                                        <defs>
+                                            <linearGradient
+                                                id="colorCompleted"
+                                                x1="0"
+                                                y1="0"
+                                                x2="0"
+                                                y2="1"
+                                            >
+                                                <stop
+                                                    offset="0%"
+                                                    stopColor="#10b981"
+                                                    stopOpacity={0.35}
+                                                />
+                                                <stop
+                                                    offset="100%"
+                                                    stopColor="#10b981"
+                                                    stopOpacity={0}
+                                                />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid
+                                            vertical={false}
+                                            stroke={gridColor}
+                                        />
+                                        <XAxis
+                                            dataKey="date"
+                                            stroke={axisColor}
+                                            fontSize={10}
+                                            tickLine={false}
+                                            axisLine={false}
+                                        />
+                                        <YAxis
+                                            stroke={axisColor}
+                                            fontSize={10}
+                                            tickLine={false}
+                                            axisLine={false}
+                                            allowDecimals={false}
+                                        />
+                                        <Tooltip
+                                            content={
+                                                <CustomTooltip
+                                                    isDark={isDark}
+                                                />
+                                            }
+                                        />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="completed"
+                                            name="Completed"
+                                            stroke="#10b981"
+                                            strokeWidth={2.5}
+                                            fill="url(#colorCompleted)"
+                                            dot={false}
+                                            activeDot={{
+                                                r: 5,
+                                                fill: "#10b981",
+                                                strokeWidth: 0,
+                                            }}
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
+
+            {/* ─── SECTION 3: Client CRM & Sales Proposals ─── */}
+            <div className="space-y-4">
+                <div className="flex items-center justify-between px-0.5">
+                    <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-purple-500" />
+                        <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                            Client CRM &amp; Sales Proposals
+                        </h2>
+                    </div>
+                    <Link
+                        href="/admin-dashboard/clients"
+                        className="text-xs font-bold text-indigo-500 hover:text-indigo-600 flex items-center gap-1 hover:underline"
+                    >
+                        Open CRM <ChevronRight className="h-3.5 w-3.5" />
+                    </Link>
+                </div>
+
+                <StatsGrid columns={4}>
+                    {crmCards.map((card) => (
+                        <StatsCard
+                            key={card.title}
+                            title={card.title}
+                            value={card.value}
+                            description={card.description}
+                            icon={card.icon}
+                            iconBg={card.iconBg}
+                            iconColor={card.iconColor}
+                            isCurrency={false}
+                        />
+                    ))}
+                </StatsGrid>
+
+                {/* 3-column CRM action cards */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    {/* Today's Meetings */}
+                    <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden">
+                        <CardHeader className="border-b border-border/40 p-5 pb-4 bg-gradient-to-r from-purple-500/5 to-transparent shrink-0">
+                            <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                <div className="h-7 w-7 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                                    <Calendar className="h-4 w-4 text-purple-500" />
+                                </div>
+                                Today's Meetings
+                                {todayMeetings.length > 0 && (
+                                    <span className="ml-auto inline-flex items-center justify-center h-5 w-5 rounded-full bg-purple-500 text-white text-[10px] font-extrabold">
+                                        {todayMeetings.length}
+                                    </span>
+                                )}
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                                Clients with calls scheduled today
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent
+                            className="p-0 flex-1 overflow-y-auto"
+                            style={{ maxHeight: "296px" }}
+                        >
+                            {todayMeetings.length === 0 ? (
+                                <div className="flex h-full flex-col items-center justify-center gap-3 p-10 text-center">
+                                    <div className="h-14 w-14 rounded-full bg-purple-500/10 flex items-center justify-center">
+                                        <Calendar className="h-7 w-7 text-purple-500" />
+                                    </div>
+                                    <p className="text-sm font-semibold text-muted-foreground">
+                                        All clear — no meetings today!
+                                    </p>
+                                </div>
+                            ) : (
+                                <ul className="divide-y divide-border/40">
+                                    {todayMeetings.map(
+                                        (client: any) => (
+                                            <li
+                                                key={client._id}
+                                                className="group flex flex-col gap-2.5 p-4 hover:bg-muted/30 transition-colors duration-200 cursor-pointer"
+                                                onClick={() => {
+                                                    setInfoClient(client);
+                                                    setIsInfoModalOpen(true);
+                                                }}
+                                            >
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        <div className="h-8 w-8 shrink-0 rounded-full bg-purple-500/10 flex items-center justify-center">
+                                                            <Users className="h-3.5 w-3.5 text-purple-500" />
+                                                        </div>
+                                                        <h4 className="font-bold text-sm text-foreground group-hover:text-purple-500 transition-colors truncate">
+                                                            {client.name}
+                                                        </h4>
+                                                    </div>
+                                                    <div className="flex shrink-0 flex-col items-end gap-1 text-[10px]">
+                                                        {client.number && (
+                                                            <span className="rounded-md bg-accent/50 px-2 py-0.5 font-medium text-muted-foreground">
+                                                                {client.number}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                {client.notes && (
+                                                    <p className="text-[11px] leading-relaxed text-muted-foreground bg-background/50 rounded-lg px-2.5 py-1.5 border border-border/40">
+                                                        <span className="font-semibold text-foreground/70">
+                                                            Note:{" "}
+                                                        </span>
+                                                        {client.notes}
+                                                    </p>
+                                                )}
+                                            </li>
+                                        ),
+                                    )}
+                                </ul>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Today's Follow-ups */}
+                    <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden">
+                        <CardHeader className="border-b border-border/40 p-5 pb-4 bg-gradient-to-r from-amber-500/5 to-transparent shrink-0">
+                            <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                <div className="h-7 w-7 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                                    <Clock className="h-4 w-4 text-amber-500" />
+                                </div>
+                                Today's Follow-ups
+                                {todayFollowUps.length > 0 && (
+                                    <span className="ml-auto inline-flex items-center justify-center h-5 w-5 rounded-full bg-amber-500 text-white text-[10px] font-extrabold">
+                                        {todayFollowUps.length}
+                                    </span>
+                                )}
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                                Leads requiring touch-point today
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent
+                            className="p-0 flex-1 overflow-y-auto"
+                            style={{ maxHeight: "296px" }}
+                        >
+                            {todayFollowUps.length === 0 ? (
+                                <div className="flex h-full flex-col items-center justify-center gap-3 p-10 text-center">
+                                    <div className="h-14 w-14 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                                        <CheckCircle2 className="h-7 w-7 text-emerald-500" />
+                                    </div>
+                                    <p className="text-sm font-semibold text-muted-foreground">
+                                        All clear — no follow-ups today!
+                                    </p>
+                                </div>
+                            ) : (
+                                <ul className="divide-y divide-border/40">
+                                    {todayFollowUps.map(
+                                        (client: any) => (
+                                            <li
+                                                key={client._id}
+                                                className="group flex flex-col gap-2.5 p-4 hover:bg-muted/30 transition-colors duration-200 cursor-pointer"
+                                                onClick={() => {
+                                                    setInfoClient(client);
+                                                    setIsInfoModalOpen(true);
+                                                }}
+                                            >
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        <div className="h-8 w-8 shrink-0 rounded-full bg-indigo-500/10 flex items-center justify-center">
+                                                            <Users className="h-3.5 w-3.5 text-indigo-500" />
+                                                        </div>
+                                                        <h4 className="font-bold text-sm text-foreground group-hover:text-indigo-500 transition-colors truncate">
+                                                            {client.name}
+                                                        </h4>
+                                                    </div>
+                                                    <div className="flex shrink-0 flex-col items-end gap-1 text-[10px]">
+                                                        {client.number && (
+                                                            <span className="rounded-md bg-accent/50 px-2 py-0.5 font-medium text-muted-foreground">
+                                                                {client.number}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                {client.notes && (
+                                                    <p className="text-[11px] leading-relaxed text-muted-foreground bg-background/50 rounded-lg px-2.5 py-1.5 border border-border/40">
+                                                        <span className="font-semibold text-foreground/70">
+                                                            Note:{" "}
+                                                        </span>
+                                                        {client.notes}
+                                                    </p>
+                                                )}
+                                            </li>
+                                        ),
+                                    )}
+                                </ul>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    {/* Recent Proposals & Quotes */}
+                    <Card className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden">
+                        <CardHeader className="border-b border-border/40 p-5 pb-4 bg-gradient-to-r from-teal-500/5 to-transparent shrink-0 flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <div className="h-7 w-7 rounded-lg bg-teal-500/10 flex items-center justify-center">
+                                        <FileText className="h-4 w-4 text-teal-500" />
+                                    </div>
+                                    Recent Proposals
+                                </CardTitle>
+                                <CardDescription className="text-xs mt-0.5">
+                                    Client quotes and proposals
+                                </CardDescription>
+                            </div>
+                            <Link
+                                href="/admin-dashboard/quotes"
+                                className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1"
+                            >
+                                All Quotes <ChevronRight className="h-3 w-3" />
+                            </Link>
+                        </CardHeader>
+                        <CardContent
+                            className="p-0 flex-1 overflow-y-auto"
+                            style={{ maxHeight: "296px" }}
+                        >
+                            {(!recentQuotes || recentQuotes.length === 0) ? (
+                                <div className="flex h-full flex-col items-center justify-center gap-3 p-10 text-center">
+                                    <div className="h-14 w-14 rounded-full bg-teal-500/10 flex items-center justify-center">
+                                        <FileText className="h-7 w-7 text-teal-500" />
+                                    </div>
+                                    <p className="text-sm font-semibold text-muted-foreground">
+                                        No proposals generated yet.
+                                    </p>
+                                </div>
+                            ) : (
+                                <ul className="divide-y divide-border/40">
+                                    {recentQuotes.map((quote: any) => (
+                                        <li
+                                            key={quote._id}
+                                            className="p-4 hover:bg-muted/30 transition-colors flex items-center justify-between gap-3"
+                                        >
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-600 dark:text-teal-400">
+                                                        {quote.quoteNumber || "QUOTE"}
+                                                    </span>
+                                                    <span className="text-xs font-bold text-foreground truncate">
+                                                        {quote.projectName}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                                                    Client: {quote.clientName || "Direct"}
+                                                </p>
+                                            </div>
+                                            <div className="text-right shrink-0">
+                                                <p className="text-xs font-extrabold text-foreground">
+                                                    {quote.projectPrice
+                                                        ? (quote.projectPrice.includes("৳") || quote.projectPrice.includes("$")
+                                                            ? quote.projectPrice
+                                                            : `৳${quote.projectPrice}`)
+                                                        : "Proposal"}
+                                                </p>
+                                                <p className="text-[9px] text-muted-foreground">
+                                                    {quote.createdAt ? new Date(quote.createdAt).toLocaleDateString() : ""}
+                                                </p>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+
+            {/* Client Info Modal */}
             <ClientInfoModal
                 isOpen={isInfoModalOpen}
                 onClose={() => setIsInfoModalOpen(false)}
@@ -1054,12 +1412,12 @@ export default function AdminDashboardPage() {
                 }}
             />
 
+            {/* Client Form Modal */}
             <ClientFormModal
                 isOpen={isEditModalOpen}
                 onClose={() => setIsEditModalOpen(false)}
                 editingClient={editingClient}
                 onSuccessCallback={() => {
-                    // Refetch dashboard summary to update stats
                     handleRefresh();
                 }}
             />

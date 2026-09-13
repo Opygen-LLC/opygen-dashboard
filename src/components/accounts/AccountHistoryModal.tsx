@@ -165,12 +165,8 @@ export default function AccountHistoryModal({
                             <span>Current Account Balance</span>
                         </div>
                         <div className="flex items-center gap-2 font-bold text-sm">
-                            <span className="text-foreground">
-                                {formatCurrency(account.balance)}
-                            </span>
-                            <span className="text-muted-foreground/50">|</span>
                             <span className="text-indigo-600 dark:text-indigo-400">
-                                {formatBDT(account.balanceInBdt)}
+                                {formatBDT(account.balanceInBdt ?? account.balance)}
                             </span>
                         </div>
                     </div>
@@ -273,11 +269,7 @@ export default function AccountHistoryModal({
                                                     )}
                                                 >
                                                     <span>{isIncome ? "+" : "-"}</span>
-                                                    <span>{formatCurrency(tx.amount)}</span>
-                                                </div>
-                                                <div className="text-xs font-medium text-muted-foreground">
-                                                    {isIncome ? "+" : "-"}
-                                                    {formatBDT(tx.amountInBdt)}
+                                                    <span>{formatBDT(tx.amountInBdt ?? tx.amount)}</span>
                                                 </div>
                                             </div>
                                         </div>

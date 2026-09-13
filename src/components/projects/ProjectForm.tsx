@@ -8,7 +8,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
     Briefcase,
     Calendar,
-    DollarSign,
     Search,
     UserCheck,
     Users,
@@ -477,10 +476,10 @@ export default function ProjectForm({
                                             htmlFor="budgetMin"
                                             className="font-semibold"
                                         >
-                                            Min Budget
+                                            Min Budget (৳)
                                         </Label>
                                         <div className="relative">
-                                            <DollarSign className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                                            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">৳</span>
                                             <Input
                                                 id="budgetMin"
                                                 type="number"
@@ -508,10 +507,10 @@ export default function ProjectForm({
                                             htmlFor="budgetMax"
                                             className="font-semibold"
                                         >
-                                            Max Budget
+                                            Max Budget (৳)
                                         </Label>
                                         <div className="relative">
-                                            <DollarSign className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                                            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">৳</span>
                                             <Input
                                                 id="budgetMax"
                                                 type="number"
@@ -541,10 +540,10 @@ export default function ProjectForm({
                                         htmlFor="budget"
                                         className="font-semibold"
                                     >
-                                        Budget
+                                        Budget (৳)
                                     </Label>
                                     <div className="relative">
-                                        <DollarSign className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-sm">৳</span>
                                         <Input
                                             id="budget"
                                             type="number"

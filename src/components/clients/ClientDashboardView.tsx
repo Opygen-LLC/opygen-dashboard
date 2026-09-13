@@ -295,11 +295,7 @@ export default function ClientDashboardView() {
     });
 
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat("en-US", {
-            style: "currency",
-            currency: "USD",
-            maximumFractionDigits: 0,
-        }).format(amount || 0);
+        return `৳${Math.round(amount || 0).toLocaleString()}`;
     };
 
     if (isClientsLoading) {

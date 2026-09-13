@@ -83,11 +83,11 @@ export default function ProjectCard({ project, onClick, draggable, onDragStart }
             
             {(project.budgetMin !== undefined && project.budgetMin !== null && ['potential', 'future'].includes(project.status)) ? (
               <div className="text-[11px] font-bold text-emerald-650 dark:text-emerald-450 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded w-fit">
-                Budget: ${Number(project.budgetMin).toLocaleString()} - ${Number(project.budgetMax || 0).toLocaleString()}
+                Budget: ৳{Number(project.budgetMin).toLocaleString()} - ৳{Number(project.budgetMax || 0).toLocaleString()}
               </div>
             ) : (project.budget !== undefined && project.budget !== null) ? (
               <div className="text-[11px] font-bold text-emerald-650 dark:text-emerald-450 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded w-fit">
-                Budget: ${Number(project.budget).toLocaleString()}
+                Budget: ৳{Number(project.budget).toLocaleString()}
               </div>
             ) : null}
           </CardContent>

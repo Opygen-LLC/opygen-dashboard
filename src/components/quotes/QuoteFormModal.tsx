@@ -179,7 +179,7 @@ export default function QuoteFormModal({
                           ],
                       },
                   ],
-        currency: initialData?.currency || "USD",
+        currency: initialData?.currency || "BDT",
         advanceType: initialData?.advanceType || "percentage",
         advanceValue: initialData?.advanceValue ?? null,
         projectDuration: initialData?.projectDuration || "6-8 Weeks",
@@ -217,7 +217,7 @@ export default function QuoteFormModal({
                       {
                           pmtNo: 2,
                           milestone: "After Frontend Delivery",
-                          calculation: "Frontend ($1,000) - Advance ($510)",
+                          calculation: "Frontend (৳1,000) - Advance (৳510)",
                           amount: 490,
                       },
                       {
@@ -637,11 +637,11 @@ export default function QuoteFormModal({
                                                         <SelectValue placeholder="Currency" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="USD">
-                                                            USD ($)
-                                                        </SelectItem>
                                                         <SelectItem value="BDT">
                                                             BDT (৳)
+                                                        </SelectItem>
+                                                        <SelectItem value="USD">
+                                                            USD ($)
                                                         </SelectItem>
                                                         <SelectItem value="EUR">
                                                             EUR (€)

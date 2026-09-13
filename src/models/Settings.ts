@@ -53,7 +53,7 @@ const SettingsSchema = new Schema<ISettings>(
         website:           { type: String, trim: true, default: "" },
         address:           { type: String, trim: true, default: "" },
         socials:           { type: SocialsSchema, default: () => ({}) },
-        monthlyBudgetGoal: { type: Number, min: 0, default: 0 },
+        monthlyBudgetGoal: { type: Number, min: 0, default: 200000 },
         monthlyRevenueGoals: { type: Map, of: Number, default: () => new Map() },
     },
     { timestamps: true },

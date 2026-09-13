@@ -101,11 +101,11 @@ export default function ProjectList({ projects, onProjectClick, onEditClick, onD
                 <TableCell className="font-semibold text-emerald-650 dark:text-emerald-450 text-xs">
                   {['potential', 'future'].includes(project.status) ? (
                     project.budgetMin !== undefined && project.budgetMin !== null ? (
-                      `$${Number(project.budgetMin).toLocaleString()} - $${Number(project.budgetMax || 0).toLocaleString()}`
+                      `৳${Number(project.budgetMin).toLocaleString()} - ৳${Number(project.budgetMax || 0).toLocaleString()}`
                     ) : '—'
                   ) : (
                     project.budget !== undefined && project.budget !== null
-                      ? `$${Number(project.budget).toLocaleString()}`
+                      ? `৳${Number(project.budget).toLocaleString()}`
                       : '—'
                   )}
                 </TableCell>

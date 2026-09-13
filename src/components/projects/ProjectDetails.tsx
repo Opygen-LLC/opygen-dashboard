@@ -30,6 +30,7 @@ import {
     Smartphone,
     Globe,
     Copy,
+    RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,6 +102,46 @@ export default function ProjectDetails({
     const [previewReceiptUrl, setPreviewReceiptUrl] = useState<string | null>(
         null,
     );
+    const [checkingFinance, setCheckingFinance] = useState(false);
+    const [matchedFinanceAmount, setMatchedFinanceAmount] = useState<number | null>(null);
+
+    const checkFinanceForDate = async (selectedDate: string) => {
+        if (!selectedDate) {
+            setMatchedFinanceAmount(null);
+            return;
+        }
+        setCheckingFinance(true);
+        try {
+            const res = await fetch(
+                `/api/finance/transactions?startDate=${selectedDate}&endDate=${selectedDate}&type=income`
+            );
+            if (res.ok) {
+                const data = await res.json();
+                const txs = Array.isArray(data) ? data : data.transactions || [];
+                if (txs.length > 0) {
+                    const totalBdt = txs.reduce(
+                        (sum: number, t: any) =>
+                            sum + Number(t.amountInBdt || t.amount || 0),
+                        0
+                    );
+                    if (totalBdt > 0) {
+                        setMatchedFinanceAmount(totalBdt);
+                        setPayAmount(String(totalBdt));
+                        toast.success(
+                            `Found ৳${totalBdt.toLocaleString()} income in Finance on ${selectedDate}`
+                        );
+                        return;
+                    }
+                }
+            }
+            setMatchedFinanceAmount(null);
+        } catch (e) {
+            console.error("Error checking finance transactions:", e);
+            setMatchedFinanceAmount(null);
+        } finally {
+            setCheckingFinance(false);
+        }
+    };
 
     const {
         data: project,
@@ -575,7 +616,7 @@ export default function ProjectDetails({
                                 </div>
 
                                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <DollarSign className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-450 shrink-0" />
+                                    <span className="font-bold text-emerald-600 dark:text-emerald-450 shrink-0 text-base">৳</span>
                                     <span>Budget:</span>
                                     <span className="font-bold text-emerald-650 dark:text-emerald-450">
                                         {["potential", "future"].includes(
@@ -583,18 +624,18 @@ export default function ProjectDetails({
                                         )
                                             ? project.budgetMin !== undefined &&
                                               project.budgetMax !== undefined
-                                                ? `$${Number(project.budgetMin).toLocaleString()} - $${Number(project.budgetMax).toLocaleString()}`
+                                                ? `৳${Number(project.budgetMin).toLocaleString()} - ৳${Number(project.budgetMax).toLocaleString()}`
                                                 : project.budgetMin !==
                                                     undefined
-                                                  ? `Min: $${Number(project.budgetMin).toLocaleString()}`
+                                                  ? `Min: ৳${Number(project.budgetMin).toLocaleString()}`
                                                   : project.budgetMax !==
                                                       undefined
-                                                    ? `Max: $${Number(project.budgetMax).toLocaleString()}`
-                                                    : "$0 (Range not set)"
+                                                    ? `Max: ৳${Number(project.budgetMax).toLocaleString()}`
+                                                    : "৳0 (Range not set)"
                                             : project.budget !== undefined &&
                                                 project.budget !== null
-                                              ? `$${Number(project.budget).toLocaleString()}`
-                                              : "$0"}
+                                              ? `৳${Number(project.budget).toLocaleString()}`
+                                              : "৳0"}
                                     </span>
                                 </div>
                             </div>
@@ -742,17 +783,21 @@ export default function ProjectDetails({
                                         sum + Number(p.amount),
                                     0,
                                 );
+                                const effectiveBudget = Math.max(
+                                    Number(project.budget || 0),
+                                    totalContract,
+                                );
                                 const percent =
-                                    totalContract > 0
+                                    effectiveBudget > 0
                                         ? Math.min(
                                               100,
                                               Math.round(
-                                                  (totalPaid / totalContract) *
+                                                  (totalPaid / effectiveBudget) *
                                                       100,
                                               ),
                                           )
                                         : 0;
-                                const pendingAmount = totalContract - totalPaid;
+                                const pendingAmount = Math.max(0, effectiveBudget - totalPaid);
                                 const unallocatedBudget = Math.max(
                                     0,
                                     (project.budget || 0) - totalContract,
@@ -768,8 +813,7 @@ export default function ProjectDetails({
                                                     <CheckCircle2 className="h-3.5 w-3.5" />
                                                 </div>
                                                 <div className="mt-2 text-base font-extrabold text-emerald-700 dark:text-emerald-400">
-                                                    $
-                                                    {totalPaid.toLocaleString()}
+                                                    ৳{totalPaid.toLocaleString()}
                                                 </div>
                                                 <div className="text-[9px] text-emerald-600/80 dark:text-emerald-400/80 mt-0.5">
                                                     {percent}% of milestones
@@ -783,8 +827,7 @@ export default function ProjectDetails({
                                                     <Clock className="h-3.5 w-3.5" />
                                                 </div>
                                                 <div className="mt-2 text-base font-extrabold text-amber-700 dark:text-amber-450">
-                                                    $
-                                                    {pendingAmount.toLocaleString()}
+                                                    ৳{pendingAmount.toLocaleString()}
                                                 </div>
                                                 <div className="text-[9px] text-amber-600/80 dark:text-amber-450/80 mt-0.5">
                                                     {
@@ -807,8 +850,7 @@ export default function ProjectDetails({
                                                     <CreditCard className="h-3.5 w-3.5" />
                                                 </div>
                                                 <div className="mt-2 text-base font-extrabold text-indigo-700 dark:text-indigo-405">
-                                                    $
-                                                    {totalContract.toLocaleString()}
+                                                    ৳{totalContract.toLocaleString()}
                                                 </div>
                                                 <div className="text-[9px] text-indigo-600/80 dark:text-indigo-400/80 mt-0.5">
                                                     {list.length} total
@@ -816,21 +858,19 @@ export default function ProjectDetails({
                                                 </div>
                                             </div>
 
-                                            {/* Unallocated Budget Card */}
+                                            {/* Total Budget Card */}
                                             <div className="p-3 rounded-lg border border-border bg-accent/5 dark:bg-accent/10 flex flex-col justify-between transition-all hover:scale-[1.02]">
                                                 <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                                    <span>Unallocated</span>
-                                                    <DollarSign className="h-3.5 w-3.5" />
+                                                    <span>Project Budget</span>
+                                                    <span className="font-bold text-xs">৳</span>
                                                 </div>
                                                 <div className="mt-2 text-base font-extrabold text-foreground">
-                                                    $
-                                                    {unallocatedBudget.toLocaleString()}
+                                                    ৳{(project.budget || totalContract || 0).toLocaleString()}
                                                 </div>
                                                 <div className="text-[9px] text-muted-foreground/80 mt-0.5">
-                                                    Budget: $
-                                                    {(
-                                                        project.budget || 0
-                                                    ).toLocaleString()}
+                                                    {project.budget && project.budget > totalContract
+                                                        ? `৳${(project.budget - totalContract).toLocaleString()} unallocated`
+                                                        : "Synced from milestones"}
                                                 </div>
                                             </div>
                                         </div>
@@ -866,21 +906,6 @@ export default function ProjectDetails({
                                             );
                                             return;
                                         }
-                                        const totalPayments =
-                                            (project.payments || []).reduce(
-                                                (sum: number, p: any) =>
-                                                    sum + Number(p.amount),
-                                                0,
-                                            ) + Number(payAmount);
-                                        if (
-                                            totalPayments >
-                                            (project.budget || 0)
-                                        ) {
-                                            toast.error(
-                                                `Total payment milestones ($${totalPayments.toLocaleString()}) cannot exceed the project budget ($${(project.budget || 0).toLocaleString()})`,
-                                            );
-                                            return;
-                                        }
                                         const newPay = {
                                             type: payType,
                                             customLabel:
@@ -903,8 +928,17 @@ export default function ProjectDetails({
                                         } else {
                                             updated.push(newPay);
                                         }
+                                        const totalBudget = updated.reduce(
+                                            (sum: number, p: any) =>
+                                                sum + Number(p.amount || 0),
+                                            0,
+                                        );
                                         updateMutation.mutate({
                                             payments: updated,
+                                            budget: Math.max(
+                                                Number(project.budget || 0),
+                                                totalBudget,
+                                            ),
                                         });
                                         setPayLabel("");
                                         setPayAmount("");
@@ -914,6 +948,7 @@ export default function ProjectDetails({
                                         setReceiptFile(null);
                                         setEditPaymentIndex(null);
                                         setShowAddPayment(false);
+                                        setMatchedFinanceAmount(null);
                                     }}
                                     className="bg-accent/10 border border-border/80 rounded-xl p-4 space-y-3.5 shadow-xs"
                                 >
@@ -967,13 +1002,15 @@ export default function ProjectDetails({
 
                                         <div className="space-y-1.5">
                                             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                                Amount ($){" "}
+                                                Amount (৳){" "}
                                                 <span className="text-destructive">
                                                     *
                                                 </span>
                                             </label>
                                             <div className="relative">
-                                                <DollarSign className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/75" />
+                                                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/75 font-bold text-xs">
+                                                    ৳
+                                                </span>
                                                 <input
                                                     type="number"
                                                     step="any"
@@ -1013,21 +1050,46 @@ export default function ProjectDetails({
                                     )}
 
                                     <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                            Payment Date{" "}
-                                            <span className="text-destructive">
-                                                *
-                                            </span>
-                                        </label>
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                                Payment Date{" "}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
+                                            </label>
+                                            {payDate && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => checkFinanceForDate(payDate)}
+                                                    disabled={checkingFinance}
+                                                    className="text-[10px] text-indigo-500 hover:text-indigo-600 font-medium flex items-center gap-1 cursor-pointer transition-colors"
+                                                >
+                                                    <RefreshCw className={`h-2.5 w-2.5 ${checkingFinance ? "animate-spin" : ""}`} />
+                                                    {checkingFinance ? "Checking Finance..." : "Check Finance"}
+                                                </button>
+                                            )}
+                                        </div>
                                         <input
                                             type="date"
                                             value={payDate}
-                                            onChange={(e) =>
-                                                setPayDate(e.target.value)
-                                            }
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setPayDate(val);
+                                                if (val) {
+                                                    checkFinanceForDate(val);
+                                                } else {
+                                                    setMatchedFinanceAmount(null);
+                                                }
+                                            }}
                                             className="w-full h-9 px-3 rounded-lg border border-border bg-background hover:bg-background/80 focus:bg-background focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-xs text-foreground transition-all focus:outline-none"
                                             required
                                         />
+                                        {matchedFinanceAmount !== null && (
+                                            <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 mt-1">
+                                                <CheckCircle2 className="h-3 w-3 shrink-0" />
+                                                Matched with Finance income: ৳{matchedFinanceAmount.toLocaleString()}
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="space-y-1.5">
@@ -1216,7 +1278,7 @@ export default function ProjectDetails({
                                                         </div>
                                                     )}
                                                     <div className="text-xs font-bold text-foreground">
-                                                        $
+                                                        ৳
                                                         {Number(
                                                             pay.amount,
                                                         ).toLocaleString()}
@@ -1526,8 +1588,17 @@ export default function ProjectDetails({
                                         (_: any, idx: number) =>
                                             idx !== deletePaymentIndex,
                                     );
+                                    const totalBudget = updated.reduce(
+                                        (sum: number, p: any) =>
+                                            sum + Number(p.amount || 0),
+                                        0,
+                                    );
                                     updateMutation.mutate({
                                         payments: updated,
+                                        budget: Math.max(
+                                            Number(project.budget || 0),
+                                            totalBudget,
+                                        ),
                                     });
                                     setDeletePaymentIndex(null);
                                 }
