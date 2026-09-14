@@ -19,10 +19,10 @@ export interface ITransactionAccountDetails {
 
 export interface ITransaction extends Document {
     amount: number;
-    amountInBdt: number;
     type: TransactionTypeUnion;
     category: TransactionCategoryUnion;
     productName?: ProductNameUnion | string;
+    productId?: mongoose.Types.ObjectId;
     description: string;
     date: Date;
     user?: mongoose.Types.ObjectId;
@@ -37,7 +37,6 @@ export interface ITransaction extends Document {
 const TransactionSchema = new Schema<ITransaction>(
     {
         amount: { type: Number, required: true, min: 0 },
-        amountInBdt: { type: Number, required: true, min: 0, default: 0 },
         type: {
             type: String,
             enum: Object.values(TransactionType),
@@ -50,7 +49,13 @@ const TransactionSchema = new Schema<ITransaction>(
         },
         productName: {
             type: String,
-            enum: [...Object.values(ProductName), "", null],
+            trim: true,
+            default: "",
+        },
+        productId: {
+            type: Schema.Types.ObjectId,
+            ref: "Product",
+            index: true,
         },
         description: { type: String, required: true, maxlength: 500 },
         date: { type: Date, default: Date.now },

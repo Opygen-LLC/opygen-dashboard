@@ -81,8 +81,7 @@ export async function GET() {
                         year: { $year: "$date" },
                         month: { $month: "$date" },
                     },
-                    revenueUsd: { $sum: "$amount" },
-                    revenueBdt: { $sum: "$amountInBdt" },
+                    revenueBdt: { $sum: "$amount" },
                     count: { $sum: 1 },
                 },
             },
@@ -102,7 +101,6 @@ export async function GET() {
         const monthMap = new Map<string, {
             year: number;
             month: number;
-            revenueUsd: number;
             revenueBdt: number;
             count: number;
         }>();
@@ -112,7 +110,6 @@ export async function GET() {
         monthMap.set(curKey, {
             year: curYear,
             month: curMonth,
-            revenueUsd: 0,
             revenueBdt: 0,
             count: 0,
         });
@@ -124,7 +121,6 @@ export async function GET() {
             monthMap.set(key, {
                 year: y,
                 month: m,
-                revenueUsd: Number(Number(item.revenueUsd || 0).toFixed(2)),
                 revenueBdt: Number(Number(item.revenueBdt || 0).toFixed(2)),
                 count: item.count || 0,
             });
@@ -160,7 +156,6 @@ export async function GET() {
                 monthName: `${monthNames[data.month - 1]} ${data.year}`,
                 year: data.year,
                 month: data.month,
-                revenueUsd: data.revenueUsd,
                 revenueBdt: data.revenueBdt,
                 transactionCount: data.count,
                 goal,

@@ -666,14 +666,14 @@ export default function UserProfileView() {
     .filter((t: any) => t.type === "income" || t.type === "+")
     .reduce(
       (sum: number, t: any) =>
-        sum + Number(t.amountInBdt || t.transaction?.amountInBdt || 0),
+        sum + Number(t.amount || t.transaction?.amount || 0),
       0,
     );
   const pageExpenseBdt = (statementData?.transactions || [])
     .filter((t: any) => t.type !== "income" && t.type !== "+")
     .reduce(
       (sum: number, t: any) =>
-        sum + Number(t.amountInBdt || t.transaction?.amountInBdt || 0),
+        sum + Number(t.amount || t.transaction?.amount || 0),
       0,
     );
 
@@ -1655,8 +1655,8 @@ export default function UserProfileView() {
                                 const isIncome =
                                   t.type === "income" || t.type === "+";
                                 const bdtVal = Number(
-                                  t.amountInBdt ||
-                                    t.transaction?.amountInBdt ||
+                                  t.amount ||
+                                    t.transaction?.amount ||
                                     0,
                                 );
                                 return (
@@ -1749,8 +1749,8 @@ export default function UserProfileView() {
                             const isIncome =
                               t.type === "income" || t.type === "+";
                             const bdtVal = Number(
-                              t.amountInBdt ||
-                                t.transaction?.amountInBdt ||
+                              t.amount ||
+                                t.transaction?.amount ||
                                 0,
                             );
                             return (

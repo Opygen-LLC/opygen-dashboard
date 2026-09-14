@@ -118,7 +118,7 @@ export async function GET(request: Request) {
         let monthlyIncomeBdt = 0;
         let monthlyExpenseBdt = 0;
         for (const tx of currentMonthTxs) {
-            const amt = Number(tx.amountInBdt ?? tx.amount ?? 0);
+            const amt = Number(tx.amount || 0);
             if (tx.type === TransactionType.INCOME) {
                 monthlyIncomeBdt += amt;
             } else if (tx.type === TransactionType.EXPENSE) {
@@ -277,7 +277,7 @@ export async function GET(request: Request) {
                     _id: String(tx._id),
                     type: tx.type,
                     category: tx.category,
-                    amount: Number(tx.amountInBdt ?? tx.amount ?? 0),
+                    amount: Number(tx.amount || 0),
                     description: tx.description || tx.title || "",
                     date: tx.date,
                     accountName: tx.accountName || "",

@@ -259,7 +259,6 @@ export type AddUserInput = z.infer<typeof addUserSchema>;
 
 export const transactionSchema = z.object({
     amount: z.coerce.number().min(0, "Amount must be a non-negative number"),
-    amountInBdt: z.coerce.number().min(0, "Amount in BDT must be a non-negative number").default(0),
     type: z.enum(["income", "expense"]),
     category: z.enum([
         "salary",
@@ -276,10 +275,14 @@ export const transactionSchema = z.object({
         "other",
     ]),
     productName: z
-        .enum(["Opygen Cleaning CRM", "Opygen Real Estate CRM"])
+        .string()
         .optional()
         .nullable()
         .or(z.literal("")),
+    productId: z
+        .string()
+        .optional()
+        .nullable(),
     description: z
         .string()
         .min(1, "Description is required")
@@ -311,6 +314,14 @@ export const transactionSchema = z.object({
 });
 
 export type TransactionInput = z.infer<typeof transactionSchema>;
+
+export const productSchema = z.object({
+    name: z.string().trim().min(1, "Product name is required").max(100, "Name too long"),
+    url: z.string().trim().min(1, "Website URL is required").url("Must be a valid URL"),
+    description: z.string().trim().optional().default(""),
+});
+
+export type ProductInput = z.infer<typeof productSchema>;
 
 export const clientSchema = z
     .object({

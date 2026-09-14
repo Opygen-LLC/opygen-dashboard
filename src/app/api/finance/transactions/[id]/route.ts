@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import dbConnect from '@/lib/db';
 import Transaction from '@/models/Transaction';
+import Product from '@/models/Product';
 import Statement from '@/models/Statements';
 import { transactionSchema } from '@/lib/validations';
 import User from '@/models/User';
@@ -41,11 +42,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const effectiveCategory = updateData.category || originalTx.category;
 
     if (effectiveCategory === 'product') {
-      if (updateData.category === 'product' && !updateData.productName && !originalTx.productName) {
-        return NextResponse.json({ error: 'Product name is required when category is Product' }, { status: 400 });
+      if (updateData.category === 'product') {
+        if (!updateData.productName || !updateData.productName.trim()) {
+          return NextResponse.json({ error: 'Product name is required when category is Product' }, { status: 400 });
+        }
+        if (!updateData.productId) {
+          const escaped = updateData.productName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const matched = await Product.findOne({
+            name: { $regex: new RegExp(`^${escaped}$`, "i") }
+          }).lean();
+          if (matched) {
+            updateData.productId = matched._id.toString();
+          }
+        }
       }
     } else {
       updateData.productName = null;
+      updateData.productId = null;
     }
 
     // If account was changed or provided, snapshot new accountDetails
@@ -64,6 +77,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
+    if (updateData.amount !== undefined) {
+      updateData.amount = Number(updateData.amount);
+    }
+
     // Perform the update
     const transaction = await Transaction.findByIdAndUpdate(id, updateData, { new: true })
       .populate('user', 'name email avatarUrl')
@@ -73,19 +90,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Transaction not found after update' }, { status: 404 });
     }
 
-    // ── ACCOUNT BALANCE SYNC ────────────────────────────────────────────────
+    // ── ACCOUNT BALANCE SYNC (BDT) ──────────────────────────────────────────
     // Revert old transaction's impact on its account
     if (originalTx.accountUser && originalTx.accountId) {
       const oldIsIncome = originalTx.type === 'income';
-      const oldDeltaUsd = oldIsIncome ? Number(originalTx.amount) : -Number(originalTx.amount);
-      const oldDeltaBdt = oldIsIncome ? Number(originalTx.amountInBdt || 0) : -Number(originalTx.amountInBdt || 0);
+      const oldDelta = oldIsIncome ? Number(originalTx.amount || 0) : -Number(originalTx.amount || 0);
 
       await User.updateOne(
         { _id: originalTx.accountUser, 'accounts._id': originalTx.accountId },
         {
           $inc: {
-            'accounts.$.balance': -oldDeltaUsd,
-            'accounts.$.balanceInBdt': -oldDeltaBdt,
+            'accounts.$.balance': -oldDelta,
+            'accounts.$.balanceInBdt': -oldDelta,
           }
         }
       );
@@ -97,15 +113,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         ? transaction.accountUser._id.toString()
         : transaction.accountUser.toString();
       const newIsIncome = transaction.type === 'income';
-      const newDeltaUsd = newIsIncome ? Number(transaction.amount) : -Number(transaction.amount);
-      const newDeltaBdt = newIsIncome ? Number(transaction.amountInBdt || 0) : -Number(transaction.amountInBdt || 0);
+      const newDelta = newIsIncome ? Number(transaction.amount) : -Number(transaction.amount);
 
       await User.updateOne(
         { _id: newAccountUserId, 'accounts._id': transaction.accountId },
         {
           $inc: {
-            'accounts.$.balance': newDeltaUsd,
-            'accounts.$.balanceInBdt': newDeltaBdt,
+            'accounts.$.balance': newDelta,
+            'accounts.$.balanceInBdt': newDelta,
           }
         }
       );
@@ -124,13 +139,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (existingStatement) {
         // Calculate old balance delta
         const oldDelta = existingStatement.type === '+' ? Number(existingStatement.amount) : -Number(existingStatement.amount);
-        const oldBdtDelta = existingStatement.type === '+' ? Number(existingStatement.amountInBdt || 0) : -Number(existingStatement.amountInBdt || 0);
         const oldUserId = existingStatement.user.toString();
 
         // Update existing statement
         existingStatement.user = newUserId as any;
         existingStatement.amount = transaction.amount;
-        existingStatement.amountInBdt = transaction.amountInBdt || 0;
         existingStatement.type = stmtType;
         existingStatement.category = transaction.category;
         existingStatement.description = transaction.description;
@@ -139,17 +152,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         
         // Calculate new balance delta
         const newDelta = stmtType === '+' ? Number(transaction.amount) : -Number(transaction.amount);
-        const newBdtDelta = stmtType === '+' ? Number(transaction.amountInBdt || 0) : -Number(transaction.amountInBdt || 0);
 
         // Apply diffs directly
         if (oldUserId !== newUserId) {
-            await User.findByIdAndUpdate(oldUserId, { $inc: { balance: -oldDelta, balanceInBdt: -oldBdtDelta } });
-            await User.findByIdAndUpdate(newUserId, { $inc: { balance: newDelta, balanceInBdt: newBdtDelta } });
+            await User.findByIdAndUpdate(oldUserId, { $inc: { balance: -oldDelta, balanceInBdt: -oldDelta } });
+            await User.findByIdAndUpdate(newUserId, { $inc: { balance: newDelta, balanceInBdt: newDelta } });
         } else {
             const diff = newDelta - oldDelta;
-            const bdtDiff = newBdtDelta - oldBdtDelta;
-            if (diff !== 0 || bdtDiff !== 0) {
-                await User.findByIdAndUpdate(newUserId, { $inc: { balance: diff, balanceInBdt: bdtDiff } });
+            if (diff !== 0) {
+                await User.findByIdAndUpdate(newUserId, { $inc: { balance: diff, balanceInBdt: diff } });
             }
         }
       } else {
@@ -158,7 +169,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           user: newUserId,
           transaction: transaction._id,
           amount: transaction.amount,
-          amountInBdt: transaction.amountInBdt || 0,
           type: stmtType,
           category: transaction.category,
           description: transaction.description,
@@ -166,15 +176,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         });
         
         const balanceDelta = stmtType === '+' ? Number(transaction.amount) : -Number(transaction.amount);
-        const balanceBdtDelta = stmtType === '+' ? Number(transaction.amountInBdt || 0) : -Number(transaction.amountInBdt || 0);
-        await User.findByIdAndUpdate(newUserId, { $inc: { balance: balanceDelta, balanceInBdt: balanceBdtDelta } });
+        await User.findByIdAndUpdate(newUserId, { $inc: { balance: balanceDelta, balanceInBdt: balanceDelta } });
       }
     } else if (existingStatement) {
       // Category changed away from statement type — delete statement
       const oldDelta = existingStatement.type === '+' ? Number(existingStatement.amount) : -Number(existingStatement.amount);
-      const oldBdtDelta = existingStatement.type === '+' ? Number(existingStatement.amountInBdt || 0) : -Number(existingStatement.amountInBdt || 0);
       await Statement.findByIdAndDelete(existingStatement._id);
-      await User.findByIdAndUpdate(existingStatement.user, { $inc: { balance: -oldDelta, balanceInBdt: -oldBdtDelta } });
+      await User.findByIdAndUpdate(existingStatement.user, { $inc: { balance: -oldDelta, balanceInBdt: -oldDelta } });
     }
 
     return NextResponse.json(transaction);
@@ -199,18 +207,17 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
     }
 
-    // Revert account balance before deletion
+    // Revert account balance before deletion (BDT)
     if (transaction.accountUser && transaction.accountId) {
       const isIncome = transaction.type === 'income';
-      const deltaUsd = isIncome ? Number(transaction.amount) : -Number(transaction.amount);
-      const deltaBdt = isIncome ? Number(transaction.amountInBdt || 0) : -Number(transaction.amountInBdt || 0);
+      const delta = isIncome ? Number(transaction.amount || 0) : -Number(transaction.amount || 0);
 
       await User.updateOne(
         { _id: transaction.accountUser, 'accounts._id': transaction.accountId },
         {
           $inc: {
-            'accounts.$.balance': -deltaUsd,
-            'accounts.$.balanceInBdt': -deltaBdt,
+            'accounts.$.balance': -delta,
+            'accounts.$.balanceInBdt': -delta,
           }
         }
       );
@@ -223,9 +230,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const existingStatement = await Statement.findOne({ transaction: id });
     if (existingStatement) {
       const oldDelta = existingStatement.type === '+' ? Number(existingStatement.amount) : -Number(existingStatement.amount);
-      const oldBdtDelta = existingStatement.type === '+' ? Number(existingStatement.amountInBdt || 0) : -Number(existingStatement.amountInBdt || 0);
       await Statement.findByIdAndDelete(existingStatement._id);
-      await User.findByIdAndUpdate(existingStatement.user, { $inc: { balance: -oldDelta, balanceInBdt: -oldBdtDelta } });
+      await User.findByIdAndUpdate(existingStatement.user, { $inc: { balance: -oldDelta, balanceInBdt: -oldDelta } });
     }
 
     return NextResponse.json({ success: true, message: 'Transaction deleted successfully' });

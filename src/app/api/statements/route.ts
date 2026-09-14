@@ -45,44 +45,30 @@ export async function GET(req: NextRequest) {
         .exec(),
       Statement.countDocuments(query),
       Statement.find(query)
-        .populate('transaction', 'amountInBdt')
         .lean()
         .exec(),
     ]);
 
-    // Calculate user's true lifetime totals across all statements
+    // Calculate user's true lifetime totals across all statements (BDT)
     let totalIncome = 0;
     let totalExpense = 0;
-    let totalIncomeBdt = 0;
-    let totalExpenseBdt = 0;
 
     for (const stmt of allUserStatements) {
       const amt = Number(stmt.amount || 0);
-      const bdt = Number(stmt.amountInBdt || (stmt.transaction as any)?.amountInBdt || 0);
       if (stmt.type === '+') {
         totalIncome += amt;
-        totalIncomeBdt += bdt;
       } else {
         totalExpense += amt;
-        totalExpenseBdt += bdt;
       }
     }
 
     const totalBalance = Number((totalIncome - totalExpense).toFixed(2));
-    const totalBalanceBdt = Number((totalIncomeBdt - totalExpenseBdt).toFixed(2));
-
-    // Ensure amountInBdt is resolved from transaction if missing/0 on the statement
-    const processedStatements = statements.map((stmt) => {
-      const s = typeof (stmt as any).toObject === 'function' ? (stmt as any).toObject() : stmt;
-      const txAmountInBdt = s.transaction && typeof s.transaction === 'object' ? s.transaction.amountInBdt : 0;
-      if ((!s.amountInBdt || s.amountInBdt === 0) && txAmountInBdt) {
-        s.amountInBdt = txAmountInBdt;
-      }
-      return s;
-    });
+    const totalIncomeBdt = totalIncome;
+    const totalExpenseBdt = totalExpense;
+    const totalBalanceBdt = totalBalance;
     
     return NextResponse.json({
-      statements: processedStatements,
+      statements,
       totalPages: Math.ceil(total / limit),
       currentPage: page,
       total,

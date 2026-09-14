@@ -25,7 +25,10 @@ import {
     X,
     ChevronLeft,
     ChevronRight,
+    Package,
 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import ProductsSettingsTab from "./ProductsSettingsTab";
 import { FaFacebook, FaInstagram, FaLinkedin, FaYoutube } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
 import {
@@ -128,8 +131,26 @@ export default function CompanySettingsView() {
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
     const isDirty = JSON.stringify(form) !== JSON.stringify(savedForm) || logoFile !== null;
 
-    /* ── active tab ── */
-    const [activeTab, setActiveTab] = useState<"general" | "goals">("general");
+    /* ── URL-synchronized tabs (_tab=) ── */
+    const searchParams = useSearchParams();
+    const tabParam = searchParams.get("_tab");
+    const [activeTab, setActiveTab] = useState<"company" | "revenue" | "products">(() => {
+        return tabParam === "revenue" || tabParam === "products" ? tabParam : "company";
+    });
+
+    useEffect(() => {
+        if (tabParam === "revenue" || tabParam === "products") {
+            setActiveTab(tabParam);
+        } else if (!tabParam) {
+            setActiveTab("company");
+        }
+    }, [tabParam]);
+
+    const switchTab = useCallback((tab: "company" | "revenue" | "products") => {
+        setActiveTab(tab);
+        const url = `/admin-dashboard/settings?_tab=${tab}`;
+        window.history.replaceState(null, "", url);
+    }, []);
 
     /* ── pagination for revenue table ── */
     const [revenuePage, setRevenuePage] = useState(1);
@@ -323,16 +344,64 @@ export default function CompanySettingsView() {
                 </div>
             </motion.div>
 
-            {/* ── Section A: Company Info ── */}
-            <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                    delay: 0.08,
-                    duration: 0.45,
-                    ease: [0.22, 1, 0.36, 1],
-                }}
-            >
+            {/* ── Link Tabs (_tab=) ── */}
+            <div className="flex items-center gap-2 border-b border-border/60 pb-3 overflow-x-auto">
+                <button
+                    type="button"
+                    onClick={() => switchTab("company")}
+                    className={cn(
+                        "flex items-center gap-2 px-4 py-3 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap",
+                        activeTab === "company"
+                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                            : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                >
+                    <Building2 className="h-3.5 w-3.5" />
+                    Company & Socials
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => switchTab("revenue")}
+                    className={cn(
+                        "flex items-center gap-2 px-4 py-3 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap",
+                        activeTab === "revenue"
+                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                            : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                >
+                    <Target className="h-3.5 w-3.5" />
+                    Monthly Revenue
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => switchTab("products")}
+                    className={cn(
+                        "flex items-center gap-2 px-4 py-3 rounded-md text-xs font-bold transition-all cursor-pointer whitespace-nowrap",
+                        activeTab === "products"
+                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                            : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                >
+                    <Package className="h-3.5 w-3.5" />
+                    Products
+                </button>
+            </div>
+
+            {/* ── TAB 1: Company & Social Media ── */}
+            {activeTab === "company" && (
+                <div className="space-y-8">
+                    {/* ── Section A: Company Info ── */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                            delay: 0.08,
+                            duration: 0.45,
+                            ease: [0.22, 1, 0.36, 1],
+                        }}
+                    >
                 <Section
                     title="Company Information"
                     description="Basic identity and contact details for your company"
@@ -529,13 +598,18 @@ export default function CompanySettingsView() {
                     </div>
                 </Section>
             </motion.div>
+        </div>
+    )}
 
+    {/* ── TAB 2: Monthly Revenue ── */}
+    {activeTab === "revenue" && (
+        <div className="space-y-8">
             {/* ── Section C: Monthly Revenue Goal & Performance History ── */}
             <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
-                    delay: 0.24,
+                    delay: 0.1,
                     duration: 0.45,
                     ease: [0.22, 1, 0.36, 1],
                 }}
@@ -892,13 +966,18 @@ export default function CompanySettingsView() {
                     </div>
                 </Section>
             </motion.div>
+        </div>
+    )}
 
-            {/* ══════════════════════════════════════════
-                FLOATING SAVE BAR — appears when dirty
-            ══════════════════════════════════════════ */}
-            <AnimatePresence>
-                {isDirty && (
-                    <motion.div
+    {/* ── TAB 3: Products Management ── */}
+    {activeTab === "products" && <ProductsSettingsTab />}
+
+    {/* ══════════════════════════════════════════
+        FLOATING SAVE BAR — appears when dirty
+    ══════════════════════════════════════════ */}
+    <AnimatePresence>
+        {isDirty && activeTab !== "products" && (
+            <motion.div
                         key="save-bar"
                         initial={{ opacity: 0, y: 32 }}
                         animate={{ opacity: 1, y: 0 }}

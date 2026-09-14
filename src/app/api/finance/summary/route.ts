@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
           },
           totalIncomeBdt: {
             $sum: {
-              $cond: [{ $eq: ["$type", TransactionType.INCOME] }, { $ifNull: ["$amountInBdt", 0] }, 0]
+              $cond: [{ $eq: ["$type", TransactionType.INCOME] }, "$amount", 0]
             }
           },
           totalExpense: {
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
           },
           totalExpenseBdt: {
             $sum: {
-              $cond: [{ $eq: ["$type", TransactionType.EXPENSE] }, { $ifNull: ["$amountInBdt", 0] }, 0]
+              $cond: [{ $eq: ["$type", TransactionType.EXPENSE] }, "$amount", 0]
             }
           },
           totalSalaries: {
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
           },
           totalSalariesBdt: {
             $sum: {
-              $cond: [{ $eq: ["$category", TransactionCategory.SALARY] }, { $ifNull: ["$amountInBdt", 0] }, 0]
+              $cond: [{ $eq: ["$category", TransactionCategory.SALARY] }, "$amount", 0]
             }
           },
           totalLoansTaken: {
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
           },
           totalLoansTakenBdt: {
             $sum: {
-              $cond: [{ $eq: ["$category", TransactionCategory.LOAN_TAKEN] }, { $ifNull: ["$amountInBdt", 0] }, 0]
+              $cond: [{ $eq: ["$category", TransactionCategory.LOAN_TAKEN] }, "$amount", 0]
             }
           },
           totalLoansCollected: {
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
           },
           totalLoansCollectedBdt: {
             $sum: {
-              $cond: [{ $eq: ["$category", TransactionCategory.LOAN_COLLECTED] }, { $ifNull: ["$amountInBdt", 0] }, 0]
+              $cond: [{ $eq: ["$category", TransactionCategory.LOAN_COLLECTED] }, "$amount", 0]
             }
           },
           totalLoansGiven: {
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
           },
           totalLoansGivenBdt: {
             $sum: {
-              $cond: [{ $eq: ["$category", TransactionCategory.LOAN_GIVEN] }, { $ifNull: ["$amountInBdt", 0] }, 0]
+              $cond: [{ $eq: ["$category", TransactionCategory.LOAN_GIVEN] }, "$amount", 0]
             }
           },
           totalLoansRepaid: {
@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
           },
           totalLoansRepaidBdt: {
             $sum: {
-              $cond: [{ $eq: ["$category", TransactionCategory.LOAN_REPAYMENT] }, { $ifNull: ["$amountInBdt", 0] }, 0]
+              $cond: [{ $eq: ["$category", TransactionCategory.LOAN_REPAYMENT] }, "$amount", 0]
             }
           }
         }

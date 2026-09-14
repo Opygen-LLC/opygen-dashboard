@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/db";
 import Transaction from "@/models/Transaction";
+import Product from "@/models/Product";
 import { transactionSchema } from "@/lib/validations";
 import User from "@/models/User";
 import { calculateBalanceDelta } from "@/lib/finance";
@@ -162,30 +163,42 @@ export async function POST(req: NextRequest) {
                     { status: 400 },
                 );
             }
+            if (!transactionData.productId) {
+                const escaped = transactionData.productName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const matched = await Product.findOne({
+                    name: { $regex: new RegExp(`^${escaped}$`, "i") }
+                }).lean();
+                if (matched) {
+                    transactionData.productId = matched._id.toString();
+                }
+            }
         } else {
             transactionData.productName = null as any;
+            transactionData.productId = null as any;
+        }
+
+        if (transactionData.amount !== undefined) {
+            transactionData.amount = Number(transactionData.amount);
         }
 
         const newTransaction = new Transaction(transactionData);
         await newTransaction.save();
 
-        // Atomically adjust the account balance on User
+        // Atomically adjust the account balance on User (BDT)
         const isIncome = transactionData.type === "income";
-        const deltaUsd = isIncome ? Number(transactionData.amount) : -Number(transactionData.amount);
-        const deltaBdt = isIncome ? Number(transactionData.amountInBdt || 0) : -Number(transactionData.amountInBdt || 0);
+        const delta = isIncome ? Number(transactionData.amount) : -Number(transactionData.amount);
 
         await User.updateOne(
             { _id: transactionData.accountUser, "accounts._id": transactionData.accountId },
             {
                 $inc: {
-                    "accounts.$.balance": deltaUsd,
-                    "accounts.$.balanceInBdt": deltaBdt,
+                    "accounts.$.balance": delta,
+                    "accounts.$.balanceInBdt": delta,
                 },
             }
         );
 
         // Create Statement if user is assigned and category is statement-relevant.
-        // The Statement model's post-save hook automatically updates user.balance.
         const userId = transactionData.user ? transactionData.user.toString() : null;
 
         if (userId) {
@@ -196,7 +209,6 @@ export async function POST(req: NextRequest) {
                     user: userId,
                     transaction: newTransaction._id,
                     amount: transactionData.amount,
-                    amountInBdt: transactionData.amountInBdt || 0,
                     type: stmtType,
                     category: transactionData.category,
                     description: transactionData.description,
@@ -205,9 +217,8 @@ export async function POST(req: NextRequest) {
                 
                 // Explicitly update user balance and balanceInBdt
                 const balanceDelta = stmtType === '+' ? Number(transactionData.amount) : -Number(transactionData.amount);
-                const balanceBdtDelta = stmtType === '+' ? Number(transactionData.amountInBdt || 0) : -Number(transactionData.amountInBdt || 0);
                 await User.findByIdAndUpdate(userId, {
-                    $inc: { balance: balanceDelta, balanceInBdt: balanceBdtDelta }
+                    $inc: { balance: balanceDelta, balanceInBdt: balanceDelta }
                 });
             }
         }

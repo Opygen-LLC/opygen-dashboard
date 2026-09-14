@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import Image from "next/image";
@@ -25,6 +25,8 @@ import {
     Landmark,
     FileText,
     Globe,
+    Package,
+    ChevronDown,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -49,6 +51,25 @@ export default function AdminDashboardLayout({
         staleTime: 1000 * 60 * 5, // cache 5 min
     });
     const companyName = appSettings?.companyName?.trim() || "OpyDash";
+
+    const { data: products = [] } = useQuery<any[]>({
+        queryKey: ["products"],
+        queryFn: async () => {
+            const res = await fetch("/api/products");
+            if (!res.ok) return [];
+            return res.json();
+        },
+        staleTime: 1000 * 60 * 5,
+    });
+
+    const isProductRoute = pathname.startsWith("/admin-dashboard/products");
+    const [productsOpen, setProductsOpen] = useState(isProductRoute);
+
+    useEffect(() => {
+        if (isProductRoute) {
+            setProductsOpen(true);
+        }
+    }, [isProductRoute]);
 
     const navigation = [
         { name: "Dashboard", href: "/admin-dashboard", icon: LayoutDashboard },
@@ -96,20 +117,89 @@ export default function AdminDashboardLayout({
                             (item.href !== "/admin-dashboard" &&
                                 pathname.startsWith(item.href));
                         return (
-                            <Link
-                                key={item.name}
-                                href={item.href}
-                                className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                                    isActive
-                                        ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-l-2 border-indigo-500 pl-2.5"
-                                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                                }`}
-                            >
-                                <item.icon
-                                    className={`h-4.5 w-4.5 shrink-0 ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-muted-foreground group-hover:text-foreground"}`}
-                                />
-                                {item.name}
-                            </Link>
+                            <React.Fragment key={item.name}>
+                                <Link
+                                    href={item.href}
+                                    className={`group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                                        isActive
+                                            ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-l-2 border-indigo-500 pl-2.5 font-semibold"
+                                            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                                    }`}
+                                >
+                                    <item.icon
+                                        className={`h-4.5 w-4.5 shrink-0 ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-muted-foreground group-hover:text-foreground"}`}
+                                    />
+                                    {item.name}
+                                </Link>
+
+                                {item.name === "Demo Websites" && products.length > 0 && (
+                                    <div className="space-y-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setProductsOpen(!productsOpen)}
+                                            className={`group w-full flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 cursor-pointer ${
+                                                isProductRoute && !productsOpen
+                                                    ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-l-2 border-indigo-500 pl-2.5 font-semibold"
+                                                    : isProductRoute
+                                                    ? "text-indigo-600 dark:text-indigo-400 font-semibold hover:bg-accent/50"
+                                                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <Package
+                                                    className={`h-4.5 w-4.5 shrink-0 ${
+                                                        isProductRoute
+                                                            ? "text-indigo-600 dark:text-indigo-400"
+                                                            : "text-muted-foreground group-hover:text-foreground"
+                                                    }`}
+                                                />
+                                                <span>Products</span>
+                                            </div>
+                                            <ChevronDown
+                                                className={`h-4 w-4 transition-transform duration-200 ${
+                                                    productsOpen ? "rotate-180 text-foreground" : "text-muted-foreground"
+                                                }`}
+                                            />
+                                        </button>
+
+                                        <AnimatePresence>
+                                            {productsOpen && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: "auto" }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    transition={{ duration: 0.15 }}
+                                                    className="overflow-hidden pl-6 pr-1 space-y-1"
+                                                >
+                                                    {products.map((p: any) => {
+                                                        const isThisActive = pathname === `/admin-dashboard/products/${p._id}`;
+                                                        return (
+                                                            <Link
+                                                                key={p._id}
+                                                                href={`/admin-dashboard/products/${p._id}`}
+                                                                className={`group flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 truncate ${
+                                                                    isThisActive
+                                                                        ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-l-2 border-indigo-500 pl-2.5 font-semibold"
+                                                                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                                                                }`}
+                                                            >
+                                                                <span
+                                                                    className={`h-1.5 w-1.5 rounded-full shrink-0 transition-colors ${
+                                                                        isThisActive
+                                                                            ? "bg-indigo-600 dark:bg-indigo-400"
+                                                                            : "bg-muted-foreground/40 group-hover:bg-foreground"
+                                                                    }`}
+                                                                />
+                                                                <span className="truncate">{p.name}</span>
+                                                            </Link>
+                                                        );
+                                                    })}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                )}
+                            </React.Fragment>
                         );
                     })}
                 </nav>
@@ -225,21 +315,85 @@ export default function AdminDashboardLayout({
                                         (item.href !== "/admin-dashboard" &&
                                             pathname.startsWith(item.href));
                                     return (
-                                        <Link
-                                            key={item.name}
-                                            href={item.href}
-                                            onClick={() =>
-                                                setMobileMenuOpen(false)
-                                            }
-                                            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
-                                                isActive
-                                                    ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-l-2 border-indigo-500 pl-2.5"
-                                                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                                            }`}
-                                        >
-                                            <item.icon className="h-4.5 w-4.5 shrink-0" />
-                                            {item.name}
-                                        </Link>
+                                        <React.Fragment key={item.name}>
+                                            <Link
+                                                href={item.href}
+                                                onClick={() =>
+                                                    setMobileMenuOpen(false)
+                                                }
+                                                className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                                                    isActive
+                                                        ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-l-2 border-indigo-500 pl-2.5 font-semibold"
+                                                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                                                }`}
+                                            >
+                                                <item.icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-muted-foreground"}`} />
+                                                {item.name}
+                                            </Link>
+
+                                            {item.name === "Demo Websites" && products.length > 0 && (
+                                                <div className="space-y-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setProductsOpen(!productsOpen)}
+                                                        className={`group w-full flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 cursor-pointer ${
+                                                            isProductRoute && !productsOpen
+                                                                ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-l-2 border-indigo-500 pl-2.5 font-semibold"
+                                                                : isProductRoute
+                                                                ? "text-indigo-600 dark:text-indigo-400 font-semibold hover:bg-accent/50"
+                                                                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <Package className={`h-4.5 w-4.5 shrink-0 ${isProductRoute ? "text-indigo-600 dark:text-indigo-400" : "text-muted-foreground"}`} />
+                                                            <span>Products</span>
+                                                        </div>
+                                                        <ChevronDown
+                                                            className={`h-4 w-4 transition-transform duration-200 ${
+                                                                productsOpen ? "rotate-180" : ""
+                                                            }`}
+                                                        />
+                                                    </button>
+
+                                                    <AnimatePresence>
+                                                        {productsOpen && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, height: 0 }}
+                                                                animate={{ opacity: 1, height: "auto" }}
+                                                                exit={{ opacity: 0, height: 0 }}
+                                                                transition={{ duration: 0.15 }}
+                                                                className="overflow-hidden pl-6 pr-1 space-y-1"
+                                                            >
+                                                                {products.map((p: any) => {
+                                                                    const isThisActive = pathname === `/admin-dashboard/products/${p._id}`;
+                                                                    return (
+                                                                        <Link
+                                                                            key={p._id}
+                                                                            href={`/admin-dashboard/products/${p._id}`}
+                                                                            onClick={() => setMobileMenuOpen(false)}
+                                                                            className={`group flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 truncate ${
+                                                                                isThisActive
+                                                                                    ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-l-2 border-indigo-500 pl-2.5 font-semibold"
+                                                                                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                                                                            }`}
+                                                                        >
+                                                                            <span
+                                                                                className={`h-1.5 w-1.5 rounded-full shrink-0 transition-colors ${
+                                                                                    isThisActive
+                                                                                        ? "bg-indigo-600 dark:bg-indigo-400"
+                                                                                        : "bg-muted-foreground/40 group-hover:bg-foreground"
+                                                                                }`}
+                                                                            />
+                                                                            <span className="truncate">{p.name}</span>
+                                                                        </Link>
+                                                                    );
+                                                                })}
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
+                                            )}
+                                        </React.Fragment>
                                     );
                                 })}
                             </nav>

@@ -250,6 +250,16 @@ export default function FinanceDashboardView() {
     });
     const allAccounts = accountsData?.accounts || [];
 
+    // Fetch dynamic products for dropdowns
+    const { data: dynamicProducts = [] } = useQuery<any[]>({
+        queryKey: ["products"],
+        queryFn: async () => {
+            const res = await fetch("/api/products");
+            if (!res.ok) return [];
+            return res.json();
+        },
+    });
+
     // Form
     const {
         register,
@@ -266,7 +276,6 @@ export default function FinanceDashboardView() {
             category: "office",
             productName: "",
             amount: 0,
-            amountInBdt: 0,
             date: new Date().toISOString().split("T")[0],
             description: "",
             user: null,
@@ -316,7 +325,6 @@ export default function FinanceDashboardView() {
             category: "office",
             productName: "",
             amount: 0,
-            amountInBdt: 0,
             date: new Date().toISOString().split("T")[0],
             description: "",
             user: null,
@@ -337,13 +345,12 @@ export default function FinanceDashboardView() {
             ? "other"
             : null;
 
-        const bdtVal = tx.amountInBdt || tx.amount || 0;
+        const bdtVal = Number(tx.amount || 0);
         reset({
             type: tx.type,
             category: tx.category,
             productName: tx.productName || "",
             amount: bdtVal,
-            amountInBdt: bdtVal,
             date: tx.date
                 ? new Date(tx.date).toISOString().split("T")[0]
                 : new Date().toISOString().split("T")[0],
@@ -360,18 +367,20 @@ export default function FinanceDashboardView() {
     const saveMutation = useMutation({
         mutationFn: async (data: any) => {
             const payload = { ...data };
-            if (payload.amountInBdt !== undefined) {
-                payload.amount = payload.amountInBdt;
-            } else if (payload.amount !== undefined) {
-                payload.amountInBdt = payload.amount;
-            }
+            const numAmount = parseFloat(payload.amount ?? 0) || 0;
+            payload.amount = numAmount;
 
             if (payload.category === "product") {
                 if (!payload.productName || payload.productName.trim() === "") {
                     throw new Error("Please select a Product Name.");
                 }
+                const matched = dynamicProducts.find((p: any) => p.name === payload.productName);
+                if (matched) {
+                    payload.productId = matched._id;
+                }
             } else {
                 delete payload.productName;
+                delete payload.productId;
             }
 
             if (!payload.accountId || !payload.accountUser) {
@@ -763,12 +772,12 @@ export default function FinanceDashboardView() {
                                                 {t.type === "income" ? (
                                                     <span className="text-emerald-500 flex items-center gap-1">
                                                         <ArrowUpRight className="h-3.5 w-3.5" />
-                                                        ৳{(t.amountInBdt || t.amount || 0).toLocaleString()}
+                                                        ৳{Number(t.amount || 0).toLocaleString()}
                                                     </span>
                                                 ) : (
                                                     <span className="text-rose-500 flex items-center gap-1">
                                                         <ArrowDownRight className="h-3.5 w-3.5" />
-                                                        ৳{(t.amountInBdt || t.amount || 0).toLocaleString()}
+                                                        ৳{Number(t.amount || 0).toLocaleString()}
                                                     </span>
                                                 )}
                                             </td>
@@ -1009,12 +1018,11 @@ export default function FinanceDashboardView() {
                             </SelectTrigger>
                             <SelectContent className="z-[200]">
                                 <SelectItem value="all" className={`h-10!`}>All Products</SelectItem>
-                                <SelectItem value={ProductName.OPYGEN_CLEANING_CRM} className={`h-10!`}>
-                                    {ProductName.OPYGEN_CLEANING_CRM}
-                                </SelectItem>
-                                <SelectItem value={ProductName.OPYGEN_REAL_ESTATE_CRM} className={`h-10!`}>
-                                    {ProductName.OPYGEN_REAL_ESTATE_CRM}
-                                </SelectItem>
+                                {dynamicProducts.map((p: any) => (
+                                    <SelectItem key={p._id} value={p.name} className={`h-10!`}>
+                                        {p.name}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
@@ -1108,7 +1116,7 @@ export default function FinanceDashboardView() {
                                         duration: 0.15,
                                         ease: "easeOut",
                                     }}
-                                    className="relative w-full max-w-lg border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
+                                    className="relative w-full max-w-xl border border-border bg-card shadow-2xl rounded-2xl overflow-hidden"
                                 >
                                     <div className="flex items-center justify-between p-4 border-b border-border/50 bg-accent/5">
                                         <h3 className="font-bold text-lg flex items-center gap-2">
@@ -1127,7 +1135,7 @@ export default function FinanceDashboardView() {
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-8 w-8 rounded-full hover:bg-muted"
+                                            className="h-8 w-8 rounded-md hover:bg-muted"
                                             onClick={() => {
                                                 setIsFormModalOpen(false);
                                                 setEditingTransaction(null);
@@ -1140,38 +1148,10 @@ export default function FinanceDashboardView() {
                                         onSubmit={handleSubmit((d) =>
                                             saveMutation.mutate(d as any),
                                         )}
-                                        className="p-6 space-y-4"
+                                        className="p-6 grid grid-cols-2 gap-4"
                                     >
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-semibold text-muted-foreground uppercase">
-                                                Type{" "}
-                                                <span className="text-rose-500">
-                                                    *
-                                                </span>
-                                            </label>
-                                            <Controller
-                                                name="type"
-                                                control={control}
-                                                render={({ field }) => (
-                                                    <Select value={field.value} onValueChange={field.onChange}>
-                                                        <SelectTrigger
-                                                            className={cn(
-                                                                "w-full h-10! px-3 text-sm focus:ring-2 outline-none transition-colors",
-                                                                typeColorClass
-                                                            )}
-                                                        >
-                                                            <SelectValue placeholder="Select type" />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="z-[150]">
-                                                            <SelectItem value="income" className={`h-10!`}>INCOME</SelectItem>
-                                                            <SelectItem value="expense" className={`h-10!`}>EXPENSE</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                )}
-                                            />
-                                        </div>
-
-                                        <div className="space-y-2">
+                                        {/* Row 1: Account (Full Width) */}
+                                        <div className="col-span-2 space-y-2">
                                             <label className="text-xs font-semibold text-muted-foreground uppercase flex items-center justify-between">
                                                 <span>Account (Bank / Mobile) <span className="text-rose-500">*</span></span>
                                                 {allAccounts.length === 0 && (
@@ -1229,7 +1209,37 @@ export default function FinanceDashboardView() {
                                             )}
                                         </div>
 
-                                        <div className="space-y-2">
+                                        {/* Row 2: Type & Amount in one row 2 col */}
+                                        <div className="col-span-1 space-y-2">
+                                            <label className="text-xs font-semibold text-muted-foreground uppercase">
+                                                Type{" "}
+                                                <span className="text-rose-500">
+                                                    *
+                                                </span>
+                                            </label>
+                                            <Controller
+                                                name="type"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Select value={field.value} onValueChange={field.onChange}>
+                                                        <SelectTrigger
+                                                            className={cn(
+                                                                "w-full h-10! px-3 text-sm focus:ring-2 outline-none transition-colors",
+                                                                typeColorClass
+                                                            )}
+                                                        >
+                                                            <SelectValue placeholder="Select type" />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="z-[150]">
+                                                            <SelectItem value="income" className="h-10!">INCOME</SelectItem>
+                                                            <SelectItem value="expense" className="h-10!">EXPENSE</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
+                                            />
+                                        </div>
+
+                                        <div className="col-span-1 space-y-2">
                                             <label className="text-xs font-semibold text-muted-foreground uppercase">
                                                 Amount (৳){" "}
                                                 <span className="text-rose-500">
@@ -1239,71 +1249,68 @@ export default function FinanceDashboardView() {
                                             <Input
                                                 type="number"
                                                 step="any"
-                                                {...register("amountInBdt", {
+                                                {...register("amount", {
                                                     valueAsNumber: true,
-                                                    onChange: (e) => {
-                                                        setValue("amount", parseFloat(e.target.value) || 0);
-                                                    },
                                                 })}
                                                 placeholder="0.00"
-                                                className="h-10 text-lg font-semibold tracking-tight"
+                                                className="h-10 font-semibold tracking-tight"
                                             />
-                                            {errors.amountInBdt && (
+                                            {errors.amount && (
                                                 <p className="text-xs text-rose-500">
-                                                    {errors.amountInBdt.message}
+                                                    {errors.amount.message as string}
                                                 </p>
                                             )}
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-semibold text-muted-foreground uppercase">
-                                                    Category{" "}
-                                                    <span className="text-rose-500">
-                                                        *
-                                                    </span>
-                                                </label>
-                                                <Controller
-                                                    name="category"
-                                                    control={control}
-                                                    render={({ field }) => (
-                                                        <Select value={field.value} onValueChange={field.onChange}>
-                                                            <SelectTrigger className="w-full h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                                                                <SelectValue placeholder="Select category" />
-                                                            </SelectTrigger>
-                                                            <SelectContent className="z-[150]">
-                                                                {modalCategoryOptions.map((cat) => (
-                                                                    <SelectItem key={cat} value={cat} className={`h-10!`}>
-                                                                        {cat.replace("_", " ").toUpperCase()}
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    )}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-semibold text-muted-foreground uppercase">
-                                                    Date{" "}
-                                                    <span className="text-rose-500">
-                                                        *
-                                                    </span>
-                                                </label>
-                                                <Input
-                                                    type="date"
-                                                    {...register("date")}
-                                                    className="h-10"
-                                                />
-                                                {errors.date && (
-                                                    <p className="text-xs text-rose-500">
-                                                        {errors.date.message}
-                                                    </p>
+                                        {/* Row 3: Category & Date in one row 2 col */}
+                                        <div className="col-span-1 space-y-2">
+                                            <label className="text-xs font-semibold text-muted-foreground uppercase">
+                                                Category{" "}
+                                                <span className="text-rose-500">
+                                                    *
+                                                </span>
+                                            </label>
+                                            <Controller
+                                                name="category"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Select value={field.value} onValueChange={field.onChange}>
+                                                        <SelectTrigger className="w-full h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                            <SelectValue placeholder="Select category" />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="z-[150]">
+                                                            {modalCategoryOptions.map((cat) => (
+                                                                <SelectItem key={cat} value={cat} className="h-10!">
+                                                                    {cat.replace("_", " ").toUpperCase()}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
                                                 )}
-                                            </div>
+                                            />
+                                        </div>
+                                        <div className="col-span-1 space-y-2">
+                                            <label className="text-xs font-semibold text-muted-foreground uppercase">
+                                                Date{" "}
+                                                <span className="text-rose-500">
+                                                    *
+                                                </span>
+                                            </label>
+                                            <Input
+                                                type="date"
+                                                {...register("date")}
+                                                className="h-10"
+                                            />
+                                            {errors.date && (
+                                                <p className="text-xs text-rose-500">
+                                                    {errors.date.message}
+                                                </p>
+                                            )}
                                         </div>
 
+                                        {/* Row 4: {product name / assign user} */}
                                         {selectedCategory === "product" && (
-                                            <div className="space-y-2">
+                                            <div className="col-span-2 space-y-2">
                                                 <label className="text-xs font-semibold text-muted-foreground uppercase">
                                                     Product Name{" "}
                                                     <span className="text-rose-500">
@@ -1322,12 +1329,22 @@ export default function FinanceDashboardView() {
                                                                 <SelectValue placeholder="-- Select Product Name --" />
                                                             </SelectTrigger>
                                                             <SelectContent className="z-[150]">
-                                                                <SelectItem value={ProductName.OPYGEN_CLEANING_CRM} className="h-10!">
-                                                                    {ProductName.OPYGEN_CLEANING_CRM}
-                                                                </SelectItem>
-                                                                <SelectItem value={ProductName.OPYGEN_REAL_ESTATE_CRM} className="h-10!">
-                                                                    {ProductName.OPYGEN_REAL_ESTATE_CRM}
-                                                                </SelectItem>
+                                                                {dynamicProducts && dynamicProducts.length > 0 ? (
+                                                                    dynamicProducts.map((p: any) => (
+                                                                        <SelectItem key={p._id} value={p.name} className="h-10!">
+                                                                            {p.name}
+                                                                        </SelectItem>
+                                                                    ))
+                                                                ) : (
+                                                                    <>
+                                                                        <SelectItem value={ProductName.OPYGEN_CLEANING_CRM} className="h-10!">
+                                                                            {ProductName.OPYGEN_CLEANING_CRM}
+                                                                        </SelectItem>
+                                                                        <SelectItem value={ProductName.OPYGEN_REAL_ESTATE_CRM} className="h-10!">
+                                                                            {ProductName.OPYGEN_REAL_ESTATE_CRM}
+                                                                        </SelectItem>
+                                                                    </>
+                                                                )}
                                                             </SelectContent>
                                                         </Select>
                                                     )}
@@ -1341,55 +1358,57 @@ export default function FinanceDashboardView() {
                                         )}
 
                                         {needsUserSelection && (
-                                            <div className="space-y-2">
-                                                <label className="text-xs font-semibold text-muted-foreground uppercase">
-                                                    Assign Employee/User{" "}
-                                                    <span className="text-rose-500">
-                                                        *
-                                                    </span>
-                                                </label>
-                                                <Controller
-                                                    name="user"
-                                                    control={control}
-                                                    render={({ field }) => (
-                                                        <Select value={field.value || ""} onValueChange={field.onChange}>
-                                                            <SelectTrigger className="w-full h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                                                                <SelectValue placeholder="-- Select User --" />
-                                                            </SelectTrigger>
-                                                            <SelectContent className="z-[150]">
-                                                                <SelectItem value="other">Other (External Entity)</SelectItem>
-                                                                {users.map((u: any) => (
-                                                                    <SelectItem key={u._id} value={u._id} className={`h-10!`}>
-                                                                        {u.name} ({u.email})
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    )}
-                                                />
-                                            </div>
-                                        )}
-
-                                        {needsUserSelection &&
-                                            selectedUser === "other" && (
-                                                <div className="space-y-2">
+                                            <>
+                                                <div className={cn("space-y-2", selectedUser === "other" ? "col-span-1" : "col-span-2")}>
                                                     <label className="text-xs font-semibold text-muted-foreground uppercase">
-                                                        External Entity Name{" "}
+                                                        Assign Employee/User{" "}
                                                         <span className="text-rose-500">
                                                             *
                                                         </span>
                                                     </label>
-                                                    <Input
-                                                        {...register(
-                                                            "externalEntity",
+                                                    <Controller
+                                                        name="user"
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                            <Select value={field.value || ""} onValueChange={field.onChange}>
+                                                                <SelectTrigger className="w-full h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                                    <SelectValue placeholder="-- Select User --" />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="z-[150]">
+                                                                    <SelectItem value="other">Other (External Entity)</SelectItem>
+                                                                    {users.map((u: any) => (
+                                                                        <SelectItem key={u._id} value={u._id} className="h-10!">
+                                                                            {u.name} ({u.email})
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
                                                         )}
-                                                        placeholder="e.g., John Doe, Acme Corp..."
-                                                        className="h-10"
                                                     />
                                                 </div>
-                                            )}
 
-                                        <div className="space-y-2">
+                                                {selectedUser === "other" && (
+                                                    <div className="col-span-1 space-y-2">
+                                                        <label className="text-xs font-semibold text-muted-foreground uppercase">
+                                                            External Entity Name{" "}
+                                                            <span className="text-rose-500">
+                                                                *
+                                                            </span>
+                                                        </label>
+                                                        <Input
+                                                            {...register(
+                                                                "externalEntity",
+                                                            )}
+                                                            placeholder="e.g., John Doe, Acme Corp..."
+                                                            className="h-10"
+                                                        />
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+
+                                        {/* Row 5: Description taking 2 col span */}
+                                        <div className="col-span-2 space-y-2">
                                             <label className="text-xs font-semibold text-muted-foreground uppercase">
                                                 Description{" "}
                                                 <span className="text-rose-500">
@@ -1408,7 +1427,8 @@ export default function FinanceDashboardView() {
                                             )}
                                         </div>
 
-                                        <div className="pt-4 flex justify-end gap-3 border-t border-border/50">
+                                        {/* Action buttons */}
+                                        <div className="col-span-2 pt-4 flex justify-end gap-3 border-t border-border/50">
                                             <Button
                                                 type="button"
                                                 variant="ghost"
@@ -1573,7 +1593,7 @@ export default function FinanceDashboardView() {
                                                 Date: new Date(t.date).toLocaleDateString(),
                                                 Type: t.type,
                                                 Category: t.category,
-                                                "Amount (BDT)": t.amountInBdt || t.amount || 0,
+                                                "Amount (BDT)": Number(t.amount || 0),
                                                 Description: t.description,
                                                 "User/Entity": t.user ? t.user.name : (t.externalEntity || ""),
                                                 "Created At": new Date(t.createdAt).toLocaleDateString()

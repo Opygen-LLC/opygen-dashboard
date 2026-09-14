@@ -38,27 +38,21 @@ export async function POST(req: NextRequest) {
     const results: { userId: string; oldBalance: number; newBalance: number; oldBalanceBdt?: number; newBalanceBdt?: number }[] = [];
 
     for (const userId of userIds) {
-      const statements = await Statement.find({ user: userId })
-        .populate('transaction', 'amountInBdt')
-        .lean();
+      const statements = await Statement.find({ user: userId }).lean();
 
       let newBalance = 0;
-      let newBalanceBdt = 0;
 
       for (const stmt of statements) {
         const amt = Number(stmt.amount || 0);
-        const bdt = Number(stmt.amountInBdt || (stmt.transaction as any)?.amountInBdt || 0);
         if (stmt.type === '+') {
           newBalance += amt;
-          newBalanceBdt += bdt;
         } else {
           newBalance -= amt;
-          newBalanceBdt -= bdt;
         }
       }
 
       newBalance = Number(newBalance.toFixed(2));
-      newBalanceBdt = Number(newBalanceBdt.toFixed(2));
+      const newBalanceBdt = newBalance;
 
       const user = await User.findById(userId);
       if (!user) continue;

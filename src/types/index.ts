@@ -73,7 +73,8 @@ export enum ProductName {
 
 export type ProductNameUnion =
     | "Opygen Cleaning CRM"
-    | "Opygen Real Estate CRM";
+    | "Opygen Real Estate CRM"
+    | (string & {});
 
 export type TransactionTypeUnion = "income" | "expense";
 export type TransactionCategoryUnion =

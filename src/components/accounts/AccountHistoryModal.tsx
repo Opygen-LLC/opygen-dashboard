@@ -269,7 +269,7 @@ export default function AccountHistoryModal({
                                                     )}
                                                 >
                                                     <span>{isIncome ? "+" : "-"}</span>
-                                                    <span>{formatBDT(tx.amountInBdt ?? tx.amount)}</span>
+                                                    <span>{formatBDT(tx.amount)}</span>
                                                 </div>
                                             </div>
                                         </div>

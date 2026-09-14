@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
           },
           incomeBdt: {
             $sum: {
-              $cond: [{ $eq: ["$type", TransactionType.INCOME] }, { $ifNull: ["$amountInBdt", 0] }, 0]
+              $cond: [{ $eq: ["$type", TransactionType.INCOME] }, "$amount", 0]
             }
           },
           expense: {
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
           },
           expenseBdt: {
             $sum: {
-              $cond: [{ $eq: ["$type", TransactionType.EXPENSE] }, { $ifNull: ["$amountInBdt", 0] }, 0]
+              $cond: [{ $eq: ["$type", TransactionType.EXPENSE] }, "$amount", 0]
             }
           }
         }
@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
         $group: {
           _id: "$category",
           total: { $sum: "$amount" },
-          totalBdt: { $sum: { $ifNull: ["$amountInBdt", 0] } }
+          totalBdt: { $sum: "$amount" }
         }
       },
       { $sort: { total: -1 } }
@@ -125,7 +125,7 @@ export async function GET(req: NextRequest) {
         $group: {
           _id: null,
           total: { $sum: "$amount" },
-          totalBdt: { $sum: { $ifNull: ["$amountInBdt", 0] } }
+          totalBdt: { $sum: "$amount" }
         }
       }
     ]);

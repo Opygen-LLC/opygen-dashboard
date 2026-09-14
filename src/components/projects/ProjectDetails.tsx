@@ -121,7 +121,7 @@ export default function ProjectDetails({
                 if (txs.length > 0) {
                     const totalBdt = txs.reduce(
                         (sum: number, t: any) =>
-                            sum + Number(t.amountInBdt || t.amount || 0),
+                            sum + Number(t.amount || 0),
                         0
                     );
                     if (totalBdt > 0) {
