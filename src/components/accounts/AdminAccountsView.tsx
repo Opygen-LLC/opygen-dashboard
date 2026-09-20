@@ -14,6 +14,7 @@ import {
     History,
     Wallet,
     ArrowUpDown,
+    ArrowLeftRight,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import AccountHistoryModal from "./AccountHistoryModal";
+import TransferMoneyModal from "./TransferMoneyModal";
 
 export default function AdminAccountsView() {
     const { data: session } = useSession();
@@ -53,6 +55,13 @@ export default function AdminAccountsView() {
     const [tempSortBy, setTempSortBy] = useState("default");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [selectedAccountForHistory, setSelectedAccountForHistory] = useState<any | null>(null);
+    const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+    const [preselectedAccountForTransfer, setPreselectedAccountForTransfer] = useState<any | null>(null);
+
+    const handleOpenTransferModal = (accountToPreselect?: any) => {
+        setPreselectedAccountForTransfer(accountToPreselect || null);
+        setIsTransferModalOpen(true);
+    };
 
     // Fetch users for the user filter dropdown
     const { data: usersData } = useQuery({
@@ -143,6 +152,13 @@ export default function AdminAccountsView() {
                         across users.
                     </p>
                 </div>
+                <Button
+                    onClick={() => handleOpenTransferModal()}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold cursor-pointer gap-2 h-10 px-4 shadow-sm shrink-0"
+                >
+                    <ArrowLeftRight className="h-4 w-4" />
+                    <span>Transfer Money</span>
+                </Button>
             </div>
 
             {/* Controls Bar: Search Left, Filter Button Right */}
@@ -466,15 +482,34 @@ export default function AdminAccountsView() {
                                                 </span>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => setSelectedAccountForHistory({ ...account, userName })}
-                                                    className="h-8 gap-1.5 text-xs font-medium hover:border-indigo-500 hover:text-indigo-600 cursor-pointer"
-                                                >
-                                                    <History className="h-3.5 w-3.5 text-indigo-500" />
-                                                    <span>History</span>
-                                                </Button>
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            handleOpenTransferModal({
+                                                                ...account,
+                                                                userId: item.userId,
+                                                                userName,
+                                                                userEmail,
+                                                            })
+                                                        }
+                                                        className="h-8 gap-1.5 text-xs font-medium hover:border-indigo-500 hover:text-indigo-600 cursor-pointer text-indigo-600 dark:text-indigo-400"
+                                                        title="Transfer money from this account"
+                                                    >
+                                                        <ArrowLeftRight className="h-3.5 w-3.5" />
+                                                        <span>Transfer</span>
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => setSelectedAccountForHistory({ ...account, userName })}
+                                                        className="h-8 gap-1.5 text-xs font-medium hover:border-indigo-500 hover:text-indigo-600 cursor-pointer"
+                                                    >
+                                                        <History className="h-3.5 w-3.5 text-indigo-500" />
+                                                        <span>History</span>
+                                                    </Button>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     );
@@ -590,6 +625,15 @@ export default function AdminAccountsView() {
                 isOpen={!!selectedAccountForHistory}
                 onClose={() => setSelectedAccountForHistory(null)}
                 account={selectedAccountForHistory}
+            />
+
+            <TransferMoneyModal
+                isOpen={isTransferModalOpen}
+                onClose={() => {
+                    setIsTransferModalOpen(false);
+                    setPreselectedAccountForTransfer(null);
+                }}
+                preselectedAccount={preselectedAccountForTransfer}
             />
         </motion.div>
     );

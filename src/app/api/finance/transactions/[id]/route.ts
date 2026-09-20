@@ -38,6 +38,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
     }
 
+    if (originalTx.transferGroupId || originalTx.category === 'transfer' || originalTx.category === 'transfer_fee') {
+      return NextResponse.json({
+        error: 'Transfer transactions cannot be edited directly to preserve balance integrity. Please delete the transfer and create a new one.'
+      }, { status: 400 });
+    }
+
     const updateData: any = { ...parseResult.data };
     const effectiveCategory = updateData.category || originalTx.category;
 
@@ -205,6 +211,28 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const transaction = await Transaction.findById(id);
     if (!transaction) {
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
+    }
+
+    // Handle linked transfer group deletion
+    if (transaction.transferGroupId) {
+      const groupTransactions = await Transaction.find({ transferGroupId: transaction.transferGroupId });
+      for (const tx of groupTransactions) {
+        if (tx.accountUser && tx.accountId) {
+          const isInc = tx.type === 'income';
+          const delta = isInc ? Number(tx.amount || 0) : -Number(tx.amount || 0);
+          await User.updateOne(
+            { _id: tx.accountUser, 'accounts._id': tx.accountId },
+            {
+              $inc: {
+                'accounts.$.balance': -delta,
+                'accounts.$.balanceInBdt': -delta,
+              }
+            }
+          );
+        }
+        await Transaction.findByIdAndDelete(tx._id);
+      }
+      return NextResponse.json({ success: true, message: 'Transfer reversed and deleted successfully' });
     }
 
     // Revert account balance before deletion (BDT)

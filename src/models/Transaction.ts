@@ -30,6 +30,8 @@ export interface ITransaction extends Document {
     accountId?: string;
     accountUser?: mongoose.Types.ObjectId;
     accountDetails?: ITransactionAccountDetails;
+    transferGroupId?: string;
+    fee?: number;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -71,6 +73,8 @@ const TransactionSchema = new Schema<ITransaction>(
             branch: { type: String },
             routingNumber: { type: String },
         },
+        transferGroupId: { type: String, index: true },
+        fee: { type: Number, default: 0 },
     },
     {
         timestamps: true,
@@ -78,12 +82,11 @@ const TransactionSchema = new Schema<ITransaction>(
 );
 
 // Delete the cached model in development to ensure schema updates (like new enums) are applied
-if (process.env.NODE_ENV === "development") {
+if (mongoose.models.Transaction) {
     delete mongoose.models.Transaction;
 }
 
 const Transaction: Model<ITransaction> =
-    mongoose.models.Transaction ||
     mongoose.model<ITransaction>("Transaction", TransactionSchema);
 
 export default Transaction;

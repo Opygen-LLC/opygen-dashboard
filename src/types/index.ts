@@ -63,6 +63,8 @@ export enum TransactionCategory {
     OFFICE = "office",
     PROJECT_REVENUE = "project_revenue",
     PRODUCT = "product",
+    TRANSFER = "transfer",
+    TRANSFER_FEE = "transfer_fee",
     OTHER = "other",
 }
 
@@ -89,5 +91,8 @@ export type TransactionCategoryUnion =
     | "office"
     | "project_revenue"
     | "product"
+    | "transfer"
+    | "transfer_fee"
     | "other";
+
 

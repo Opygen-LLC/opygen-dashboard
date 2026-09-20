@@ -21,23 +21,59 @@ export async function GET(req: NextRequest) {
           _id: null,
           totalIncome: {
             $sum: {
-              $cond: [{ $eq: ["$type", TransactionType.INCOME] }, "$amount", 0]
-            }
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$type", TransactionType.INCOME] },
+                    { $ne: ["$category", TransactionCategory.TRANSFER] },
+                  ],
+                },
+                "$amount",
+                0,
+              ],
+            },
           },
           totalIncomeBdt: {
             $sum: {
-              $cond: [{ $eq: ["$type", TransactionType.INCOME] }, "$amount", 0]
-            }
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$type", TransactionType.INCOME] },
+                    { $ne: ["$category", TransactionCategory.TRANSFER] },
+                  ],
+                },
+                "$amount",
+                0,
+              ],
+            },
           },
           totalExpense: {
             $sum: {
-              $cond: [{ $eq: ["$type", TransactionType.EXPENSE] }, "$amount", 0]
-            }
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$type", TransactionType.EXPENSE] },
+                    { $ne: ["$category", TransactionCategory.TRANSFER] },
+                  ],
+                },
+                "$amount",
+                0,
+              ],
+            },
           },
           totalExpenseBdt: {
             $sum: {
-              $cond: [{ $eq: ["$type", TransactionType.EXPENSE] }, "$amount", 0]
-            }
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$type", TransactionType.EXPENSE] },
+                    { $ne: ["$category", TransactionCategory.TRANSFER] },
+                  ],
+                },
+                "$amount",
+                0,
+              ],
+            },
           },
           totalSalaries: {
             $sum: {

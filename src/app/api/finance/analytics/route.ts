@@ -28,7 +28,8 @@ export async function GET(req: NextRequest) {
     const monthlyStats = await Transaction.aggregate([
       {
         $match: {
-          date: { $gte: sixMonthsAgo }
+          date: { $gte: sixMonthsAgo },
+          category: { $ne: "transfer" },
         }
       },
       {
@@ -93,7 +94,8 @@ export async function GET(req: NextRequest) {
     const categoryStats = await Transaction.aggregate([
       {
         $match: {
-          type: TransactionType.EXPENSE
+          type: TransactionType.EXPENSE,
+          category: { $ne: "transfer" },
         }
       },
       {

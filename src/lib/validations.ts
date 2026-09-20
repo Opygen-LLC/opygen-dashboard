@@ -272,6 +272,8 @@ export const transactionSchema = z.object({
         "office",
         "project_revenue",
         "product",
+        "transfer",
+        "transfer_fee",
         "other",
     ]),
     productName: z
@@ -311,9 +313,34 @@ export const transactionSchema = z.object({
             routingNumber: z.string().optional(),
         })
         .optional(),
+    transferGroupId: z.string().optional(),
+    fee: z.coerce.number().min(0).optional(),
 });
 
 export type TransactionInput = z.infer<typeof transactionSchema>;
+
+export const accountTransferSchema = z
+    .object({
+        fromUserId: z.string().min(1, "Source account user is required"),
+        fromAccountId: z.string().min(1, "Source account is required"),
+        toUserId: z.string().min(1, "Destination account user is required"),
+        toAccountId: z.string().min(1, "Destination account is required"),
+        amount: z.coerce
+            .number()
+            .positive("Transfer amount must be greater than 0"),
+        fee: z.coerce
+            .number()
+            .min(0, "Transfer fee cannot be negative")
+            .default(0),
+        date: z.string().optional().nullable(),
+        note: z.string().max(300, "Note cannot exceed 300 characters").optional(),
+    })
+    .refine((data) => data.fromAccountId !== data.toAccountId, {
+        message: "Source and destination accounts cannot be the same",
+        path: ["toAccountId"],
+    });
+
+export type AccountTransferInput = z.infer<typeof accountTransferSchema>;
 
 export const productSchema = z.object({
     name: z.string().trim().min(1, "Product name is required").max(100, "Name too long"),

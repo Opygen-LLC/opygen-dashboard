@@ -14,6 +14,7 @@ import {
     Wallet,
     AlertCircle,
     User as UserIcon,
+    ArrowLeftRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -211,6 +212,9 @@ export default function AccountHistoryModal({
                             <div className="space-y-2">
                                 {transactions.map((tx: any) => {
                                     const isIncome = tx.type === "income";
+                                    const isTransfer = tx.category === "transfer";
+                                    const isTransferFee = tx.category === "transfer_fee";
+
                                     return (
                                         <div
                                             key={tx._id}
@@ -220,12 +224,20 @@ export default function AccountHistoryModal({
                                                 <div
                                                     className={cn(
                                                         "p-2 rounded-lg shrink-0 mt-0.5",
-                                                        isIncome
+                                                        isTransferFee
+                                                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                                            : isTransfer
+                                                            ? isIncome
+                                                                ? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
+                                                                : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+                                                            : isIncome
                                                             ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                                                             : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
                                                     )}
                                                 >
-                                                    {isIncome ? (
+                                                    {isTransfer ? (
+                                                        <ArrowLeftRight className="h-4 w-4" />
+                                                    ) : isIncome ? (
                                                         <ArrowUpRight className="h-4 w-4" />
                                                     ) : (
                                                         <ArrowDownRight className="h-4 w-4" />
@@ -238,9 +250,24 @@ export default function AccountHistoryModal({
                                                     <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
                                                         <Badge
                                                             variant="outline"
-                                                            className="text-[10px] uppercase font-semibold h-4 px-1.5"
+                                                            className={cn(
+                                                                "text-[10px] uppercase font-semibold h-4 px-1.5",
+                                                                isTransferFee
+                                                                    ? "border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/5"
+                                                                    : isTransfer
+                                                                    ? isIncome
+                                                                        ? "border-cyan-500/30 text-cyan-600 dark:text-cyan-400 bg-cyan-500/5"
+                                                                        : "border-indigo-500/30 text-indigo-600 dark:text-indigo-400 bg-indigo-500/5"
+                                                                    : ""
+                                                            )}
                                                         >
-                                                            {tx.category?.replace(/_/g, " ")}
+                                                            {isTransferFee
+                                                                ? "Transfer Fee"
+                                                                : isTransfer
+                                                                ? isIncome
+                                                                    ? "Transfer In"
+                                                                    : "Transfer Out"
+                                                                : tx.category?.replace(/_/g, " ")}
                                                         </Badge>
                                                         <span className="flex items-center gap-1 text-[11px]">
                                                             <Calendar className="h-3 w-3" />
