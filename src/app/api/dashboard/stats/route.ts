@@ -9,7 +9,7 @@ import Transaction from "@/models/Transaction";
 import Client from "@/models/Client";
 import Quote from "@/models/Quote";
 import { DemoWebsite } from "@/models/DemoWebsite";
-import { TransactionType } from "@/types";
+import { TransactionCategory, TransactionType } from "@/types";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -118,6 +118,10 @@ export async function GET(request: Request) {
         let monthlyIncomeBdt = 0;
         let monthlyExpenseBdt = 0;
         for (const tx of currentMonthTxs) {
+            // Transfers between accounts are internal reallocations, NOT revenue/income or operational expenses
+            if (tx.category === TransactionCategory.TRANSFER) {
+                continue;
+            }
             const amt = Number(tx.amount || 0);
             if (tx.type === TransactionType.INCOME) {
                 monthlyIncomeBdt += amt;

@@ -5,7 +5,7 @@ import dbConnect from '@/lib/db';
 import Transaction from '@/models/Transaction';
 import Project from '@/models/Project';
 import Quote from '@/models/Quote';
-import { TransactionType } from '@/types';
+import { TransactionCategory, TransactionType } from '@/types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       {
         $match: {
           date: { $gte: sixMonthsAgo },
-          category: { $ne: "transfer" },
+          category: { $nin: ["transfer", TransactionCategory.TRANSFER] },
         }
       },
       {
@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
       {
         $match: {
           type: TransactionType.EXPENSE,
-          category: { $ne: "transfer" },
+          category: { $nin: ["transfer", TransactionCategory.TRANSFER] },
         }
       },
       {
@@ -120,7 +120,8 @@ export async function GET(req: NextRequest) {
       {
         $match: {
           type: TransactionType.EXPENSE,
-          date: { $gte: ninetyDaysAgo }
+          date: { $gte: ninetyDaysAgo },
+          category: { $nin: ["transfer", TransactionCategory.TRANSFER] },
         }
       },
       {

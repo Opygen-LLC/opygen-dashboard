@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/db";
 import Settings from "@/models/Settings";
 import Transaction from "@/models/Transaction";
-import { TransactionType } from "@/types";
+import { TransactionCategory, TransactionType } from "@/types";
 import { deleteFromCloudinary } from "@/lib/cloudinary";
 
 export const dynamic = "force-dynamic";
@@ -73,6 +73,7 @@ export async function GET() {
             {
                 $match: {
                     type: TransactionType.INCOME,
+                    category: { $nin: ["transfer", TransactionCategory.TRANSFER] },
                 },
             },
             {

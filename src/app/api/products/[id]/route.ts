@@ -45,6 +45,7 @@ export async function GET(
         let totalExpense = 0;
 
         for (const tx of transactions) {
+            if (tx.category === "transfer") continue;
             const val = Number(tx.amount || 0);
             if (tx.type === "income") {
                 totalIncome += val;
