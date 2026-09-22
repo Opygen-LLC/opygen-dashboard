@@ -368,6 +368,7 @@ export const clientSchema = z
         otherSource: z.string().optional(),
         adName: z.string().optional(),
         followupDate: z.string().optional().nullable(),
+        followupTime: z.string().optional().nullable(),
         meetingDate: z.string().optional().nullable(),
         meetingOutcome: z
             .enum([

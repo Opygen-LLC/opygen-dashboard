@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Edit, Trash2 } from "lucide-react";
+import { X, Plus, Edit, Trash2, Calendar, Clock } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -307,6 +307,7 @@ export function ClientFormModal({
             status: "Pending",
             priority: "low",
             followupDate: "",
+            followupTime: "",
             meetingDate: "",
             meetingOutcome: null,
             nextFollowupDate: "",
@@ -339,6 +340,19 @@ export function ClientFormModal({
     useEffect(() => {
         if (isOpen) {
             if (editingClient) {
+                let initialFollowupDate = "";
+                let initialFollowupTime = editingClient.followupTime || "";
+
+                if (editingClient.followupDate) {
+                    const d = new Date(editingClient.followupDate);
+                    if (!isNaN(d.getTime())) {
+                        initialFollowupDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                        if (!initialFollowupTime && (d.getHours() !== 0 || d.getMinutes() !== 0)) {
+                            initialFollowupTime = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+                        }
+                    }
+                }
+
                 reset({
                     name: editingClient.name,
                     companyName: editingClient.companyName || "",
@@ -358,11 +372,8 @@ export function ClientFormModal({
                             ? editingClient.assignedTo._id
                             : editingClient.assignedTo
                         : null,
-                    followupDate: editingClient.followupDate
-                        ? new Date(editingClient.followupDate)
-                              .toISOString()
-                              .split("T")[0]
-                        : "",
+                    followupDate: initialFollowupDate,
+                    followupTime: initialFollowupTime,
                     meetingDate: editingClient.meetingDate
                         ? new Date(editingClient.meetingDate)
                               .toISOString()
@@ -392,6 +403,7 @@ export function ClientFormModal({
                     priority: "low",
                     assignedTo: null,
                     followupDate: "",
+                    followupTime: "",
                     meetingDate: "",
                     meetingOutcome: null,
                     nextFollowupDate: "",
@@ -406,8 +418,14 @@ export function ClientFormModal({
             if (payload.status === "Meeting Scheduled" && (!payload.meetingDate || payload.meetingDate.trim() === "")) {
                 payload.meetingDate = new Date().toISOString().split("T")[0];
             }
-            if (payload.status === "Follow-up" && (!payload.followupDate || payload.followupDate.trim() === "")) {
-                payload.followupDate = new Date().toISOString().split("T")[0];
+            if (payload.status === "Follow-up") {
+                if (!payload.followupDate || payload.followupDate.trim() === "") {
+                    const now = new Date();
+                    payload.followupDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+                }
+                if (payload.followupTime && payload.followupTime.trim() !== "") {
+                    payload.followupDate = `${payload.followupDate.split("T")[0]}T${payload.followupTime.trim()}:00`;
+                }
             }
 
             const url = editingClient
@@ -720,31 +738,58 @@ export function ClientFormModal({
                                     </div>
 
                                     {statusWatch === "Follow-up" && (
-                                        <div className="space-y-2 md:col-span-1 animate-in fade-in">
-                                            <label className="text-xs font-semibold text-muted-foreground uppercase">
-                                                Follow-up Date{" "}
-                                                <span className="text-rose-500">
-                                                    *
-                                                </span>
-                                            </label>
-                                            <Input
-                                                type="date"
-                                                {...register("followupDate")}
-                                                className={
-                                                    errors.followupDate
-                                                        ? "border-rose-500"
-                                                        : ""
-                                                }
-                                            />
-                                            {errors.followupDate && (
-                                                <p className="text-xs text-rose-500">
-                                                    {
+                                        <>
+                                            <div className="space-y-2 md:col-span-1 animate-in fade-in">
+                                                <label className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
+                                                    <Calendar className="h-3.5 w-3.5 text-blue-500" />
+                                                    Follow-up Date{" "}
+                                                    <span className="text-rose-500">
+                                                        *
+                                                    </span>
+                                                </label>
+                                                <Input
+                                                    type="date"
+                                                    {...register("followupDate")}
+                                                    className={
                                                         errors.followupDate
-                                                            ?.message as string
+                                                            ? "border-rose-500"
+                                                            : ""
                                                     }
-                                                </p>
-                                            )}
-                                        </div>
+                                                />
+                                                {errors.followupDate && (
+                                                    <p className="text-xs text-rose-500">
+                                                        {
+                                                            errors.followupDate
+                                                                ?.message as string
+                                                        }
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-2 md:col-span-1 animate-in fade-in">
+                                                <label className="text-xs font-semibold text-muted-foreground uppercase flex items-center gap-1.5">
+                                                    <Clock className="h-3.5 w-3.5 text-blue-500" />
+                                                    Follow-up Time
+                                                </label>
+                                                <Input
+                                                    type="time"
+                                                    {...register("followupTime")}
+                                                    className={
+                                                        errors.followupTime
+                                                            ? "border-rose-500"
+                                                            : ""
+                                                    }
+                                                />
+                                                {errors.followupTime && (
+                                                    <p className="text-xs text-rose-500">
+                                                        {
+                                                            errors.followupTime
+                                                                ?.message as string
+                                                        }
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </>
                                     )}
 
                                     {statusWatch === "Meeting Scheduled" && (

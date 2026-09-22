@@ -13,6 +13,7 @@ export interface IClient extends Document {
     otherSource?: string;
     adName?: string;
     followupDate?: Date;
+    followupTime?: string;
     meetingDate?: Date;
     meetingOutcome?:
         | "Interested"
@@ -84,6 +85,10 @@ const ClientSchema = new Schema<IClient>(
         },
         followupDate: {
             type: Date,
+        },
+        followupTime: {
+            type: String,
+            trim: true,
         },
         meetingDate: {
             type: Date,

@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, formatTime12Hour } from "@/lib/utils";
 
 interface ClientCalendarViewProps {
     clients: any[];
@@ -276,9 +276,16 @@ export function ClientCalendarView({
                                                         {ev.company}
                                                     </span>
                                                 )}
-                                                <span className="text-[9px] font-medium opacity-75 capitalize">
-                                                    {ev.type === "meeting" ? "Meeting" : "Follow-up"}
-                                                </span>
+                                                <div className="flex items-center justify-between text-[9px] font-medium opacity-85">
+                                                    <span className="capitalize">
+                                                        {ev.type === "meeting" ? "Meeting" : "Follow-up"}
+                                                    </span>
+                                                    {ev.client?.followupTime && (
+                                                        <span className="font-bold text-[9px] bg-amber-500/20 text-amber-800 dark:text-amber-200 px-1 py-0.2 rounded">
+                                                            {formatTime12Hour(ev.client.followupTime)}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </motion.div>
                                         ))}
                                     </div>

@@ -21,6 +21,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       status: z.enum(['Pending', 'Confirmed', 'Follow-up', 'Meeting Scheduled', 'Meeting Completed', 'Proposal Sent', 'Blocked', 'Declined']).optional(),
       priority: z.enum(['low', 'medium', 'high']).optional(),
       followupDate: z.string().optional().nullable(),
+      followupTime: z.string().optional().nullable(),
       meetingDate: z.string().optional().nullable(),
       meetingOutcome: z.enum([
         "Interested",
@@ -40,9 +41,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ error: parseResult.error.flatten() }, { status: 400 });
     }
 
+    const patchData: any = { ...parseResult.data };
+    if (patchData.followupDate && patchData.followupTime && patchData.followupTime.trim() !== "") {
+      const datePart = patchData.followupDate.split("T")[0];
+      const combined = new Date(`${datePart}T${patchData.followupTime.trim()}:00`);
+      if (!isNaN(combined.getTime())) {
+        patchData.followupDate = combined.toISOString();
+      }
+    }
+
     const updatedClient = await Client.findByIdAndUpdate(
       id,
-      { $set: { ...parseResult.data, lastUpdatedBy: session.user.id } },
+      { $set: { ...patchData, lastUpdatedBy: session.user.id } },
       { new: true, runValidators: true }
     )
       .populate('lastUpdatedBy', 'name email avatarUrl')
@@ -78,6 +88,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const clientData = parseResult.data;
     if (clientData.source !== "Ads") {
       clientData.adName = "";
+    }
+
+    if (clientData.followupDate && clientData.followupTime && clientData.followupTime.trim() !== "") {
+      const datePart = clientData.followupDate.split("T")[0];
+      const combined = new Date(`${datePart}T${clientData.followupTime.trim()}:00`);
+      if (!isNaN(combined.getTime())) {
+        clientData.followupDate = combined.toISOString();
+      }
     }
 
     // Check unique number if provided

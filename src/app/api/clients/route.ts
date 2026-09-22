@@ -114,6 +114,14 @@ export async function POST(req: NextRequest) {
       clientData.adName = "";
     }
 
+    if (clientData.followupDate && clientData.followupTime && clientData.followupTime.trim() !== "") {
+      const datePart = clientData.followupDate.split("T")[0];
+      const combined = new Date(`${datePart}T${clientData.followupTime.trim()}:00`);
+      if (!isNaN(combined.getTime())) {
+        clientData.followupDate = combined.toISOString();
+      }
+    }
+
     // Uniqueness validation for Phone Number
     if (clientData.number && clientData.number.trim() !== "") {
       const existingNum = await Client.findOne({ number: clientData.number.trim() });

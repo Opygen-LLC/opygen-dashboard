@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, FolderPlus, Globe, ExternalLink, Edit, Clock, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { formatFollowupDateTime } from '@/lib/utils';
 
 interface ClientInfoModalProps {
     isOpen: boolean;
@@ -176,13 +177,14 @@ export function ClientInfoModal({ isOpen, onClose, client, onEdit }: ClientInfoM
                                             </div>
                                          )}
                                          {client.status === "Follow-up" && client.followupDate && (
-                                            <div>
-                                                <p className="text-xs text-muted-foreground mb-1">Scheduled Follow-up</p>
-                                                <p className="text-sm font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 w-fit px-2 py-0.5 rounded-md">
-                                                    {new Date(client.followupDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                                                </p>
-                                            </div>
-                                        )}
+                                             <div>
+                                                 <p className="text-xs text-muted-foreground mb-1">Scheduled Follow-up</p>
+                                                 <p className="text-sm font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 w-fit px-2.5 py-1 rounded-md flex items-center gap-1.5 border border-amber-500/20">
+                                                     <Clock className="h-3.5 w-3.5" />
+                                                     {formatFollowupDateTime(client.followupDate, client.followupTime, { includeWeekday: true })}
+                                                 </p>
+                                             </div>
+                                         )}
                                         {client.status === "Meeting Scheduled" && client.meetingDate && (
                                             <div>
                                                 <p className="text-xs text-muted-foreground mb-1">Scheduled Meeting</p>

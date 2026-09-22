@@ -45,7 +45,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, formatFollowupDateTime } from "@/lib/utils";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { clientSchema, ClientInput } from "@/lib/validations";
@@ -54,12 +54,14 @@ import { COUNTRIES } from "@/lib/countries";
 import ClientToProjectModal from "./ClientToProjectModal";
 import { ClientInfoModal } from "./modals/ClientInfoModal";
 import { ClientFormModal } from "./modals/ClientFormModal";
+import { ScheduleFollowupModal } from "./modals/ScheduleFollowupModal";
 import QuoteFormModal from "../quotes/QuoteFormModal";
 export default function ClientDashboardView() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClient, setEditingClient] = useState<any>(null);
     const [convertingClient, setConvertingClient] = useState<any>(null);
     const [convertingQuoteClient, setConvertingQuoteClient] = useState<any>(null);
+    const [scheduleClient, setScheduleClient] = useState<any | null>(null);
     const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
     const [filterSource, setFilterSource] = useState<string>("All");
     const [filterStatus, setFilterStatus] = useState<string>("All");
@@ -206,9 +208,13 @@ export default function ClientDashboardView() {
         mutationFn: async ({
             client,
             newStatus,
+            followupDate,
+            followupTime,
         }: {
             client: any;
             newStatus: string;
+            followupDate?: string;
+            followupTime?: string;
         }) => {
             const payload: any = {
                 status: newStatus,
@@ -223,13 +229,27 @@ export default function ClientDashboardView() {
                     .split("T")[0];
             }
             if (newStatus === "Follow-up") {
-                payload.followupDate = client.followupDate
+                const targetDate = followupDate !== undefined
+                    ? followupDate
+                    : client.followupDate
                     ? new Date(client.followupDate).toISOString().split("T")[0]
                     : new Date().toISOString().split("T")[0];
+                const targetTime = followupTime !== undefined
+                    ? followupTime
+                    : client.followupTime || "";
+
+                payload.followupDate = targetDate;
+                payload.followupTime = targetTime;
+                if (targetDate && targetTime && targetTime.trim() !== "") {
+                    payload.followupDate = `${targetDate.split("T")[0]}T${targetTime.trim()}:00`;
+                }
             } else if (client.followupDate) {
                 payload.followupDate = new Date(client.followupDate)
                     .toISOString()
                     .split("T")[0];
+                if (client.followupTime) {
+                    payload.followupTime = client.followupTime;
+                }
             }
             const res = await fetch(`/api/clients/${client._id}`, {
                 method: "PATCH",
@@ -391,6 +411,7 @@ export default function ClientDashboardView() {
                                               c.followupDate,
                                           ).toLocaleDateString()
                                         : "",
+                                    "Follow-up Time": c.followupTime || "",
                                     "Meeting Date": c.meetingDate
                                         ? new Date(
                                               c.meetingDate,
@@ -699,12 +720,21 @@ export default function ClientDashboardView() {
                                                     {client.status ===
                                                         "Follow-up" &&
                                                         client.followupDate && (
-                                                            <div className="text-[10px] text-muted-foreground mt-1">
+                                                            <div
+                                                                className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1 cursor-pointer hover:underline group/followup w-fit"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setScheduleClient(client);
+                                                                }}
+                                                                title="Click to reschedule follow-up"
+                                                            >
+                                                                <Clock className="h-3 w-3 text-blue-500 shrink-0" />
                                                                 Follow-up:{" "}
-                                                                <span className="font-medium text-blue-500">
-                                                                    {new Date(
+                                                                <span className="font-medium text-blue-500 group-hover/followup:text-blue-600 dark:group-hover/followup:text-blue-400">
+                                                                    {formatFollowupDateTime(
                                                                         client.followupDate,
-                                                                    ).toLocaleDateString()}
+                                                                        client.followupTime,
+                                                                    )}
                                                                 </span>
                                                             </div>
                                                         )}
@@ -745,55 +775,78 @@ export default function ClientDashboardView() {
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-1.5 text-foreground font-medium">
-                                                        <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                                                    <span className="text-xs font-semibold text-foreground/80">
                                                         {client.country}
-                                                    </div>
-                                                    {client.number && (
-                                                        <div className="text-xs text-muted-foreground mt-1">
-                                                            {client.number}
-                                                        </div>
-                                                    )}
-                                                    {client.socialMediaLink && (
-                                                        <a
-                                                            href={
-                                                                client.socialMediaLink
-                                                            }
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            className="text-xs text-indigo-500 hover:underline flex items-center gap-1 mt-1"
-                                                        >
-                                                            Social Link{" "}
-                                                            <ExternalLink className="h-3 w-3" />
-                                                        </a>
-                                                    )}
+                                                    </span>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <Badge
-                                                        variant="outline"
-                                                        className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800"
-                                                    >
-                                                        {formatCurrency(
-                                                            client.minAmount,
-                                                        )}{" "}
-                                                        -{" "}
-                                                        {formatCurrency(
-                                                            client.maxAmount,
+                                                    <div className="space-y-1">
+                                                        {client.number && (
+                                                            <div className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                                                                <span>
+                                                                    {
+                                                                        client.number
+                                                                    }
+                                                                </span>
+                                                            </div>
                                                         )}
-                                                    </Badge>
+                                                        {client.socialMediaLink && (
+                                                            <a
+                                                                href={
+                                                                    client.socialMediaLink
+                                                                }
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-[11px] text-indigo-500 hover:text-indigo-600 flex items-center gap-1 transition-colors group/link w-fit"
+                                                            >
+                                                                <Globe className="h-3 w-3 group-hover/link:rotate-12 transition-transform" />
+                                                                <span className="max-w-[120px] truncate underline">
+                                                                    {
+                                                                        client.socialMediaLink
+                                                                    }
+                                                                </span>
+                                                                <ExternalLink className="h-2.5 w-2.5 opacity-70" />
+                                                            </a>
+                                                        )}
+                                                        {!client.number &&
+                                                            !client.socialMediaLink && (
+                                                                <span className="text-xs text-muted-foreground italic">
+                                                                    No contact
+                                                                    info
+                                                                </span>
+                                                            )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="text-xs font-bold text-foreground">
+                                                        $
+                                                        {Number(
+                                                            client.minAmount ||
+                                                                0,
+                                                        ).toLocaleString()}{" "}
+                                                        - $
+                                                        {Number(
+                                                            client.maxAmount ||
+                                                                0,
+                                                        ).toLocaleString()}
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <Badge
                                                         variant="outline"
-                                                        className={`capitalize font-semibold border text-xs px-2.5 py-0.5 ${
-                                                            (client.priority || "low") === "high"
-                                                                ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
-                                                                : (client.priority || "low") === "medium"
-                                                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                                                                : "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20"
-                                                        }`}
+                                                        className={cn(
+                                                            "text-[10px] font-semibold uppercase px-2 py-0.5",
+                                                            client.priority ===
+                                                                "high"
+                                                                ? "text-rose-600 bg-rose-500/10 border-rose-500/30"
+                                                                : client.priority ===
+                                                                    "medium"
+                                                                  ? "text-amber-600 bg-amber-500/10 border-amber-500/30"
+                                                                  : "text-slate-600 bg-slate-500/10 border-slate-500/30",
+                                                        )}
                                                     >
-                                                        {client.priority || "low"}
+                                                        {client.priority ||
+                                                            "low"}
                                                     </Badge>
                                                 </td>
                                                 <td className="px-6 py-4">
@@ -802,15 +855,16 @@ export default function ClientDashboardView() {
                                                             client.status ||
                                                             "Pending"
                                                         }
-                                                        onValueChange={(val: any) =>
-                                                            updateStatusMutation.mutate(
-                                                                {
+                                                        onValueChange={(val: any) => {
+                                                            if (val === "Follow-up") {
+                                                                setScheduleClient(client);
+                                                            } else {
+                                                                updateStatusMutation.mutate({
                                                                     client,
-                                                                    newStatus:
-                                                                        val,
-                                                                },
-                                                            )
-                                                        }
+                                                                    newStatus: val,
+                                                                });
+                                                            }
+                                                        }}
                                                         disabled={
                                                             updateStatusMutation.isPending
                                                         }
@@ -1232,6 +1286,24 @@ export default function ClientDashboardView() {
                 client={convertingClient}
                 isOpen={!!convertingClient}
                 onClose={() => setConvertingClient(null)}
+            />
+
+            <ScheduleFollowupModal
+                isOpen={!!scheduleClient}
+                client={scheduleClient}
+                onClose={() => setScheduleClient(null)}
+                onSave={({ followupDate, followupTime }) => {
+                    if (scheduleClient) {
+                        updateStatusMutation.mutate({
+                            client: scheduleClient,
+                            newStatus: "Follow-up",
+                            followupDate,
+                            followupTime,
+                        });
+                        setScheduleClient(null);
+                    }
+                }}
+                isSubmitting={updateStatusMutation.isPending}
             />
 
             <QuoteFormModal

@@ -29,7 +29,7 @@ import {
     Landmark,
     ChevronRight,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatTime12Hour } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
     Select,
@@ -1303,6 +1303,12 @@ export default function AdminDashboardPage() {
                                                         </h4>
                                                     </div>
                                                     <div className="flex shrink-0 flex-col items-end gap-1 text-[10px]">
+                                                        {client.followupTime && (
+                                                            <span className="flex items-center gap-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-0.5 font-medium text-[10px] border border-blue-500/20">
+                                                                <Clock className="h-3 w-3" />
+                                                                {formatTime12Hour(client.followupTime)}
+                                                            </span>
+                                                        )}
                                                         {client.number && (
                                                             <span className="rounded-md bg-accent/50 px-2 py-0.5 font-medium text-muted-foreground">
                                                                 {client.number}
