@@ -95,4 +95,17 @@ export type TransactionCategoryUnion =
     | "transfer_fee"
     | "other";
 
-
+export type SubscriptionType = "global" | "project";
+export type SubscriptionStatus =
+    | "active"
+    | "expiring_soon"
+    | "expired"
+    | "cancelled"
+    | "paused";
+export type SubscriptionBillingCycle =
+    | "monthly"
+    | "yearly"
+    | "quarterly"
+    | "weekly"
+    | "one-time"
+    | "custom";

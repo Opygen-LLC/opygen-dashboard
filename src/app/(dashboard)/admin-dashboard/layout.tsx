@@ -27,6 +27,7 @@ import {
     Globe,
     Package,
     ChevronDown,
+    CreditCard,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,11 @@ export default function AdminDashboardLayout({
     const navigation = [
         { name: "Dashboard", href: "/admin-dashboard", icon: LayoutDashboard },
         { name: "Finance", href: "/admin-dashboard/finance", icon: Wallet },
+        {
+            name: "Subscriptions",
+            href: "/admin-dashboard/subscriptions",
+            icon: CreditCard,
+        },
         {
             name: "Projects",
             href: "/admin-dashboard/projects",

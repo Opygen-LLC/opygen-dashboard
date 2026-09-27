@@ -574,3 +574,33 @@ export const demoWebsiteSchema = z.object({
 });
 
 export type DemoWebsiteInput = z.infer<typeof demoWebsiteSchema>;
+
+export const subscriptionSchema = z.object({
+    name: z.string().min(1, "Subscription name is required").max(120, "Name is too long"),
+    type: z.enum(["global", "project"]),
+    projectName: z.string().optional().default(""),
+    startDate: z.string().optional().default(() => new Date().toISOString().split("T")[0]),
+    endDate: z.string().optional().nullable(),
+    price: z.number().min(0, "Price must be non-negative"),
+    billingCycle: z.enum(["monthly", "yearly", "quarterly", "weekly", "one-time", "custom"]).default("monthly"),
+    status: z.enum(["active", "expiring_soon", "expired", "cancelled", "paused"]).default("active"),
+    autoRenew: z.boolean().default(false),
+    provider: z.string().optional().default(""),
+    paymentMethod: z.string().optional().default(""),
+    notes: z.string().optional().default(""),
+});
+
+export type SubscriptionInput = {
+    name: string;
+    type: "global" | "project";
+    projectName?: string;
+    startDate?: string;
+    endDate?: string | null;
+    price: number;
+    billingCycle: "monthly" | "yearly" | "quarterly" | "weekly" | "one-time" | "custom";
+    status: "active" | "expiring_soon" | "expired" | "cancelled" | "paused";
+    autoRenew: boolean;
+    provider?: string;
+    paymentMethod?: string;
+    notes?: string;
+};
