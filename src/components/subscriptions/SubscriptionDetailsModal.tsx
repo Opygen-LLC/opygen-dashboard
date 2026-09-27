@@ -313,12 +313,12 @@ export function SubscriptionDetailsModal({
                     <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-accent/10">
                         <Button
                             variant="destructive"
-                            size="sm"
+                            size="default"
                             onClick={() => {
                                 onClose();
                                 onDelete(subscription);
                             }}
-                            className="gap-1.5 cursor-pointer bg-rose-600/90 hover:bg-rose-700"
+                            className="gap-1.5 cursor-pointer bg-rose-600/90 hover:bg-rose-700 text-white h-10!"
                         >
                             <Trash2 className="h-3.5 w-3.5" />
                             Delete
@@ -327,19 +327,19 @@ export function SubscriptionDetailsModal({
                         <div className="flex items-center gap-2">
                             <Button
                                 variant="outline"
-                                size="sm"
+                                size="default"
                                 onClick={onClose}
-                                className="cursor-pointer"
+                                className="cursor-pointer h-10!"
                             >
                                 Close
                             </Button>
                             <Button
-                                size="sm"
+                                size="default"
                                 onClick={() => {
                                     onClose();
                                     onEdit(subscription);
                                 }}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 cursor-pointer"
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 cursor-pointer h-10!"
                             >
                                 <Edit3 className="h-3.5 w-3.5" />
                                 Edit Subscription

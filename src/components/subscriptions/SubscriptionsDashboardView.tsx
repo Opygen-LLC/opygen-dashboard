@@ -1259,19 +1259,19 @@ export default function SubscriptionsDashboardView() {
                         <div className="flex items-center justify-end gap-2.5 pt-2">
                             <Button
                                 variant="outline"
-                                size="sm"
+                                size="default"
                                 onClick={() => setSubscriptionToDelete(null)}
                                 disabled={deleteMutation.isPending}
-                                className="cursor-pointer"
+                                className="cursor-pointer h-10!"
                             >
                                 Cancel
                             </Button>
                             <Button
                                 variant="destructive"
-                                size="sm"
+                                size="default"
                                 onClick={() => deleteMutation.mutate(subscriptionToDelete._id)}
                                 disabled={deleteMutation.isPending}
-                                className="bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
+                                className="bg-rose-600 hover:bg-rose-700 text-white cursor-pointer h-10!"
                             >
                                 {deleteMutation.isPending ? "Deleting..." : "Delete"}
                             </Button>
