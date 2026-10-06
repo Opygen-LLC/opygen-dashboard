@@ -5,6 +5,7 @@ import dbConnect from "@/lib/db";
 import Product from "@/models/Product";
 import Transaction from "@/models/Transaction";
 import { productSchema } from "@/lib/validations";
+import { syncTransactionsForProduct } from "@/lib/productSync";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -29,12 +30,17 @@ export async function GET(
 
         // Fetch all transactions associated with this product (by productId or productName)
         const escapedName = product.name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const orConditions: any[] = [
+            { productId: product._id },
+            { productId: product._id.toString() },
+            { productName: { $regex: new RegExp(`^${escapedName}$`, "i") } },
+        ];
+        if (product.name.toLowerCase().includes("estate")) {
+            orConditions.push({ productName: { $regex: /real estate crm/i } });
+        }
+
         const transactions = await Transaction.find({
-            $or: [
-                { productId: product._id },
-                { productId: product._id.toString() },
-                { productName: { $regex: new RegExp(`^${escapedName}$`, "i") } },
-            ],
+            $or: orConditions,
         })
             .populate("user", "name email avatarUrl")
             .populate("accountUser", "name email avatarUrl")
@@ -128,11 +134,11 @@ export async function PATCH(
             const oldName = product.name;
             product.name = name.trim();
 
-            // Cascade update existing transactions referencing the old product name
-            await Transaction.updateMany(
-                { productName: oldName },
-                { productName: name.trim() }
-            );
+            // Cascade update all existing transactions referencing this product
+            await syncTransactionsForProduct(product._id, product.name, oldName);
+        } else {
+            // Even if name didn't change, ensure transactions linked by productId have up-to-date productName
+            await syncTransactionsForProduct(product._id, product.name);
         }
 
         if (url !== undefined) product.url = url.trim();

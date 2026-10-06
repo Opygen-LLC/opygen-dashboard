@@ -70,11 +70,12 @@ export enum TransactionCategory {
 
 export enum ProductName {
     OPYGEN_CLEANING_CRM = "Opygen Cleaning CRM",
-    OPYGEN_REAL_ESTATE_CRM = "Opygen Real Estate CRM",
+    OPYGEN_ESTATE = "Opygen Estate",
 }
 
 export type ProductNameUnion =
     | "Opygen Cleaning CRM"
+    | "Opygen Estate"
     | "Opygen Real Estate CRM"
     | (string & {});
 

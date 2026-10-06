@@ -5,6 +5,8 @@ import dbConnect from "@/lib/db";
 import Product from "@/models/Product";
 import { productSchema } from "@/lib/validations";
 
+import { autoSyncAllProductTransactions } from "@/lib/productSync";
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -35,6 +37,9 @@ export async function GET() {
         if (count === 0) {
             await Product.insertMany(DEFAULT_PRODUCTS);
         }
+
+        // Run auto-sync to heal any unlinked or desynchronized transactions
+        await autoSyncAllProductTransactions();
 
         const products = await Product.find().sort({ createdAt: 1 }).lean();
 

@@ -48,19 +48,32 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const effectiveCategory = updateData.category || originalTx.category;
 
     if (effectiveCategory === 'product') {
-      if (updateData.category === 'product') {
-        if (!updateData.productName || !updateData.productName.trim()) {
-          return NextResponse.json({ error: 'Product name is required when category is Product' }, { status: 400 });
+      const prodName = updateData.productName !== undefined ? updateData.productName : originalTx.productName;
+      const prodId = updateData.productId !== undefined ? updateData.productId : originalTx.productId;
+
+      if (!prodName && !prodId) {
+        return NextResponse.json({ error: 'Product name or ID is required when category is Product' }, { status: 400 });
+      }
+
+      let matchedProduct: any = null;
+      if (prodId) {
+        matchedProduct = await Product.findById(prodId).lean();
+      }
+      if (!matchedProduct && prodName) {
+        const escaped = prodName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        matchedProduct = await Product.findOne({
+          name: { $regex: new RegExp(`^${escaped}$`, "i") }
+        }).lean();
+        if (!matchedProduct && prodName.toLowerCase().includes("estate")) {
+          matchedProduct = await Product.findOne({ name: { $regex: /estate/i } }).lean();
         }
-        if (!updateData.productId) {
-          const escaped = updateData.productName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const matched = await Product.findOne({
-            name: { $regex: new RegExp(`^${escaped}$`, "i") }
-          }).lean();
-          if (matched) {
-            updateData.productId = matched._id.toString();
-          }
-        }
+      }
+
+      if (matchedProduct) {
+        updateData.productId = matchedProduct._id.toString();
+        updateData.productName = matchedProduct.name;
+      } else if (prodName) {
+        updateData.productName = prodName.trim();
       }
     } else {
       updateData.productName = null;
@@ -90,7 +103,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // Perform the update
     const transaction = await Transaction.findByIdAndUpdate(id, updateData, { new: true })
       .populate('user', 'name email avatarUrl')
-      .populate('accountUser', 'name email avatarUrl');
+      .populate('accountUser', 'name email avatarUrl')
+      .populate('productId', 'name url');
 
     if (!transaction) {
       return NextResponse.json({ error: 'Transaction not found after update' }, { status: 404 });

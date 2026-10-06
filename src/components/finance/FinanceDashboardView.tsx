@@ -349,7 +349,7 @@ export default function FinanceDashboardView() {
         reset({
             type: tx.type,
             category: tx.category,
-            productName: tx.productName || "",
+            productName: (typeof tx.productId === "object" && tx.productId?.name) ? tx.productId.name : (tx.productName || ""),
             amount: bdtVal,
             date: tx.date
                 ? new Date(tx.date).toISOString().split("T")[0]
@@ -723,7 +723,7 @@ export default function FinanceDashboardView() {
                                                 {t.productName && (
                                                     <div className="text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1 mt-1 font-semibold">
                                                         <Package className="h-3.5 w-3.5 shrink-0" />
-                                                        {t.productName}
+                                                        {typeof t.productId === "object" && t.productId?.name ? t.productId.name : t.productName}
                                                     </div>
                                                 )}
                                                 {t.user && (
@@ -1340,8 +1340,8 @@ export default function FinanceDashboardView() {
                                                                         <SelectItem value={ProductName.OPYGEN_CLEANING_CRM} className="h-10!">
                                                                             {ProductName.OPYGEN_CLEANING_CRM}
                                                                         </SelectItem>
-                                                                        <SelectItem value={ProductName.OPYGEN_REAL_ESTATE_CRM} className="h-10!">
-                                                                            {ProductName.OPYGEN_REAL_ESTATE_CRM}
+                                                                        <SelectItem value={ProductName.OPYGEN_ESTATE} className="h-10!">
+                                                                            {ProductName.OPYGEN_ESTATE}
                                                                         </SelectItem>
                                                                     </>
                                                                 )}

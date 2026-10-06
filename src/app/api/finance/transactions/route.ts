@@ -63,8 +63,30 @@ export async function GET(req: NextRequest) {
         if (accountId) query.accountId = accountId;
         if (type) query.type = type;
         if (category) query.category = category;
-        if (productName && productName !== "all") query.productName = productName;
         if (user) query.user = user;
+
+        if (productName && productName !== "all") {
+            const escaped = productName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const matchedProduct = await Product.findOne({
+                name: { $regex: new RegExp(`^${escaped}$`, "i") }
+            }).lean();
+
+            const orProduct: any[] = [
+                { productName: { $regex: new RegExp(`^${escaped}$`, "i") } }
+            ];
+
+            if (matchedProduct) {
+                orProduct.push({ productId: matchedProduct._id });
+                orProduct.push({ productId: matchedProduct._id.toString() });
+            }
+
+            if (productName.toLowerCase().includes("estate")) {
+                orProduct.push({ productName: { $regex: /real estate crm/i } });
+            }
+
+            query.$or = orProduct;
+        }
+
         if (startDate || endDate) {
             query.date = {};
             if (startDate) query.date.$gte = new Date(startDate);
@@ -78,13 +100,21 @@ export async function GET(req: NextRequest) {
         let dbQuery = Transaction.find(query)
             .populate("user", "name email avatarUrl")
             .populate("accountUser", "name email avatarUrl")
+            .populate("productId", "name url")
             .sort({ date: -1, createdAt: -1 });
 
         if (limit > 0) {
             dbQuery = dbQuery.skip((page - 1) * limit).limit(limit);
         }
 
-        const transactions = await dbQuery.exec();
+        const rawTransactions = await dbQuery.exec();
+        const transactions = rawTransactions.map((tx: any) => {
+            const obj = tx.toObject ? tx.toObject() : tx;
+            if (obj.productId && typeof obj.productId === "object" && obj.productId.name) {
+                obj.productName = obj.productId.name;
+            }
+            return obj;
+        });
 
         if (limit > 0) {
             const total = await Transaction.countDocuments(query);
@@ -157,20 +187,32 @@ export async function POST(req: NextRequest) {
         };
 
         if (transactionData.category === "product") {
-            if (!transactionData.productName || !transactionData.productName.trim()) {
+            if (!transactionData.productName && !transactionData.productId) {
                 return NextResponse.json(
-                    { error: "Product name is required when category is Product" },
+                    { error: "Product name or ID is required when category is Product" },
                     { status: 400 },
                 );
             }
-            if (!transactionData.productId) {
+
+            let matchedProduct: any = null;
+            if (transactionData.productId) {
+                matchedProduct = await Product.findById(transactionData.productId).lean();
+            }
+            if (!matchedProduct && transactionData.productName) {
                 const escaped = transactionData.productName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const matched = await Product.findOne({
+                matchedProduct = await Product.findOne({
                     name: { $regex: new RegExp(`^${escaped}$`, "i") }
                 }).lean();
-                if (matched) {
-                    transactionData.productId = matched._id.toString();
+                if (!matchedProduct && transactionData.productName.toLowerCase().includes("estate")) {
+                    matchedProduct = await Product.findOne({ name: { $regex: /estate/i } }).lean();
                 }
+            }
+
+            if (matchedProduct) {
+                transactionData.productId = matchedProduct._id.toString();
+                transactionData.productName = matchedProduct.name;
+            } else if (transactionData.productName) {
+                transactionData.productName = transactionData.productName.trim();
             }
         } else {
             transactionData.productName = null as any;
@@ -223,9 +265,10 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Populate user and accountUser before returning
+        // Populate user, accountUser, and productId before returning
         await newTransaction.populate("user", "name email avatarUrl");
         await newTransaction.populate("accountUser", "name email avatarUrl");
+        await newTransaction.populate("productId", "name url");
 
         return NextResponse.json(newTransaction, { status: 201 });
     } catch (error: any) {
