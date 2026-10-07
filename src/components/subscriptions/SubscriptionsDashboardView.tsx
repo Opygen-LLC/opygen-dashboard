@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -48,17 +49,78 @@ import { SubscriptionDetailsModal } from "./SubscriptionDetailsModal";
 
 export default function SubscriptionsDashboardView() {
     const queryClient = useQueryClient();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
 
     // Filters and search state
-    const [searchQuery, setSearchQuery] = useState("");
-    const [searchInput, setSearchInput] = useState("");
-    const [selectedType, setSelectedType] = useState<string>("all");
-    const [selectedProject, setSelectedProject] = useState<string>("all");
-    const [selectedStatus, setSelectedStatus] = useState<string>("all");
-    const [selectedBillingCycle, setSelectedBillingCycle] = useState<string>("all");
-    const [sortBy, setSortBy] = useState<string>("endDate");
-    const [sortOrder, setSortOrder] = useState<string>("asc");
-    const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+    const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
+    const [searchInput, setSearchInput] = useState(searchParams.get("search") || "");
+    const [selectedType, setSelectedType] = useState<string>(searchParams.get("type") || "all");
+    const [selectedProject, setSelectedProject] = useState<string>(searchParams.get("project") || "all");
+    const [selectedStatus, setSelectedStatus] = useState<string>(searchParams.get("status") || "all");
+    const [selectedBillingCycle, setSelectedBillingCycle] = useState<string>(searchParams.get("billingCycle") || "all");
+    const [sortBy, setSortBy] = useState<string>(searchParams.get("sortBy") || "endDate");
+    const [sortOrder, setSortOrder] = useState<string>(searchParams.get("sortOrder") || "asc");
+    const [viewMode, setViewMode] = useState<"grid" | "table">((searchParams.get("view") === "table" ? "table" : "grid"));
+
+    // URL Sync helper
+    const updateUrl = useCallback((updates: Partial<{
+        search: string;
+        type: string;
+        project: string;
+        status: string;
+        billingCycle: string;
+        sortBy: string;
+        sortOrder: string;
+        view: string;
+    }>) => {
+        const params = new URLSearchParams(searchParams.toString());
+        const merged = {
+            search: updates.search !== undefined ? updates.search : searchQuery,
+            type: updates.type !== undefined ? updates.type : selectedType,
+            project: updates.project !== undefined ? updates.project : selectedProject,
+            status: updates.status !== undefined ? updates.status : selectedStatus,
+            billingCycle: updates.billingCycle !== undefined ? updates.billingCycle : selectedBillingCycle,
+            sortBy: updates.sortBy !== undefined ? updates.sortBy : sortBy,
+            sortOrder: updates.sortOrder !== undefined ? updates.sortOrder : sortOrder,
+            view: updates.view !== undefined ? updates.view : viewMode,
+        };
+
+        if (merged.search.trim()) params.set("search", merged.search.trim()); else params.delete("search");
+        if (merged.type && merged.type !== "all") params.set("type", merged.type); else params.delete("type");
+        if (merged.project && merged.project !== "all") params.set("project", merged.project); else params.delete("project");
+        if (merged.status && merged.status !== "all") params.set("status", merged.status); else params.delete("status");
+        if (merged.billingCycle && merged.billingCycle !== "all") params.set("billingCycle", merged.billingCycle); else params.delete("billingCycle");
+        if (merged.sortBy && merged.sortBy !== "endDate") params.set("sortBy", merged.sortBy); else params.delete("sortBy");
+        if (merged.sortOrder && merged.sortOrder !== "asc") params.set("sortOrder", merged.sortOrder); else params.delete("sortOrder");
+        if (merged.view && merged.view !== "grid") params.set("view", merged.view); else params.delete("view");
+
+        const qs = params.toString();
+        router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+    }, [searchParams, router, pathname, searchQuery, selectedType, selectedProject, selectedStatus, selectedBillingCycle, sortBy, sortOrder, viewMode]);
+
+    // Keep state in sync with URL on back/forward
+    useEffect(() => {
+        const sSearch = searchParams.get("search") || "";
+        const sType = searchParams.get("type") || "all";
+        const sProject = searchParams.get("project") || "all";
+        const sStatus = searchParams.get("status") || "all";
+        const sBilling = searchParams.get("billingCycle") || "all";
+        const sSortBy = searchParams.get("sortBy") || "endDate";
+        const sSortOrder = searchParams.get("sortOrder") || "asc";
+        const sView = searchParams.get("view") === "table" ? "table" : "grid";
+
+        setSearchQuery(sSearch);
+        setSearchInput(sSearch);
+        setSelectedType(sType);
+        setSelectedProject(sProject);
+        setSelectedStatus(sStatus);
+        setSelectedBillingCycle(sBilling);
+        setSortBy(sSortBy);
+        setSortOrder(sSortOrder);
+        setViewMode(sView);
+    }, [searchParams]);
 
     // Filter Drawer state
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -110,6 +172,15 @@ export default function SubscriptionsDashboardView() {
         setSelectedBillingCycle(tempBillingCycle);
         setSortBy(tempSortBy);
         setSortOrder(tempSortOrder);
+        setIsFilterOpen(false);
+        updateUrl({
+            type: tempType,
+            project: tempProject,
+            status: tempStatus,
+            billingCycle: tempBillingCycle,
+            sortBy: tempSortBy,
+            sortOrder: tempSortOrder,
+        });
     };
 
     const handleResetFilters = () => {
@@ -125,6 +196,15 @@ export default function SubscriptionsDashboardView() {
         setSelectedBillingCycle("all");
         setSortBy("endDate");
         setSortOrder("asc");
+        setIsFilterOpen(false);
+        updateUrl({
+            type: "all",
+            project: "all",
+            status: "all",
+            billingCycle: "all",
+            sortBy: "endDate",
+            sortOrder: "asc",
+        });
     };
 
     // Fetch subscriptions & computed stats
@@ -396,6 +476,7 @@ export default function SubscriptionsDashboardView() {
                         const newStatus = selectedStatus === "expiring_soon" ? "all" : "expiring_soon";
                         setSelectedStatus(newStatus);
                         setTempStatus(newStatus);
+                        updateUrl({ status: newStatus });
                     }}
                     className={cn(
                         "bg-card/70 backdrop-blur-md border-border/80 shadow-xs cursor-pointer transition-all",
@@ -447,29 +528,40 @@ export default function SubscriptionsDashboardView() {
                     onSubmit={(e) => {
                         e.preventDefault();
                         setSearchQuery(searchInput);
+                        updateUrl({ search: searchInput });
                     }}
                     className="relative w-full sm:max-w-md flex items-center flex-1"
                 >
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Search subscriptions by name, vendor, project... (Press Enter)"
-                        className="pl-9 pr-20 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 text-foreground h-10 transition-all w-full text-xs sm:text-sm"
+                        className="pl-9 pr-24 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 text-foreground h-10 transition-all w-full text-xs sm:text-sm"
                         value={searchInput}
                         onChange={(e) => setSearchInput(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                                e.preventDefault();
-                                setSearchQuery(searchInput);
-                            }
-                        }}
                     />
-                    <button
-                        type="submit"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-2.5 py-1.5 rounded-md font-semibold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
-                        title="Search"
-                    >
-                        Search
-                    </button>
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        {searchInput && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSearchQuery("");
+                                    setSearchInput("");
+                                    updateUrl({ search: "" });
+                                }}
+                                className="text-muted-foreground hover:text-foreground text-xs px-1.5 py-1 rounded transition-colors cursor-pointer"
+                                title="Clear search"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+                        )}
+                        <button
+                            type="submit"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-2.5 py-1.5 rounded-md font-semibold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                            title="Search"
+                        >
+                            Search
+                        </button>
+                    </div>
                 </form>
 
                 {/* Right controls: View Toggle and Filter Button */}
@@ -478,7 +570,10 @@ export default function SubscriptionsDashboardView() {
                     <div className="flex items-center bg-muted/40 p-1 rounded-xl border border-border/50 text-xs font-semibold">
                         <button
                             type="button"
-                            onClick={() => setViewMode("grid")}
+                            onClick={() => {
+                                setViewMode("grid");
+                                updateUrl({ view: "grid" });
+                            }}
                             className={cn(
                                 "px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5",
                                 viewMode === "grid"
@@ -492,7 +587,10 @@ export default function SubscriptionsDashboardView() {
                         </button>
                         <button
                             type="button"
-                            onClick={() => setViewMode("table")}
+                            onClick={() => {
+                                setViewMode("table");
+                                updateUrl({ view: "table" });
+                            }}
                             className={cn(
                                 "px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5",
                                 viewMode === "table"
@@ -541,6 +639,7 @@ export default function SubscriptionsDashboardView() {
                                 onClick={() => {
                                     setSearchQuery("");
                                     setSearchInput("");
+                                    updateUrl({ search: "" });
                                 }}
                                 className="text-muted-foreground hover:text-foreground cursor-pointer"
                             >
@@ -562,6 +661,7 @@ export default function SubscriptionsDashboardView() {
                                 onClick={() => {
                                     setSelectedType("all");
                                     setTempType("all");
+                                    updateUrl({ type: "all" });
                                 }}
                                 className="text-muted-foreground hover:text-foreground cursor-pointer"
                             >
@@ -581,6 +681,7 @@ export default function SubscriptionsDashboardView() {
                                 onClick={() => {
                                     setSelectedProject("all");
                                     setTempProject("all");
+                                    updateUrl({ project: "all" });
                                 }}
                                 className="text-muted-foreground hover:text-foreground cursor-pointer"
                             >
@@ -605,6 +706,7 @@ export default function SubscriptionsDashboardView() {
                                 onClick={() => {
                                     setSelectedStatus("all");
                                     setTempStatus("all");
+                                    updateUrl({ status: "all" });
                                 }}
                                 className="text-muted-foreground hover:text-foreground cursor-pointer"
                             >
@@ -626,6 +728,7 @@ export default function SubscriptionsDashboardView() {
                                 onClick={() => {
                                     setSelectedBillingCycle("all");
                                     setTempBillingCycle("all");
+                                    updateUrl({ billingCycle: "all" });
                                 }}
                                 className="text-muted-foreground hover:text-foreground cursor-pointer"
                             >
@@ -647,6 +750,7 @@ export default function SubscriptionsDashboardView() {
                                     setSortOrder("asc");
                                     setTempSortBy("endDate");
                                     setTempSortOrder("asc");
+                                    updateUrl({ sortBy: "endDate", sortOrder: "asc" });
                                 }}
                                 className="text-muted-foreground hover:text-foreground cursor-pointer"
                             >
@@ -662,6 +766,15 @@ export default function SubscriptionsDashboardView() {
                             handleResetFilters();
                             setSearchQuery("");
                             setSearchInput("");
+                            updateUrl({
+                                search: "",
+                                type: "all",
+                                project: "all",
+                                status: "all",
+                                billingCycle: "all",
+                                sortBy: "endDate",
+                                sortOrder: "asc",
+                            });
                         }}
                         className="text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 h-7 px-2 cursor-pointer font-semibold ml-auto"
                     >

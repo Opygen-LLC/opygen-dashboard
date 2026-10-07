@@ -89,6 +89,11 @@ const ProjectSchema = new Schema<IProject>(
     },
 );
 
+ProjectSchema.index({ status: 1, createdAt: -1 });
+ProjectSchema.index({ createdAt: -1 });
+ProjectSchema.index({ assignees: 1 });
+ProjectSchema.index({ createdBy: 1 });
+
 const Project: Model<IProject> =
     mongoose.models.Project ||
     mongoose.model<IProject>("Project", ProjectSchema);

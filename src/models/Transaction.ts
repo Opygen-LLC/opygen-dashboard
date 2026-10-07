@@ -81,6 +81,12 @@ const TransactionSchema = new Schema<ITransaction>(
     },
 );
 
+TransactionSchema.index({ date: -1, createdAt: -1 });
+TransactionSchema.index({ category: 1, date: -1 });
+TransactionSchema.index({ type: 1, date: -1 });
+TransactionSchema.index({ user: 1, date: -1 });
+TransactionSchema.index({ productName: 1, date: -1 });
+
 // Delete the cached model in development to ensure schema updates (like new enums) are applied
 if (mongoose.models.Transaction) {
     delete mongoose.models.Transaction;

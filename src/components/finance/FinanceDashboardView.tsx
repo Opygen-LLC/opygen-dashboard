@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -89,7 +90,21 @@ function calculateDateRange(preset: string, customStart?: string, customEnd?: st
 }
 
 export default function FinanceDashboardView() {
-    const [activeViewTab, setActiveViewTab] = useState<"overview" | "analytics">("overview");
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
+    const urlTab = searchParams.get("tab") === "analytics" ? "analytics" : "overview";
+    const urlType = searchParams.get("type") || "";
+    const urlCategory = searchParams.get("category") || "";
+    const urlProduct = searchParams.get("product") || "";
+    const urlUser = searchParams.get("user") || "";
+    const urlDate = searchParams.get("date") || "all";
+    const urlStart = searchParams.get("start") || "";
+    const urlEnd = searchParams.get("end") || "";
+    const urlPage = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+
+    const [activeViewTab, setActiveViewTab] = useState<"overview" | "analytics">(urlTab as "overview" | "analytics");
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<any | null>(null);
 
@@ -99,32 +114,87 @@ export default function FinanceDashboardView() {
 
     // Filter drawer state
     const [isFilterOpen, setIsFilterOpen] = useState(false);
-    const [filterType, setFilterType] = useState<string>("");
-    const [filterCategory, setFilterCategory] = useState<string>("");
-    const [filterProductName, setFilterProductName] = useState<string>("");
-    const [filterUser, setFilterUser] = useState<string>("");
-    const [filterDate, setFilterDate] = useState<string>("all");
-    const [customStartDate, setCustomStartDate] = useState<string>("");
-    const [customEndDate, setCustomEndDate] = useState<string>("");
+    const [filterType, setFilterType] = useState<string>(urlType);
+    const [filterCategory, setFilterCategory] = useState<string>(urlCategory);
+    const [filterProductName, setFilterProductName] = useState<string>(urlProduct);
+    const [filterUser, setFilterUser] = useState<string>(urlUser);
+    const [filterDate, setFilterDate] = useState<string>(urlDate);
+    const [customStartDate, setCustomStartDate] = useState<string>(urlStart);
+    const [customEndDate, setCustomEndDate] = useState<string>(urlEnd);
 
     // Temp filter drawer state
-    const [tempFilterType, setTempFilterType] = useState<string>("");
-    const [tempFilterCategory, setTempFilterCategory] = useState<string>("");
-    const [tempFilterProductName, setTempFilterProductName] = useState<string>("");
-    const [tempFilterUser, setTempFilterUser] = useState<string>("");
-    const [tempFilterDate, setTempFilterDate] = useState<string>("all");
-    const [tempCustomStartDate, setTempCustomStartDate] = useState<string>("");
-    const [tempCustomEndDate, setTempCustomEndDate] = useState<string>("");
+    const [tempFilterType, setTempFilterType] = useState<string>(urlType);
+    const [tempFilterCategory, setTempFilterCategory] = useState<string>(urlCategory);
+    const [tempFilterProductName, setTempFilterProductName] = useState<string>(urlProduct);
+    const [tempFilterUser, setTempFilterUser] = useState<string>(urlUser);
+    const [tempFilterDate, setTempFilterDate] = useState<string>(urlDate);
+    const [tempCustomStartDate, setTempCustomStartDate] = useState<string>(urlStart);
+    const [tempCustomEndDate, setTempCustomEndDate] = useState<string>(urlEnd);
 
-    const [currentPage, setCurrentPage] = useState<number>(1);
+    const [currentPage, setCurrentPage] = useState<number>(urlPage);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => setMounted(true), []);
 
-    // Reset pagination when filter changes
+    const updateUrl = useCallback((updates: Partial<{
+        tab: string;
+        type: string;
+        category: string;
+        product: string;
+        user: string;
+        date: string;
+        start: string;
+        end: string;
+        page: number;
+    }>) => {
+        const params = new URLSearchParams(searchParams.toString());
+        const merged = {
+            tab: updates.tab !== undefined ? updates.tab : activeViewTab,
+            type: updates.type !== undefined ? updates.type : filterType,
+            category: updates.category !== undefined ? updates.category : filterCategory,
+            product: updates.product !== undefined ? updates.product : filterProductName,
+            user: updates.user !== undefined ? updates.user : filterUser,
+            date: updates.date !== undefined ? updates.date : filterDate,
+            start: updates.start !== undefined ? updates.start : customStartDate,
+            end: updates.end !== undefined ? updates.end : customEndDate,
+            page: updates.page !== undefined ? updates.page : currentPage,
+        };
+
+        if (merged.tab === "analytics") params.set("tab", "analytics"); else params.delete("tab");
+        if (merged.type && merged.type !== "all") params.set("type", merged.type); else params.delete("type");
+        if (merged.category && merged.category !== "all") params.set("category", merged.category); else params.delete("category");
+        if (merged.product && merged.product !== "all") params.set("product", merged.product); else params.delete("product");
+        if (merged.user && merged.user !== "all") params.set("user", merged.user); else params.delete("user");
+        if (merged.date && merged.date !== "all") params.set("date", merged.date); else params.delete("date");
+        if (merged.start) params.set("start", merged.start); else params.delete("start");
+        if (merged.end) params.set("end", merged.end); else params.delete("end");
+        if (merged.page > 1) params.set("page", String(merged.page)); else params.delete("page");
+
+        const qs = params.toString();
+        router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+    }, [searchParams, router, pathname, activeViewTab, filterType, filterCategory, filterProductName, filterUser, filterDate, customStartDate, customEndDate, currentPage]);
+
     useEffect(() => {
-        setCurrentPage(1);
-    }, [filterType, filterCategory, filterProductName, filterUser, filterDate, customStartDate, customEndDate]);
+        const tb = searchParams.get("tab") === "analytics" ? "analytics" : "overview";
+        const tp = searchParams.get("type") || "";
+        const cat = searchParams.get("category") || "";
+        const prod = searchParams.get("product") || "";
+        const u = searchParams.get("user") || "";
+        const dt = searchParams.get("date") || "all";
+        const st = searchParams.get("start") || "";
+        const en = searchParams.get("end") || "";
+        const pg = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+
+        setActiveViewTab(tb as "overview" | "analytics");
+        setFilterType(tp);
+        setFilterCategory(cat);
+        setFilterProductName(prod);
+        setFilterUser(u);
+        setFilterDate(dt);
+        setCustomStartDate(st);
+        setCustomEndDate(en);
+        setCurrentPage(pg);
+    }, [searchParams]);
 
     const activeFilterCount =
         (filterType && filterType !== "all" ? 1 : 0) +
@@ -152,6 +222,18 @@ export default function FinanceDashboardView() {
         setFilterDate(tempFilterDate);
         setCustomStartDate(tempCustomStartDate);
         setCustomEndDate(tempCustomEndDate);
+        setCurrentPage(1);
+        setIsFilterOpen(false);
+        updateUrl({
+            type: tempFilterType,
+            category: tempFilterCategory,
+            product: tempFilterProductName,
+            user: tempFilterUser,
+            date: tempFilterDate,
+            start: tempCustomStartDate,
+            end: tempCustomEndDate,
+            page: 1,
+        });
     };
 
     const handleResetFilters = () => {
@@ -169,6 +251,18 @@ export default function FinanceDashboardView() {
         setFilterDate("all");
         setCustomStartDate("");
         setCustomEndDate("");
+        setCurrentPage(1);
+        setIsFilterOpen(false);
+        updateUrl({
+            type: "",
+            category: "",
+            product: "",
+            user: "",
+            date: "all",
+            start: "",
+            end: "",
+            page: 1,
+        });
     };
 
     // Fetch summary
@@ -561,7 +655,10 @@ export default function FinanceDashboardView() {
                 <Button
                     variant={activeViewTab === "overview" ? "default" : "ghost"}
                     size="sm"
-                    onClick={() => setActiveViewTab("overview")}
+                    onClick={() => {
+                        setActiveViewTab("overview");
+                        updateUrl({ tab: "overview" });
+                    }}
                     className={`gap-2 h-10! cursor-pointer font-medium ${
                         activeViewTab === "overview" ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
                     }`}
@@ -572,7 +669,10 @@ export default function FinanceDashboardView() {
                 <Button
                     variant={activeViewTab === "analytics" ? "default" : "ghost"}
                     size="sm"
-                    onClick={() => setActiveViewTab("analytics")}
+                    onClick={() => {
+                        setActiveViewTab("analytics");
+                        updateUrl({ tab: "analytics" });
+                    }}
                     className={`gap-2 h-10! cursor-pointer font-medium ${
                         activeViewTab === "analytics" ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs" : "text-muted-foreground hover:text-foreground"
                     }`}
@@ -846,7 +946,11 @@ export default function FinanceDashboardView() {
                                     variant="outline"
                                     size="icon"
                                     disabled={currentPage === 1}
-                                    onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
+                                    onClick={() => {
+                                        const prevP = Math.max(currentPage - 1, 1);
+                                        setCurrentPage(prevP);
+                                        updateUrl({ page: prevP });
+                                    }}
                                     className="h-8 w-8 cursor-pointer disabled:opacity-50"
                                     title="Previous Page"
                                 >
@@ -907,9 +1011,10 @@ export default function FinanceDashboardView() {
                                                         : "outline"
                                                 }
                                                 size="sm"
-                                                onClick={() =>
-                                                    setCurrentPage(pageNum)
-                                                }
+                                                onClick={() => {
+                                                    setCurrentPage(pageNum);
+                                                    updateUrl({ page: pageNum });
+                                                }}
                                                 className={cn(
                                                     "h-8 w-8 text-xs cursor-pointer p-0 transition-all font-semibold",
                                                     currentPage === pageNum
@@ -930,16 +1035,16 @@ export default function FinanceDashboardView() {
                                         currentPage ===
                                         Math.ceil(transactions.length / 10)
                                     }
-                                    onClick={() =>
-                                        setCurrentPage(
-                                            Math.min(
-                                                currentPage + 1,
-                                                Math.ceil(
-                                                    transactions.length / 10,
-                                                ),
+                                    onClick={() => {
+                                        const nextP = Math.min(
+                                            currentPage + 1,
+                                            Math.ceil(
+                                                transactions.length / 10,
                                             ),
-                                        )
-                                    }
+                                        );
+                                        setCurrentPage(nextP);
+                                        updateUrl({ page: nextP });
+                                    }}
                                     className="h-8 w-8 cursor-pointer disabled:opacity-50"
                                     title="Next Page"
                                 >

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ import {
     ChevronRight,
     Download,
     Filter,
+    X,
 } from "lucide-react";
 import { FilterDrawer } from "@/components/ui/FilterDrawer";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +25,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store";
 import {
     fetchProjectsThunk,
@@ -38,6 +39,7 @@ import {
     addProjectLocally,
     deleteProjectLocally,
     resetFilters,
+    setFiltersFromUrl,
 } from "@/store/projectsSlice";
 import {
     Select,
@@ -82,12 +84,68 @@ export default function ProjectsDashboardView() {
     const { search, status, priority, assignee, sortBy, sortOrder, currentPage } = filters;
     const [searchInput, setSearchInput] = useState(search);
 
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [draftStatus, setDraftStatus] = useState(status);
     const [draftPriority, setDraftPriority] = useState(priority);
     const [draftAssignee, setDraftAssignee] = useState(assignee);
     const [draftSortBy, setDraftSortBy] = useState(sortBy);
     const [draftSortOrder, setDraftSortOrder] = useState(sortOrder);
+
+    const updateUrl = useCallback((updates: Partial<{
+        search: string;
+        status: string;
+        priority: string;
+        assignee: string;
+        sortBy: string;
+        sortOrder: string;
+        page: number;
+    }>) => {
+        const params = new URLSearchParams(searchParams.toString());
+        const merged = {
+            search: updates.search !== undefined ? updates.search : search,
+            status: updates.status !== undefined ? updates.status : status,
+            priority: updates.priority !== undefined ? updates.priority : priority,
+            assignee: updates.assignee !== undefined ? updates.assignee : assignee,
+            sortBy: updates.sortBy !== undefined ? updates.sortBy : sortBy,
+            sortOrder: updates.sortOrder !== undefined ? updates.sortOrder : sortOrder,
+            page: updates.page !== undefined ? updates.page : currentPage,
+        };
+
+        if (merged.search) params.set("search", merged.search); else params.delete("search");
+        if (merged.status && merged.status !== "all") params.set("status", merged.status); else params.delete("status");
+        if (merged.priority && merged.priority !== "all") params.set("priority", merged.priority); else params.delete("priority");
+        if (merged.assignee && merged.assignee !== "all") params.set("assignee", merged.assignee); else params.delete("assignee");
+        if (merged.sortBy && merged.sortBy !== "updatedAt") params.set("sortBy", merged.sortBy); else params.delete("sortBy");
+        if (merged.sortOrder && merged.sortOrder !== "desc") params.set("sortOrder", merged.sortOrder); else params.delete("sortOrder");
+        if (merged.page > 1) params.set("page", String(merged.page)); else params.delete("page");
+
+        const qs = params.toString();
+        router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+    }, [searchParams, router, pathname, search, status, priority, assignee, sortBy, sortOrder, currentPage]);
+
+    useEffect(() => {
+        const urlSearch = searchParams.get("search") || "";
+        const urlStatus = searchParams.get("status") || "all";
+        const urlPriority = searchParams.get("priority") || "all";
+        const urlAssignee = searchParams.get("assignee") || "all";
+        const urlSortBy = searchParams.get("sortBy") || "updatedAt";
+        const urlSortOrder = (searchParams.get("sortOrder") === "asc" ? "asc" : "desc") as "asc" | "desc";
+        const urlPage = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+
+        dispatch(setFiltersFromUrl({
+            search: urlSearch,
+            status: urlStatus,
+            priority: urlPriority,
+            assignee: urlAssignee,
+            sortBy: urlSortBy,
+            sortOrder: urlSortOrder,
+            currentPage: urlPage,
+        }));
+        setSearchInput(urlSearch);
+    }, [searchParams, dispatch]);
 
     const openFilterDrawer = () => {
         setDraftStatus(status);
@@ -106,6 +164,15 @@ export default function ProjectsDashboardView() {
         if (draftSortOrder !== sortOrder) {
             dispatch(toggleSortOrder());
         }
+        setIsFilterOpen(false);
+        updateUrl({
+            status: draftStatus,
+            priority: draftPriority,
+            assignee: draftAssignee,
+            sortBy: draftSortBy,
+            sortOrder: draftSortOrder,
+            page: 1,
+        });
     };
 
     const handleResetFilters = () => {
@@ -115,6 +182,15 @@ export default function ProjectsDashboardView() {
         setDraftSortBy("updatedAt");
         setDraftSortOrder("desc");
         dispatch(resetFilters());
+        setIsFilterOpen(false);
+        updateUrl({
+            status: "all",
+            priority: "all",
+            assignee: "all",
+            sortBy: "updatedAt",
+            sortOrder: "desc",
+            page: 1,
+        });
     };
 
     const activeFilterCount = [
@@ -264,6 +340,7 @@ export default function ProjectsDashboardView() {
                     onSubmit={(e) => {
                         e.preventDefault();
                         dispatch(setSearchFilter(searchInput));
+                        updateUrl({ search: searchInput, page: 1 });
                     }}
                     className="relative w-full sm:max-w-md flex items-center flex-1"
                 >
@@ -271,22 +348,32 @@ export default function ProjectsDashboardView() {
                     <Input
                         value={searchInput}
                         onChange={(e) => setSearchInput(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                                e.preventDefault();
-                                dispatch(setSearchFilter(searchInput));
-                            }
-                        }}
                         placeholder="Search by title or description... (Press Enter)"
-                        className="pl-9 pr-20 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 text-foreground h-10 transition-all w-full"
+                        className="pl-9 pr-24 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:border-indigo-500 text-foreground h-10 transition-all w-full"
                     />
-                    <button
-                        type="submit"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-2.5 py-1.5 rounded-md font-semibold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
-                        title="Search"
-                    >
-                        Search
-                    </button>
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        {searchInput && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSearchInput("");
+                                    dispatch(setSearchFilter(""));
+                                    updateUrl({ search: "", page: 1 });
+                                }}
+                                className="text-muted-foreground hover:text-foreground text-xs px-1.5 py-1 rounded transition-colors cursor-pointer"
+                                title="Clear search"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+                        )}
+                        <button
+                            type="submit"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-2.5 py-1.5 rounded-md font-semibold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                            title="Search"
+                        >
+                            Search
+                        </button>
+                    </div>
                 </form>
 
                 <div className="flex items-center gap-2 sm:w-auto justify-end">
@@ -430,9 +517,7 @@ export default function ProjectsDashboardView() {
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                                dispatch(resetFilters());
-                            }}
+                            onClick={handleResetFilters}
                             className="mt-4 border-border text-muted-foreground hover:text-foreground hover:bg-accent h-10 cursor-pointer"
                         >
                             Reset Filters
@@ -477,7 +562,11 @@ export default function ProjectsDashboardView() {
                                         variant="outline"
                                         size="icon"
                                         disabled={currentPage === 1}
-                                        onClick={() => dispatch(setCurrentPage(Math.max(currentPage - 1, 1)))}
+                                        onClick={() => {
+                                            const prev = Math.max(currentPage - 1, 1);
+                                            dispatch(setCurrentPage(prev));
+                                            updateUrl({ page: prev });
+                                        }}
                                         className="h-8 w-8 cursor-pointer disabled:opacity-50"
                                         title="Previous Page"
                                     >
@@ -541,9 +630,10 @@ export default function ProjectsDashboardView() {
                                                             : "outline"
                                                     }
                                                     size="sm"
-                                                    onClick={() =>
-                                                        dispatch(setCurrentPage(pageNum))
-                                                    }
+                                                    onClick={() => {
+                                                        dispatch(setCurrentPage(pageNum));
+                                                        updateUrl({ page: pageNum });
+                                                    }}
                                                     className={cn(
                                                         "h-8 w-8 text-xs cursor-pointer p-0 transition-all font-semibold",
                                                         currentPage === pageNum
@@ -564,18 +654,14 @@ export default function ProjectsDashboardView() {
                                             currentPage ===
                                             Math.ceil(projects.length / 10)
                                         }
-                                        onClick={() =>
-                                            dispatch(
-                                                setCurrentPage(
-                                                    Math.min(
-                                                        currentPage + 1,
-                                                        Math.ceil(
-                                                            projects.length / 10,
-                                                        ),
-                                                    ),
-                                                ),
-                                            )
-                                        }
+                                        onClick={() => {
+                                            const next = Math.min(
+                                                currentPage + 1,
+                                                Math.ceil(projects.length / 10),
+                                            );
+                                            dispatch(setCurrentPage(next));
+                                            updateUrl({ page: next });
+                                        }}
                                         className="h-8 w-8 cursor-pointer disabled:opacity-50"
                                         title="Next Page"
                                     >

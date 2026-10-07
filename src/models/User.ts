@@ -82,6 +82,10 @@ const UserSchema = new Schema<IUser>({
     createdAt: { type: Date, default: Date.now },
 });
 
+UserSchema.index({ role: 1 });
+UserSchema.index({ status: 1 });
+UserSchema.index({ createdAt: -1 });
+
 if (mongoose.models.User) {
     delete mongoose.models.User;
 }

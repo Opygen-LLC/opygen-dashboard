@@ -25,42 +25,88 @@ export async function GET(req: NextRequest) {
     // 1. Month-over-Month Trends (Past 6 Months) in USD & BDT
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
-    const monthlyStats = await Transaction.aggregate([
-      {
-        $match: {
-          date: { $gte: sixMonthsAgo },
-          category: { $nin: ["transfer", TransactionCategory.TRANSFER] },
-        }
-      },
-      {
-        $group: {
-          _id: {
-            year: { $year: "$date" },
-            month: { $month: "$date" }
-          },
-          income: {
-            $sum: {
-              $cond: [{ $eq: ["$type", TransactionType.INCOME] }, "$amount", 0]
-            }
-          },
-          incomeBdt: {
-            $sum: {
-              $cond: [{ $eq: ["$type", TransactionType.INCOME] }, "$amount", 0]
-            }
-          },
-          expense: {
-            $sum: {
-              $cond: [{ $eq: ["$type", TransactionType.EXPENSE] }, "$amount", 0]
-            }
-          },
-          expenseBdt: {
-            $sum: {
-              $cond: [{ $eq: ["$type", TransactionType.EXPENSE] }, "$amount", 0]
+    // Run all 5 independent queries in parallel via Promise.all
+    const [monthlyStats, categoryStats, trailingExpenses, projects, quotes] = await Promise.all([
+      // 1. Month-over-Month Trends (Past 6 Months) in USD & BDT
+      Transaction.aggregate([
+        {
+          $match: {
+            date: { $gte: sixMonthsAgo },
+            category: { $nin: ["transfer", TransactionCategory.TRANSFER] },
+          }
+        },
+        {
+          $group: {
+            _id: {
+              year: { $year: "$date" },
+              month: { $month: "$date" }
+            },
+            income: {
+              $sum: {
+                $cond: [{ $eq: ["$type", TransactionType.INCOME] }, "$amount", 0]
+              }
+            },
+            incomeBdt: {
+              $sum: {
+                $cond: [{ $eq: ["$type", TransactionType.INCOME] }, "$amount", 0]
+              }
+            },
+            expense: {
+              $sum: {
+                $cond: [{ $eq: ["$type", TransactionType.EXPENSE] }, "$amount", 0]
+              }
+            },
+            expenseBdt: {
+              $sum: {
+                $cond: [{ $eq: ["$type", TransactionType.EXPENSE] }, "$amount", 0]
+              }
             }
           }
+        },
+        { $sort: { "_id.year": 1, "_id.month": 1 } }
+      ]),
+
+      // 2. Category Breakdown for Expenses (USD and BDT)
+      Transaction.aggregate([
+        {
+          $match: {
+            type: TransactionType.EXPENSE,
+            category: { $nin: ["transfer", TransactionCategory.TRANSFER] },
+          }
+        },
+        {
+          $group: {
+            _id: "$category",
+            total: { $sum: "$amount" },
+            totalBdt: { $sum: "$amount" }
+          }
+        },
+        { $sort: { total: -1 } }
+      ]),
+
+      // 3. Trailing 90-Day Burn Rate calculation (USD and BDT)
+      Transaction.aggregate([
+        {
+          $match: {
+            type: TransactionType.EXPENSE,
+            date: { $gte: ninetyDaysAgo },
+            category: { $nin: ["transfer", TransactionCategory.TRANSFER] },
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: "$amount" },
+            totalBdt: { $sum: "$amount" }
+          }
         }
-      },
-      { $sort: { "_id.year": 1, "_id.month": 1 } }
+      ]),
+
+      // 4. Project Profitability
+      Project.find({}).lean(),
+
+      // 5. Quotes for Cash Flow
+      Quote.find({}).lean(),
     ]);
 
     // Build complete array for last 6 months even if some months have 0 transactions
@@ -90,56 +136,16 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 2. Category Breakdown for Expenses (USD and BDT)
-    const categoryStats = await Transaction.aggregate([
-      {
-        $match: {
-          type: TransactionType.EXPENSE,
-          category: { $nin: ["transfer", TransactionCategory.TRANSFER] },
-        }
-      },
-      {
-        $group: {
-          _id: "$category",
-          total: { $sum: "$amount" },
-          totalBdt: { $sum: "$amount" }
-        }
-      },
-      { $sort: { total: -1 } }
-    ]);
-
     const categoryBreakdown = categoryStats.map(c => ({
       category: c._id ? c._id.replace(/_/g, ' ').toUpperCase() : 'OTHER',
       amount: c.total,
       amountBdt: c.totalBdt
     }));
 
-    // 3. Trailing 90-Day Burn Rate calculation (USD and BDT)
-    const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-    const trailingExpenses = await Transaction.aggregate([
-      {
-        $match: {
-          type: TransactionType.EXPENSE,
-          date: { $gte: ninetyDaysAgo },
-          category: { $nin: ["transfer", TransactionCategory.TRANSFER] },
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$amount" },
-          totalBdt: { $sum: "$amount" }
-        }
-      }
-    ]);
-    
     const trailing90ExpenseTotal = trailingExpenses[0]?.total || 0;
     const trailing90ExpenseTotalBdt = trailingExpenses[0]?.totalBdt || 0;
     const monthlyBurnRate = trailing90ExpenseTotal > 0 ? trailing90ExpenseTotal / 3 : 0;
     const monthlyBurnRateBdt = trailing90ExpenseTotalBdt > 0 ? trailing90ExpenseTotalBdt / 3 : 0;
-
-    // 4. Project Profitability
-    const projects = await Project.find({}).lean();
     const projectProfitability = projects.map(p => {
       const paidPayments = p.payments ? p.payments.filter(pay => pay.status === 'paid') : [];
       const pendingPayments = p.payments ? p.payments.filter(pay => pay.status === 'pending') : [];
@@ -191,7 +197,6 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    const quotes = await Quote.find({}).lean();
     quotes.forEach(q => {
       if (q.advanceValue) {
         if (q.advanceType === 'fixed') {

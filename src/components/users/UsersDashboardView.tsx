@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -79,6 +80,10 @@ import { formatUserTitle, parseUserTitle } from "@/lib/utils";
 export default function UsersManagementPage() {
     const queryClient = useQueryClient();
     const { data: currentSession } = useSession();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [deleteUserTarget, setDeleteUserTarget] = useState<any | null>(null);
@@ -91,15 +96,53 @@ export default function UsersManagementPage() {
     const [newCreateTitleInput, setNewCreateTitleInput] = useState("");
 
     // Search and Filter states
-    const [searchInput, setSearchInput] = useState("");
-    const [searchQuery, setSearchQuery] = useState("");
+    const [searchInput, setSearchInput] = useState(searchParams.get("search") || "");
+    const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
     const [isFilterOpen, setIsFilterOpen] = useState(false);
-    const [roleFilter, setRoleFilter] = useState("all");
-    const [statusFilter, setStatusFilter] = useState("all");
-    const [titleFilter, setTitleFilter] = useState("all");
-    const [tempRoleFilter, setTempRoleFilter] = useState("all");
-    const [tempStatusFilter, setTempStatusFilter] = useState("all");
-    const [tempTitleFilter, setTempTitleFilter] = useState("all");
+    const [roleFilter, setRoleFilter] = useState(searchParams.get("role") || "all");
+    const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
+    const [titleFilter, setTitleFilter] = useState(searchParams.get("title") || "all");
+    const [tempRoleFilter, setTempRoleFilter] = useState(searchParams.get("role") || "all");
+    const [tempStatusFilter, setTempStatusFilter] = useState(searchParams.get("status") || "all");
+    const [tempTitleFilter, setTempTitleFilter] = useState(searchParams.get("title") || "all");
+
+    // URL Sync helper
+    const updateUrl = useCallback((updates: Partial<{
+        search: string;
+        role: string;
+        status: string;
+        title: string;
+    }>) => {
+        const params = new URLSearchParams(searchParams.toString());
+        const merged = {
+            search: updates.search !== undefined ? updates.search : searchQuery,
+            role: updates.role !== undefined ? updates.role : roleFilter,
+            status: updates.status !== undefined ? updates.status : statusFilter,
+            title: updates.title !== undefined ? updates.title : titleFilter,
+        };
+
+        if (merged.search.trim()) params.set("search", merged.search.trim()); else params.delete("search");
+        if (merged.role && merged.role !== "all") params.set("role", merged.role); else params.delete("role");
+        if (merged.status && merged.status !== "all") params.set("status", merged.status); else params.delete("status");
+        if (merged.title && merged.title !== "all") params.set("title", merged.title); else params.delete("title");
+
+        const qs = params.toString();
+        router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+    }, [searchParams, router, pathname, searchQuery, roleFilter, statusFilter, titleFilter]);
+
+    // Keep state in sync with URL back/forward
+    useEffect(() => {
+        const uSearch = searchParams.get("search") || "";
+        const uRole = searchParams.get("role") || "all";
+        const uStatus = searchParams.get("status") || "all";
+        const uTitle = searchParams.get("title") || "all";
+
+        setSearchInput(uSearch);
+        setSearchQuery(uSearch);
+        setRoleFilter(uRole);
+        setStatusFilter(uStatus);
+        setTitleFilter(uTitle);
+    }, [searchParams]);
 
     const openFilterDrawer = () => {
         setTempRoleFilter(roleFilter);
@@ -112,6 +155,12 @@ export default function UsersManagementPage() {
         setRoleFilter(tempRoleFilter);
         setStatusFilter(tempStatusFilter);
         setTitleFilter(tempTitleFilter);
+        setIsFilterOpen(false);
+        updateUrl({
+            role: tempRoleFilter,
+            status: tempStatusFilter,
+            title: tempTitleFilter,
+        });
     };
 
     const handleResetUserFilters = () => {
@@ -121,6 +170,12 @@ export default function UsersManagementPage() {
         setRoleFilter("all");
         setStatusFilter("all");
         setTitleFilter("all");
+        setIsFilterOpen(false);
+        updateUrl({
+            role: "all",
+            status: "all",
+            title: "all",
+        });
     };
 
     const activeUserFilterCount = [
@@ -272,6 +327,15 @@ export default function UsersManagementPage() {
         setRoleFilter("all");
         setStatusFilter("all");
         setTitleFilter("all");
+        setTempRoleFilter("all");
+        setTempStatusFilter("all");
+        setTempTitleFilter("all");
+        updateUrl({
+            search: "",
+            role: "all",
+            status: "all",
+            title: "all",
+        });
     };
 
     const createUserMutation = useMutation({
@@ -449,6 +513,7 @@ export default function UsersManagementPage() {
                         onSubmit={(e) => {
                             e.preventDefault();
                             setSearchQuery(searchInput);
+                            updateUrl({ search: searchInput });
                         }}
                         className="relative w-full sm:max-w-md flex flex-1 items-center"
                     >
@@ -457,21 +522,31 @@ export default function UsersManagementPage() {
                             placeholder="Search by user name or email... (Press Enter)"
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    setSearchQuery(searchInput);
-                                }
-                            }}
-                            className="pl-9 pr-20 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 text-foreground h-10 transition-all w-full text-xs"
+                            className="pl-9 pr-24 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 text-foreground h-10 transition-all w-full text-xs"
                         />
-                        <button
-                            type="submit"
-                            className="absolute right-1 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-md font-semibold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
-                            title="Search"
-                        >
-                            Search
-                        </button>
+                        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                            {searchInput && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSearchQuery("");
+                                        setSearchInput("");
+                                        updateUrl({ search: "" });
+                                    }}
+                                    className="text-muted-foreground hover:text-foreground text-xs px-1.5 py-1 rounded transition-colors cursor-pointer"
+                                    title="Clear search"
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                </button>
+                            )}
+                            <button
+                                type="submit"
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-md font-semibold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                                title="Search"
+                            >
+                                Search
+                            </button>
+                        </div>
                     </form>
 
                     <div className="flex items-center gap-2 sm:w-auto justify-end">
@@ -490,6 +565,105 @@ export default function UsersManagementPage() {
                         </Button>
                     </div>
                 </div>
+
+                {/* Active Filter Chips Bar */}
+                {(activeUserFilterCount > 0 || searchQuery) && (
+                    <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/20 border-b border-border/60 text-xs">
+                        <span className="text-muted-foreground font-semibold text-[11px] uppercase tracking-wider mr-1">
+                            Active Filters:
+                        </span>
+
+                        {searchQuery && (
+                            <Badge
+                                variant="secondary"
+                                className="bg-background border-border text-foreground gap-1.5 py-1 px-2.5 rounded-lg font-medium"
+                            >
+                                <span>Search: &quot;{searchQuery}&quot;</span>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSearchQuery("");
+                                        setSearchInput("");
+                                        updateUrl({ search: "" });
+                                    }}
+                                    className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </Badge>
+                        )}
+
+                        {roleFilter !== "all" && (
+                            <Badge
+                                variant="secondary"
+                                className="bg-background border-border text-foreground gap-1.5 py-1 px-2.5 rounded-lg font-medium"
+                            >
+                                <span>Role: {roleFilter.toUpperCase()}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setRoleFilter("all");
+                                        setTempRoleFilter("all");
+                                        updateUrl({ role: "all" });
+                                    }}
+                                    className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </Badge>
+                        )}
+
+                        {statusFilter !== "all" && (
+                            <Badge
+                                variant="secondary"
+                                className="bg-background border-border text-foreground gap-1.5 py-1 px-2.5 rounded-lg font-medium"
+                            >
+                                <span>Status: {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setStatusFilter("all");
+                                        setTempStatusFilter("all");
+                                        updateUrl({ status: "all" });
+                                    }}
+                                    className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </Badge>
+                        )}
+
+                        {titleFilter !== "all" && (
+                            <Badge
+                                variant="secondary"
+                                className="bg-background border-border text-foreground gap-1.5 py-1 px-2.5 rounded-lg font-medium"
+                            >
+                                <span>Title: {titleFilter}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setTitleFilter("all");
+                                        setTempTitleFilter("all");
+                                        updateUrl({ title: "all" });
+                                    }}
+                                    className="text-muted-foreground hover:text-foreground cursor-pointer"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </Badge>
+                        )}
+
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={resetFilters}
+                            className="text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 h-7 px-2 cursor-pointer font-semibold ml-auto"
+                        >
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                            Clear All
+                        </Button>
+                    </div>
+                )}
 
                 {/* Filter Drawer Sidebar */}
                 <FilterDrawer

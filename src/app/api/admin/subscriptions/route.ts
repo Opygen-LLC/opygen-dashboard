@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
         const sortOrder = searchParams.get("sortOrder") || "desc";
 
         // Query all for stats calculation
-        const allItems = await Subscription.find({});
+        const allItems = await Subscription.find({}).lean();
 
         const now = new Date();
         const next14Days = new Date();
@@ -173,7 +173,8 @@ export async function GET(req: NextRequest) {
 
         const subscriptions = await Subscription.find(query)
             .populate("createdBy", "name email avatarUrl")
-            .sort(sortOptions);
+            .sort(sortOptions)
+            .lean();
 
         return NextResponse.json(
             {

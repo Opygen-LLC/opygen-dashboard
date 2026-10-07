@@ -134,6 +134,15 @@ const ClientSchema = new Schema<IClient>(
     },
 );
 
+ClientSchema.index({ createdAt: -1 });
+ClientSchema.index({ status: 1, createdAt: -1 });
+ClientSchema.index({ source: 1, createdAt: -1 });
+ClientSchema.index({ priority: 1, createdAt: -1 });
+ClientSchema.index({ adName: 1 });
+ClientSchema.index({ followupDate: 1 });
+ClientSchema.index({ meetingDate: 1 });
+ClientSchema.index({ nextFollowupDate: 1 });
+
 if (process.env.NODE_ENV === "development") {
     delete mongoose.models.Client;
 }

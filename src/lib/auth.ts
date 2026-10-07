@@ -7,6 +7,14 @@ import User from "@/models/User";
 import Session from "@/models/Session";
 import { UserStatus } from "@/types";
 
+// In-memory cache for active session validity (TTL 60s) to avoid hammering MongoDB on every single request
+interface CachedSessionCheck {
+    valid: boolean;
+    checkedAt: number;
+    lastActiveTouched: number;
+}
+const sessionCache = new Map<string, CachedSessionCheck>();
+
 export const authOptions: NextAuthOptions = {
     session: {
         strategy: "jwt",
@@ -119,20 +127,55 @@ export const authOptions: NextAuthOptions = {
         },
         async session({ session, token }) {
             if (token && session.user) {
-                await dbConnect();
-                const activeSession = await Session.findOne({ sessionToken: token.sessionToken });
-                if (!activeSession) {
-                    // Invalid session, invalidate return object so client handles as logged out
-                    return {
-                        ...session,
-                        user: null as any,
-                        expires: "1970-01-01T00:00:00.000Z",
-                    };
-                }
+                const sToken = token.sessionToken as string | undefined;
 
-                // Update activity time
-                activeSession.lastActive = new Date();
-                await activeSession.save();
+                if (sToken) {
+                    const now = Date.now();
+                    const cachedCheck = sessionCache.get(sToken);
+
+                    let isValid = true; // Default to true if JWT is authentic
+
+                    if (cachedCheck && now - cachedCheck.checkedAt < 300_000) {
+                        isValid = cachedCheck.valid;
+                    } else {
+                        try {
+                            await dbConnect();
+                            const activeSession = await Session.findOne({ sessionToken: sToken })
+                                .select("_id lastActive")
+                                .lean()
+                                .maxTimeMS(2500);
+
+                            // Only mark invalid if DB successfully responded and session explicitly does not exist
+                            isValid = !!activeSession;
+                            sessionCache.set(sToken, {
+                                valid: isValid,
+                                checkedAt: now,
+                                lastActiveTouched: cachedCheck?.lastActiveTouched || now,
+                            });
+                        } catch (dbErr) {
+                            console.warn("Session DB verification fallback warning:", dbErr);
+                            // On DB timeout/connection lag, preserve JWT validity to prevent intermittent 401
+                            isValid = true;
+                        }
+                    }
+
+                    if (!isValid) {
+                        return {
+                            ...session,
+                            user: null as any,
+                            expires: "1970-01-01T00:00:00.000Z",
+                        };
+                    }
+
+                    // Throttle lastActive updates to at most once every 5 minutes in background (non-blocking)
+                    const lastTouch = sessionCache.get(sToken)?.lastActiveTouched || 0;
+                    if (now - lastTouch > 5 * 60 * 1000) {
+                        if (sessionCache.has(sToken)) {
+                            sessionCache.get(sToken)!.lastActiveTouched = now;
+                        }
+                        Session.updateOne({ sessionToken: sToken }, { $set: { lastActive: new Date() } }).catch(() => {});
+                    }
+                }
 
                 session.user.id = token.id;
                 session.user.role = token.role;

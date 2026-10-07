@@ -91,6 +91,9 @@ const projectsSlice = createSlice({
     resetFilters(state) {
       state.filters = initialState.filters;
     },
+    setFiltersFromUrl(state, action: PayloadAction<Partial<ProjectsState['filters']>>) {
+      state.filters = { ...state.filters, ...action.payload };
+    },
     updateProjectLocally(state, action: PayloadAction<DashboardProject>) {
       const idx = state.projects.findIndex(p => p._id === action.payload._id);
       if (idx !== -1) {
@@ -130,6 +133,7 @@ export const {
   toggleSortOrder,
   setCurrentPage,
   resetFilters,
+  setFiltersFromUrl,
   updateProjectLocally,
   deleteProjectLocally,
   addProjectLocally,

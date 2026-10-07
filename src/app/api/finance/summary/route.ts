@@ -5,10 +5,22 @@ import dbConnect from '@/lib/db';
 import Transaction from '@/models/Transaction';
 import { TransactionCategory, TransactionType } from '@/types';
 
+let summaryCache: { data: any; timestamp: number } | null = null;
+const CACHE_TTL_MS = 30_000;
+
+export function invalidateFinanceSummaryCache() {
+  summaryCache = null;
+}
+
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== 'admin') {
     return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
+  }
+
+  // Serve from memory if fresh
+  if (summaryCache && Date.now() - summaryCache.timestamp < CACHE_TTL_MS) {
+    return NextResponse.json(summaryCache.data);
   }
 
   try {
@@ -152,13 +164,16 @@ export async function GET(req: NextRequest) {
     const outstandingLoans = ((stats.totalLoansTaken || 0) + (stats.totalLoansCollected || 0)) - ((stats.totalLoansGiven || 0) + (stats.totalLoansRepaid || 0));
     const outstandingLoansBdt = ((stats.totalLoansTakenBdt || 0) + (stats.totalLoansCollectedBdt || 0)) - ((stats.totalLoansGivenBdt || 0) + (stats.totalLoansRepaidBdt || 0));
 
-    return NextResponse.json({
+    const result = {
       ...stats,
       netBalance,
       netBalanceBdt,
       outstandingLoans,
       outstandingLoansBdt
-    });
+    };
+
+    summaryCache = { data: result, timestamp: Date.now() };
+    return NextResponse.json(result);
   } catch (error: any) {
     console.error("Fetch finance summary error:", error);
     return NextResponse.json({ error: 'Server Error', details: error.message }, { status: 500 });

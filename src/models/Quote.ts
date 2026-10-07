@@ -221,6 +221,9 @@ const QuoteSchema = new Schema<IQuote>(
     { timestamps: true },
 );
 
+QuoteSchema.index({ createdAt: -1 });
+QuoteSchema.index({ currency: 1, createdAt: -1 });
+
 if (mongoose.models.Quote) {
     delete mongoose.models.Quote;
 }

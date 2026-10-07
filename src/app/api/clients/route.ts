@@ -85,7 +85,8 @@ export async function GET(req: NextRequest) {
     const clients = await Client.find(query)
       .populate('lastUpdatedBy', 'name email avatarUrl')
       .populate('assignedTo', 'name email avatarUrl')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     return NextResponse.json(clients);
   } catch (error: any) {

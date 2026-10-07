@@ -7,6 +7,7 @@ import Product from '@/models/Product';
 import Statement from '@/models/Statements';
 import { transactionSchema } from '@/lib/validations';
 import User from '@/models/User';
+import { invalidateFinanceSummaryCache } from '@/app/api/finance/summary/route';
 
 const STATEMENT_CATEGORIES = ['salary', 'allowance', 'loan_taken', 'loan_collected', 'loan_given', 'loan_repayment'];
 
@@ -205,6 +206,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       await User.findByIdAndUpdate(existingStatement.user, { $inc: { balance: -oldDelta, balanceInBdt: -oldDelta } });
     }
 
+    invalidateFinanceSummaryCache();
+
     return NextResponse.json(transaction);
   } catch (error: any) {
     console.error('Update transaction error:', error);
@@ -246,6 +249,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         }
         await Transaction.findByIdAndDelete(tx._id);
       }
+      invalidateFinanceSummaryCache();
       return NextResponse.json({ success: true, message: 'Transfer reversed and deleted successfully' });
     }
 
@@ -275,6 +279,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       await Statement.findByIdAndDelete(existingStatement._id);
       await User.findByIdAndUpdate(existingStatement.user, { $inc: { balance: -oldDelta, balanceInBdt: -oldDelta } });
     }
+
+    invalidateFinanceSummaryCache();
 
     return NextResponse.json({ success: true, message: 'Transaction deleted successfully' });
   } catch (error: any) {

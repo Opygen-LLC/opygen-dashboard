@@ -53,7 +53,8 @@ export async function GET(req: NextRequest) {
     const projects = await Project.find(filter)
       .populate('assignees', 'name email avatarUrl')
       .populate('createdBy', 'name email avatarUrl')
-      .sort(sort);
+      .sort(sort)
+      .lean();
 
     return NextResponse.json(projects, {
       headers: {

@@ -45,6 +45,8 @@ const StatementSchema = new Schema<IStatement>({
     },
 }, { timestamps: true });
 
+StatementSchema.index({ user: 1, date: -1 });
+
 function signedAmount(amount: number, type: "+" | "-") {
     return type === "+" ? Number(amount) : -Number(amount);
 }

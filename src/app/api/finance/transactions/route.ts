@@ -8,6 +8,7 @@ import { transactionSchema } from "@/lib/validations";
 import User from "@/models/User";
 import { calculateBalanceDelta } from "@/lib/finance";
 import Statement from "@/models/Statements";
+import { invalidateFinanceSummaryCache } from "@/app/api/finance/summary/route";
 
 export async function GET(req: NextRequest) {
     const session = await getServerSession(authOptions);
@@ -101,23 +102,26 @@ export async function GET(req: NextRequest) {
             .populate("user", "name email avatarUrl")
             .populate("accountUser", "name email avatarUrl")
             .populate("productId", "name url")
-            .sort({ date: -1, createdAt: -1 });
+            .sort({ date: -1, createdAt: -1 })
+            .lean();
 
         if (limit > 0) {
             dbQuery = dbQuery.skip((page - 1) * limit).limit(limit);
         }
 
-        const rawTransactions = await dbQuery.exec();
+        const [rawTransactions, total] = await Promise.all([
+            dbQuery.exec(),
+            limit > 0 ? Transaction.countDocuments(query) : Promise.resolve(0),
+        ]);
+
         const transactions = rawTransactions.map((tx: any) => {
-            const obj = tx.toObject ? tx.toObject() : tx;
-            if (obj.productId && typeof obj.productId === "object" && obj.productId.name) {
-                obj.productName = obj.productId.name;
+            if (tx.productId && typeof tx.productId === "object" && tx.productId.name) {
+                tx.productName = tx.productId.name;
             }
-            return obj;
+            return tx;
         });
 
         if (limit > 0) {
-            const total = await Transaction.countDocuments(query);
             return NextResponse.json({
                 transactions,
                 totalPages: Math.ceil(total / limit),
@@ -269,6 +273,8 @@ export async function POST(req: NextRequest) {
         await newTransaction.populate("user", "name email avatarUrl");
         await newTransaction.populate("accountUser", "name email avatarUrl");
         await newTransaction.populate("productId", "name url");
+
+        invalidateFinanceSummaryCache();
 
         return NextResponse.json(newTransaction, { status: 201 });
     } catch (error: any) {

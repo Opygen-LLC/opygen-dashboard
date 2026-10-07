@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -57,22 +58,98 @@ import { ClientFormModal } from "./modals/ClientFormModal";
 import { ScheduleFollowupModal } from "./modals/ScheduleFollowupModal";
 import QuoteFormModal from "../quotes/QuoteFormModal";
 export default function ClientDashboardView() {
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingClient, setEditingClient] = useState<any>(null);
     const [convertingClient, setConvertingClient] = useState<any>(null);
     const [convertingQuoteClient, setConvertingQuoteClient] = useState<any>(null);
     const [scheduleClient, setScheduleClient] = useState<any | null>(null);
     const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
-    const [filterSource, setFilterSource] = useState<string>("All");
-    const [filterStatus, setFilterStatus] = useState<string>("All");
-    const [filterAdName, setFilterAdName] = useState<string>("All");
-    const [filterPriority, setFilterPriority] = useState<string>("All");
-    const [filterDate, setFilterDate] = useState<string>("");
-    const [tempFilterSource, setTempFilterSource] = useState<string>("All");
-    const [tempFilterStatus, setTempFilterStatus] = useState<string>("All");
-    const [tempFilterAdName, setTempFilterAdName] = useState<string>("All");
-    const [tempFilterPriority, setTempFilterPriority] = useState<string>("All");
-    const [tempFilterDate, setTempFilterDate] = useState<string>("");
+
+    // Initial state derived from URL params
+    const urlSearch = searchParams.get("search") || "";
+    const urlSource = searchParams.get("source") || "All";
+    const urlStatus = searchParams.get("status") || "All";
+    const urlAdName = searchParams.get("adName") || "All";
+    const urlPriority = searchParams.get("priority") || "All";
+    const urlDate = searchParams.get("date") || searchParams.get("followupDate") || "";
+    const urlPage = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+    const urlView = searchParams.get("view") === "calendar" ? "calendar" : "table";
+
+    const [filterSource, setFilterSource] = useState<string>(urlSource);
+    const [filterStatus, setFilterStatus] = useState<string>(urlStatus);
+    const [filterAdName, setFilterAdName] = useState<string>(urlAdName);
+    const [filterPriority, setFilterPriority] = useState<string>(urlPriority);
+    const [filterDate, setFilterDate] = useState<string>(urlDate);
+    const [tempFilterSource, setTempFilterSource] = useState<string>(urlSource);
+    const [tempFilterStatus, setTempFilterStatus] = useState<string>(urlStatus);
+    const [tempFilterAdName, setTempFilterAdName] = useState<string>(urlAdName);
+    const [tempFilterPriority, setTempFilterPriority] = useState<string>(urlPriority);
+    const [tempFilterDate, setTempFilterDate] = useState<string>(urlDate);
+
+    const [searchQuery, setSearchQuery] = useState<string>(urlSearch);
+    const [searchInput, setSearchInput] = useState<string>(urlSearch);
+    const [currentPage, setCurrentPage] = useState<number>(urlPage);
+    const [viewMode, setViewMode] = useState<"table" | "calendar">(urlView as "table" | "calendar");
+
+    const updateUrl = useCallback((updates: Partial<{
+        search: string;
+        source: string;
+        status: string;
+        adName: string;
+        priority: string;
+        date: string;
+        page: number;
+        view: string;
+    }>) => {
+        const params = new URLSearchParams(searchParams.toString());
+        const merged = {
+            search: updates.search !== undefined ? updates.search : searchQuery,
+            source: updates.source !== undefined ? updates.source : filterSource,
+            status: updates.status !== undefined ? updates.status : filterStatus,
+            adName: updates.adName !== undefined ? updates.adName : filterAdName,
+            priority: updates.priority !== undefined ? updates.priority : filterPriority,
+            date: updates.date !== undefined ? updates.date : filterDate,
+            page: updates.page !== undefined ? updates.page : currentPage,
+            view: updates.view !== undefined ? updates.view : viewMode,
+        };
+
+        if (merged.search) params.set("search", merged.search); else params.delete("search");
+        if (merged.source && merged.source !== "All") params.set("source", merged.source); else params.delete("source");
+        if (merged.status && merged.status !== "All") params.set("status", merged.status); else params.delete("status");
+        if (merged.adName && merged.adName !== "All") params.set("adName", merged.adName); else params.delete("adName");
+        if (merged.priority && merged.priority !== "All") params.set("priority", merged.priority); else params.delete("priority");
+        if (merged.date) params.set("date", merged.date); else params.delete("date");
+        if (merged.page > 1) params.set("page", String(merged.page)); else params.delete("page");
+        if (merged.view === "calendar") params.set("view", "calendar"); else params.delete("view");
+
+        const qs = params.toString();
+        router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+    }, [searchParams, router, pathname, searchQuery, filterSource, filterStatus, filterAdName, filterPriority, filterDate, currentPage, viewMode]);
+
+    useEffect(() => {
+        const s = searchParams.get("search") || "";
+        const src = searchParams.get("source") || "All";
+        const st = searchParams.get("status") || "All";
+        const ad = searchParams.get("adName") || "All";
+        const pr = searchParams.get("priority") || "All";
+        const dt = searchParams.get("date") || searchParams.get("followupDate") || "";
+        const pg = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+        const vm = searchParams.get("view") === "calendar" ? "calendar" : "table";
+
+        setSearchQuery(s);
+        setSearchInput(s);
+        setFilterSource(src);
+        setFilterStatus(st);
+        setFilterAdName(ad);
+        setFilterPriority(pr);
+        setFilterDate(dt);
+        setCurrentPage(pg);
+        setViewMode(vm);
+    }, [searchParams]);
 
     const openFilterDrawer = () => {
         setTempFilterSource(filterSource);
@@ -89,6 +166,16 @@ export default function ClientDashboardView() {
         setFilterAdName(tempFilterAdName);
         setFilterPriority(tempFilterPriority);
         setFilterDate(tempFilterDate);
+        setCurrentPage(1);
+        setIsFilterOpen(false);
+        updateUrl({
+            source: tempFilterSource,
+            status: tempFilterStatus,
+            adName: tempFilterAdName,
+            priority: tempFilterPriority,
+            date: tempFilterDate,
+            page: 1,
+        });
     };
 
     const handleResetFilters = () => {
@@ -102,6 +189,16 @@ export default function ClientDashboardView() {
         setFilterAdName("All");
         setFilterPriority("All");
         setFilterDate("");
+        setCurrentPage(1);
+        setIsFilterOpen(false);
+        updateUrl({
+            source: "All",
+            status: "All",
+            adName: "All",
+            priority: "All",
+            date: "",
+            page: 1,
+        });
     };
 
     const activeFilterCount = [
@@ -111,10 +208,6 @@ export default function ClientDashboardView() {
         filterPriority !== "All",
         filterDate !== "",
     ].filter(Boolean).length;
-    const [searchQuery, setSearchQuery] = useState<string>("");
-    const [searchInput, setSearchInput] = useState<string>("");
-    const [currentPage, setCurrentPage] = useState<number>(1);
-    const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
     const [deleteClientTarget, setDeleteClientTarget] = useState<any | null>(
         null,
     );
@@ -369,7 +462,10 @@ export default function ClientDashboardView() {
                     {/* View Switcher Toggle */}
                     <div className="flex items-center bg-muted/40 p-1 rounded-xl border border-border/50 text-xs font-semibold">
                         <button
-                            onClick={() => setViewMode("table")}
+                            onClick={() => {
+                                setViewMode("table");
+                                updateUrl({ view: "table" });
+                            }}
                             className={cn(
                                 "px-3 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5",
                                 viewMode === "table"
@@ -381,7 +477,10 @@ export default function ClientDashboardView() {
                             <span className="hidden sm:inline">Table</span>
                         </button>
                         <button
-                            onClick={() => setViewMode("calendar")}
+                            onClick={() => {
+                                setViewMode("calendar");
+                                updateUrl({ view: "calendar" });
+                            }}
                             className={cn(
                                 "px-3 py-2 rounded-lg transition-all cursor-pointer flex items-center gap-1.5",
                                 viewMode === "calendar"
@@ -396,40 +495,48 @@ export default function ClientDashboardView() {
 
                     <Button
                         onClick={() => {
+                            if (!clients || clients.length === 0) {
+                                toast.error("No clients match the current search or filters to export.");
+                                return;
+                            }
                             import("@/lib/export").then(({ exportToCSV }) => {
                                 const data = clients.map((c: any) => ({
-                                    Name: c.name,
+                                    Name: c.name || "",
                                     Company: c.companyName || "",
-                                    Status: c.status,
-                                    Source: c.source,
-                                    Country: c.country,
+                                    Status: c.status || "",
+                                    Priority: c.priority || "low",
+                                    Source: c.source || "",
+                                    "Ad Name": c.adName || "",
+                                    Country: c.country || "",
                                     Phone: c.number || "",
+                                    "Social Link": c.socialMediaLink || "",
                                     "Min Amount": c.minAmount || 0,
                                     "Max Amount": c.maxAmount || 0,
                                     "Follow-up Date": c.followupDate
-                                        ? new Date(
-                                              c.followupDate,
-                                          ).toLocaleDateString()
+                                        ? new Date(c.followupDate).toLocaleDateString()
                                         : "",
                                     "Follow-up Time": c.followupTime || "",
                                     "Meeting Date": c.meetingDate
-                                        ? new Date(
-                                              c.meetingDate,
-                                          ).toLocaleDateString()
+                                        ? new Date(c.meetingDate).toLocaleDateString()
                                         : "",
                                     "Meeting Outcome": c.meetingOutcome || "",
                                     "Next Follow-up Date": c.nextFollowupDate
-                                        ? new Date(
-                                              c.nextFollowupDate,
-                                          ).toLocaleDateString()
+                                        ? new Date(c.nextFollowupDate).toLocaleDateString()
+                                        : "",
+                                    "Assigned To": c.assignedTo?.name || "",
+                                    "Last Updated By": c.lastUpdatedBy?.name || "",
+                                    "Created Date": c.createdAt
+                                        ? new Date(c.createdAt).toLocaleDateString()
                                         : "",
                                     Notes: c.notes || "",
                                 }));
-                                exportToCSV("clients-export.csv", data);
+                                const dateStr = new Date().toISOString().split("T")[0];
+                                exportToCSV(`clients-export-${dateStr}.csv`, data);
+                                toast.success(`Exported ${data.length} matching client${data.length === 1 ? "" : "s"} to CSV`);
                             });
                         }}
                         variant="outline"
-                        className="bg-card border-border/60 hover:bg-muted text-foreground shadow-sm flex gap-2 items-center transition-all"
+                        className="bg-card border-border/60 hover:bg-muted text-foreground shadow-sm flex gap-2 items-center transition-all cursor-pointer"
                     >
                         <Download className="h-4 w-4" />
                         <span className="hidden sm:inline">Export CSV</span>
@@ -498,22 +605,41 @@ export default function ClientDashboardView() {
                     onSubmit={(e) => {
                         e.preventDefault();
                         setSearchQuery(searchInput);
+                        setCurrentPage(1);
+                        updateUrl({ search: searchInput, page: 1 });
                     }}
                     className="relative w-full sm:max-w-md flex items-center flex-1"
                 >
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Search by name, phone number, company... (Press Enter)"
-                        className="pl-9 pr-20 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 text-foreground h-10 transition-all w-full"
+                        className="pl-9 pr-24 bg-background/50 border-border focus-visible:ring-1 focus-visible:ring-indigo-500 text-foreground h-10 transition-all w-full"
                         value={searchInput}
                         onChange={(e) => setSearchInput(e.target.value)}
                         onKeyDown={(e) => {
                             if (e.key === "Enter") {
                                 e.preventDefault();
                                 setSearchQuery(searchInput);
+                                setCurrentPage(1);
+                                updateUrl({ search: searchInput, page: 1 });
                             }
                         }}
                     />
+                    {searchInput && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSearchInput("");
+                                setSearchQuery("");
+                                setCurrentPage(1);
+                                updateUrl({ search: "", page: 1 });
+                            }}
+                            className="absolute right-18 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 cursor-pointer"
+                            title="Clear search"
+                        >
+                            <X className="h-3.5 w-3.5" />
+                        </button>
+                    )}
                     <button
                         type="submit"
                         className="absolute right-1 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-2.5 py-1.5 rounded-md font-semibold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
@@ -1072,11 +1198,11 @@ export default function ClientDashboardView() {
                                     variant="outline"
                                     size="icon"
                                     disabled={currentPage === 1}
-                                    onClick={() =>
-                                        setCurrentPage(
-                                            Math.max(currentPage - 1, 1),
-                                        )
-                                    }
+                                    onClick={() => {
+                                        const prevP = Math.max(currentPage - 1, 1);
+                                        setCurrentPage(prevP);
+                                        updateUrl({ page: prevP });
+                                    }}
                                     className="h-8 w-8 cursor-pointer disabled:opacity-50"
                                 >
                                     <ChevronLeft className="h-4 w-4" />
@@ -1130,9 +1256,10 @@ export default function ClientDashboardView() {
                                                         : "outline"
                                                 }
                                                 size="sm"
-                                                onClick={() =>
-                                                    setCurrentPage(pageNum)
-                                                }
+                                                onClick={() => {
+                                                    setCurrentPage(pageNum);
+                                                    updateUrl({ page: pageNum });
+                                                }}
                                                 className={cn(
                                                     "h-8 w-8 text-xs cursor-pointer p-0 font-semibold",
                                                     currentPage === pageNum
@@ -1152,14 +1279,14 @@ export default function ClientDashboardView() {
                                         currentPage ===
                                         Math.ceil(clients.length / 10)
                                     }
-                                    onClick={() =>
-                                        setCurrentPage(
-                                            Math.min(
-                                                currentPage + 1,
-                                                Math.ceil(clients.length / 10),
-                                            ),
-                                        )
-                                    }
+                                    onClick={() => {
+                                        const nextP = Math.min(
+                                            currentPage + 1,
+                                            Math.ceil(clients.length / 10),
+                                        );
+                                        setCurrentPage(nextP);
+                                        updateUrl({ page: nextP });
+                                    }}
                                     className="h-8 w-8 cursor-pointer disabled:opacity-50"
                                 >
                                     <ChevronRight className="h-4 w-4" />
