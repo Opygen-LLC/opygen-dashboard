@@ -49,6 +49,8 @@ export async function GET(
 
         let totalIncome = 0;
         let totalExpense = 0;
+        let newCount = 0;
+        let renewCount = 0;
 
         for (const tx of transactions) {
             if (tx.category === "transfer") continue;
@@ -57,6 +59,12 @@ export async function GET(
                 totalIncome += val;
             } else if (tx.type === "expense") {
                 totalExpense += val;
+            }
+
+            if (tx.orderType === "renew") {
+                renewCount++;
+            } else if (tx.orderType === "new") {
+                newCount++;
             }
         }
 
@@ -70,6 +78,8 @@ export async function GET(
                     totalExpense,
                     netRevenue,
                     transactionCount: transactions.length,
+                    newCount,
+                    renewCount,
                 },
                 transactions,
             },

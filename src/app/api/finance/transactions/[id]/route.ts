@@ -5,7 +5,7 @@ import dbConnect from '@/lib/db';
 import Transaction from '@/models/Transaction';
 import Product from '@/models/Product';
 import Statement from '@/models/Statements';
-import { transactionSchema } from '@/lib/validations';
+import { transactionBaseSchema } from '@/lib/validations';
 import User from '@/models/User';
 import { invalidateFinanceSummaryCache } from '@/app/api/finance/summary/route';
 
@@ -29,7 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const body = await req.json();
 
-    const parseResult = transactionSchema.partial().safeParse(body);
+    const parseResult = transactionBaseSchema.partial().safeParse(body);
     if (!parseResult.success) {
       return NextResponse.json({ error: parseResult.error.flatten() }, { status: 400 });
     }
@@ -76,9 +76,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       } else if (prodName) {
         updateData.productName = prodName.trim();
       }
+
+      if (updateData.orderType !== undefined) {
+        if (!updateData.orderType || !["new", "renew"].includes(updateData.orderType)) {
+          return NextResponse.json({ error: 'Order type (New or Renew) is required when category is Product' }, { status: 400 });
+        }
+      }
     } else {
       updateData.productName = null;
       updateData.productId = null;
+      updateData.orderType = null;
     }
 
     // If account was changed or provided, snapshot new accountDetails

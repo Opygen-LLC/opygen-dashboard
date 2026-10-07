@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -90,6 +90,7 @@ function calculateDateRange(preset: string, customStart?: string, customEnd?: st
 }
 
 export default function FinanceDashboardView() {
+    const queryClient = useQueryClient();
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -369,6 +370,7 @@ export default function FinanceDashboardView() {
             type: "expense",
             category: "office",
             productName: "",
+            orderType: "new",
             amount: 0,
             date: new Date().toISOString().split("T")[0],
             description: "",
@@ -418,6 +420,7 @@ export default function FinanceDashboardView() {
             type: "expense",
             category: "office",
             productName: "",
+            orderType: "new",
             amount: 0,
             date: new Date().toISOString().split("T")[0],
             description: "",
@@ -444,6 +447,7 @@ export default function FinanceDashboardView() {
             type: tx.type,
             category: tx.category,
             productName: (typeof tx.productId === "object" && tx.productId?.name) ? tx.productId.name : (tx.productName || ""),
+            orderType: tx.orderType || (tx.category === "product" ? "new" : ""),
             amount: bdtVal,
             date: tx.date
                 ? new Date(tx.date).toISOString().split("T")[0]
@@ -472,9 +476,13 @@ export default function FinanceDashboardView() {
                 if (matched) {
                     payload.productId = matched._id;
                 }
+                if (!payload.orderType || (payload.orderType !== "new" && payload.orderType !== "renew")) {
+                    throw new Error("Please select a Type (New or Renew).");
+                }
             } else {
                 delete payload.productName;
                 delete payload.productId;
+                delete payload.orderType;
             }
 
             if (!payload.accountId || !payload.accountUser) {
@@ -544,6 +552,9 @@ export default function FinanceDashboardView() {
             reset();
             refetchSummary();
             refetchTransactions();
+            queryClient.invalidateQueries({ queryKey: ["product-details"] });
+            queryClient.invalidateQueries({ queryKey: ["finance-transactions"] });
+            queryClient.invalidateQueries({ queryKey: ["finance-summary"] });
         },
         onError: (err: any) => toast.error(err.message),
     });
@@ -560,6 +571,9 @@ export default function FinanceDashboardView() {
             toast.success("Transaction deleted");
             refetchSummary();
             refetchTransactions();
+            queryClient.invalidateQueries({ queryKey: ["product-details"] });
+            queryClient.invalidateQueries({ queryKey: ["finance-transactions"] });
+            queryClient.invalidateQueries({ queryKey: ["finance-summary"] });
         },
         onError: (err: any) => toast.error(err.message),
     });
@@ -821,9 +835,22 @@ export default function FinanceDashboardView() {
                                                     {t.description}
                                                 </div>
                                                 {t.productName && (
-                                                    <div className="text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1 mt-1 font-semibold">
+                                                    <div className="text-xs text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 mt-1 font-semibold flex-wrap">
                                                         <Package className="h-3.5 w-3.5 shrink-0" />
-                                                        {typeof t.productId === "object" && t.productId?.name ? t.productId.name : t.productName}
+                                                        <span>{typeof t.productId === "object" && t.productId?.name ? t.productId.name : t.productName}</span>
+                                                        {t.orderType && (
+                                                            <Badge
+                                                                variant="outline"
+                                                                className={cn(
+                                                                    "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0 border rounded-sm",
+                                                                    t.orderType === "renew"
+                                                                        ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30"
+                                                                        : "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30"
+                                                                )}
+                                                            >
+                                                                {t.orderType === "renew" ? "Renew" : "New"}
+                                                            </Badge>
+                                                        )}
                                                     </div>
                                                 )}
                                                 {t.user && (
@@ -1413,53 +1440,91 @@ export default function FinanceDashboardView() {
                                             )}
                                         </div>
 
-                                        {/* Row 4: {product name / assign user} */}
+                                        {/* Row 4: {product name & order type} */}
                                         {selectedCategory === "product" && (
-                                            <div className="col-span-2 space-y-2">
-                                                <label className="text-xs font-semibold text-muted-foreground uppercase">
-                                                    Product Name{" "}
-                                                    <span className="text-rose-500">
-                                                        *
-                                                    </span>
-                                                </label>
-                                                <Controller
-                                                    name="productName"
-                                                    control={control}
-                                                    render={({ field }) => (
-                                                        <Select
-                                                            value={field.value || ""}
-                                                            onValueChange={field.onChange}
-                                                        >
-                                                            <SelectTrigger className="w-full h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-                                                                <SelectValue placeholder="-- Select Product Name --" />
-                                                            </SelectTrigger>
-                                                            <SelectContent className="z-[150]">
-                                                                {dynamicProducts && dynamicProducts.length > 0 ? (
-                                                                    dynamicProducts.map((p: any) => (
-                                                                        <SelectItem key={p._id} value={p.name} className="h-10!">
-                                                                            {p.name}
-                                                                        </SelectItem>
-                                                                    ))
-                                                                ) : (
-                                                                    <>
-                                                                        <SelectItem value={ProductName.OPYGEN_CLEANING_CRM} className="h-10!">
-                                                                            {ProductName.OPYGEN_CLEANING_CRM}
-                                                                        </SelectItem>
-                                                                        <SelectItem value={ProductName.OPYGEN_ESTATE} className="h-10!">
-                                                                            {ProductName.OPYGEN_ESTATE}
-                                                                        </SelectItem>
-                                                                    </>
-                                                                )}
-                                                            </SelectContent>
-                                                        </Select>
+                                            <>
+                                                <div className="col-span-1 space-y-2">
+                                                    <label className="text-xs font-semibold text-muted-foreground uppercase">
+                                                        Product Name{" "}
+                                                        <span className="text-rose-500">
+                                                            *
+                                                        </span>
+                                                    </label>
+                                                    <Controller
+                                                        name="productName"
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                            <Select
+                                                                value={field.value || ""}
+                                                                onValueChange={field.onChange}
+                                                            >
+                                                                <SelectTrigger className="w-full h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                                    <SelectValue placeholder="-- Select Product --" />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="z-[150]">
+                                                                    {dynamicProducts && dynamicProducts.length > 0 ? (
+                                                                        dynamicProducts.map((p: any) => (
+                                                                            <SelectItem key={p._id} value={p.name} className="h-10!">
+                                                                                {p.name}
+                                                                            </SelectItem>
+                                                                        ))
+                                                                    ) : (
+                                                                        <>
+                                                                            <SelectItem value={ProductName.OPYGEN_CLEANING_CRM} className="h-10!">
+                                                                                {ProductName.OPYGEN_CLEANING_CRM}
+                                                                            </SelectItem>
+                                                                            <SelectItem value={ProductName.OPYGEN_ESTATE} className="h-10!">
+                                                                                {ProductName.OPYGEN_ESTATE}
+                                                                            </SelectItem>
+                                                                        </>
+                                                                    )}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                    />
+                                                    {errors.productName && (
+                                                        <p className="text-xs text-rose-500">
+                                                            {errors.productName.message as string}
+                                                        </p>
                                                     )}
-                                                />
-                                                {errors.productName && (
-                                                    <p className="text-xs text-rose-500">
-                                                        {errors.productName.message as string}
-                                                    </p>
-                                                )}
-                                            </div>
+                                                </div>
+
+                                                <div className="col-span-1 space-y-2">
+                                                    <label className="text-xs font-semibold text-muted-foreground uppercase">
+                                                        Type{" "}
+                                                        <span className="text-rose-500">
+                                                            *
+                                                        </span>
+                                                    </label>
+                                                    <Controller
+                                                        name="orderType"
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                            <Select
+                                                                value={field.value || ""}
+                                                                onValueChange={field.onChange}
+                                                            >
+                                                                <SelectTrigger className="w-full h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                                                                    <SelectValue placeholder="-- Select Type --" />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="z-[150]">
+                                                                    <SelectItem value="new" className="h-10!">
+                                                                        New
+                                                                    </SelectItem>
+                                                                    <SelectItem value="renew" className="h-10!">
+                                                                        Renew
+                                                                    </SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                    />
+                                                    {errors.orderType && (
+                                                        <p className="text-xs text-rose-500">
+                                                            {errors.orderType.message as string}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </>
                                         )}
 
                                         {needsUserSelection && (

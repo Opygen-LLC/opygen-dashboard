@@ -24,6 +24,8 @@ export async function GET(req: NextRequest) {
     
     // 1. Month-over-Month Trends (Past 6 Months) in USD & BDT
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
     // Run all 5 independent queries in parallel via Promise.all
     const [monthlyStats, categoryStats, trailingExpenses, projects, quotes] = await Promise.all([

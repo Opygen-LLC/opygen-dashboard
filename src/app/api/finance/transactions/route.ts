@@ -198,6 +198,13 @@ export async function POST(req: NextRequest) {
                 );
             }
 
+            if (!transactionData.orderType || !["new", "renew"].includes(transactionData.orderType)) {
+                return NextResponse.json(
+                    { error: "Order type (New or Renew) is required for product transactions" },
+                    { status: 400 },
+                );
+            }
+
             let matchedProduct: any = null;
             if (transactionData.productId) {
                 matchedProduct = await Product.findById(transactionData.productId).lean();
@@ -221,6 +228,7 @@ export async function POST(req: NextRequest) {
         } else {
             transactionData.productName = null as any;
             transactionData.productId = null as any;
+            transactionData.orderType = null as any;
         }
 
         if (transactionData.amount !== undefined) {

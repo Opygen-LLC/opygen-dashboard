@@ -130,6 +130,7 @@ export default function ProductsSettingsTab() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["products"] });
+            queryClient.invalidateQueries({ queryKey: ["product-details"] });
             toast.success("Product deleted successfully!");
             setDeletingProduct(null);
         },

@@ -257,7 +257,7 @@ export const addUserSchema = z.object({
 
 export type AddUserInput = z.infer<typeof addUserSchema>;
 
-export const transactionSchema = z.object({
+export const transactionBaseSchema = z.object({
     amount: z.coerce.number().min(0, "Amount must be a non-negative number"),
     type: z.enum(["income", "expense"]),
     category: z.enum([
@@ -285,6 +285,11 @@ export const transactionSchema = z.object({
         .string()
         .optional()
         .nullable(),
+    orderType: z
+        .enum(["new", "renew"])
+        .optional()
+        .nullable()
+        .or(z.literal("")),
     description: z
         .string()
         .min(1, "Description is required")
@@ -317,7 +322,19 @@ export const transactionSchema = z.object({
     fee: z.coerce.number().min(0).optional(),
 });
 
-export type TransactionInput = z.infer<typeof transactionSchema>;
+export const transactionSchema = transactionBaseSchema.superRefine((data, ctx) => {
+    if (data.category === "product") {
+        if (!data.orderType || (data.orderType !== "new" && data.orderType !== "renew")) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Type (New or Renew) is required for product transactions",
+                path: ["orderType"],
+            });
+        }
+    }
+});
+
+export type TransactionInput = z.infer<typeof transactionBaseSchema>;
 
 export const accountTransferSchema = z
     .object({

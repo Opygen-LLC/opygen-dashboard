@@ -6,6 +6,8 @@ import {
     TransactionCategoryUnion,
     ProductName,
     ProductNameUnion,
+    ProductOrderType,
+    ProductOrderTypeUnion,
 } from "@/types";
 
 export interface ITransactionAccountDetails {
@@ -23,6 +25,7 @@ export interface ITransaction extends Document {
     category: TransactionCategoryUnion;
     productName?: ProductNameUnion | string;
     productId?: mongoose.Types.ObjectId;
+    orderType?: ProductOrderTypeUnion | null;
     description: string;
     date: Date;
     user?: mongoose.Types.ObjectId;
@@ -59,6 +62,11 @@ const TransactionSchema = new Schema<ITransaction>(
             ref: "Product",
             index: true,
         },
+        orderType: {
+            type: String,
+            enum: Object.values(ProductOrderType),
+            default: null,
+        },
         description: { type: String, required: true, maxlength: 500 },
         date: { type: Date, default: Date.now },
         user: { type: Schema.Types.ObjectId, ref: "User" },
@@ -86,6 +94,7 @@ TransactionSchema.index({ category: 1, date: -1 });
 TransactionSchema.index({ type: 1, date: -1 });
 TransactionSchema.index({ user: 1, date: -1 });
 TransactionSchema.index({ productName: 1, date: -1 });
+TransactionSchema.index({ orderType: 1, date: -1 });
 
 // Delete the cached model in development to ensure schema updates (like new enums) are applied
 if (mongoose.models.Transaction) {

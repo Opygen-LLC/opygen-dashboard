@@ -79,6 +79,13 @@ export type ProductNameUnion =
     | "Opygen Real Estate CRM"
     | (string & {});
 
+export enum ProductOrderType {
+    NEW = "new",
+    RENEW = "renew",
+}
+
+export type ProductOrderTypeUnion = "new" | "renew";
+
 export type TransactionTypeUnion = "income" | "expense";
 export type TransactionCategoryUnion =
     | "salary"

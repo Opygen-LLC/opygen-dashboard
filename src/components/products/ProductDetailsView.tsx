@@ -24,11 +24,13 @@ import {
     Plus,
     Download,
     X,
-    Trash2,
     Globe,
     ChevronLeft,
     ChevronRight,
     RotateCcw,
+    Pencil,
+    RefreshCw,
+    Sparkles,
 } from "lucide-react";
 import {
     Card,
@@ -107,6 +109,7 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
     const [searchInput, setSearchInput] = useState("");
     const [appliedSearch, setAppliedSearch] = useState("");
     const [filterType, setFilterType] = useState<string>("all");
+    const [filterOrderType, setFilterOrderType] = useState<string>("all");
     const [filterDate, setFilterDate] = useState<string>("all");
     const [customStartDate, setCustomStartDate] = useState<string>("");
     const [customEndDate, setCustomEndDate] = useState<string>("");
@@ -115,6 +118,7 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
     // Temp drawer filter states
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [tempType, setTempType] = useState<string>("all");
+    const [tempOrderType, setTempOrderType] = useState<string>("all");
     const [tempDate, setTempDate] = useState<string>("all");
     const [tempStartDate, setTempStartDate] = useState<string>("");
     const [tempEndDate, setTempEndDate] = useState<string>("");
@@ -122,7 +126,7 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
 
     // Modals
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
+    const [editingTransaction, setEditingTransaction] = useState<any>(null);
 
     // Pagination
     const [currentPage, setCurrentPage] = useState<number>(1);
@@ -135,16 +139,18 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
     // Reset pagination on filter change
     useEffect(() => {
         setCurrentPage(1);
-    }, [appliedSearch, filterType, filterDate, customStartDate, customEndDate, sortBy]);
+    }, [appliedSearch, filterType, filterOrderType, filterDate, customStartDate, customEndDate, sortBy]);
 
     // Active filter counter
     const activeFilterCount =
         (filterType !== "all" ? 1 : 0) +
+        (filterOrderType !== "all" ? 1 : 0) +
         (filterDate !== "all" ? 1 : 0) +
         (sortBy !== "date_desc" ? 1 : 0);
 
     const openFilterDrawer = () => {
         setTempType(filterType);
+        setTempOrderType(filterOrderType);
         setTempDate(filterDate);
         setTempStartDate(customStartDate);
         setTempEndDate(customEndDate);
@@ -154,6 +160,7 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
 
     const handleApplyFilters = () => {
         setFilterType(tempType);
+        setFilterOrderType(tempOrderType);
         setFilterDate(tempDate);
         setCustomStartDate(tempStartDate);
         setCustomEndDate(tempEndDate);
@@ -163,6 +170,7 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
 
     const handleResetFilters = () => {
         setFilterType("all");
+        setFilterOrderType("all");
         setFilterDate("all");
         setCustomStartDate("");
         setCustomEndDate("");
@@ -170,23 +178,28 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
         setSearchInput("");
         setAppliedSearch("");
         setTempType("all");
+        setTempOrderType("all");
         setTempDate("all");
         setTempStartDate("");
         setTempEndDate("");
         setTempSortBy("date_desc");
+        setIsFilterOpen(false);
     };
 
     // Query product details and transactions
     const { data, isLoading, error } = useQuery({
         queryKey: ["product-details", productId],
         queryFn: async () => {
-            const res = await fetch(`/api/products/${productId}`);
+            const res = await fetch(`/api/products/${productId}`, { cache: "no-store" });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 throw new Error(err.error || "Failed to load product details");
             }
             return res.json();
         },
+        staleTime: 0,
+        refetchOnMount: true,
+        refetchOnWindowFocus: true,
     });
 
     // Query accounts for transaction creation
@@ -216,6 +229,11 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
         // Type filter
         if (filterType !== "all") {
             list = list.filter((t) => t.type === filterType);
+        }
+
+        // Order Type filter
+        if (filterOrderType !== "all") {
+            list = list.filter((t) => (t.orderType || "new") === filterOrderType);
         }
 
         // Date range filter
@@ -269,7 +287,7 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
         });
 
         return list;
-    }, [rawTransactions, filterType, filterDate, customStartDate, customEndDate, appliedSearch, sortBy]);
+    }, [rawTransactions, filterType, filterOrderType, filterDate, customStartDate, customEndDate, appliedSearch, sortBy]);
 
     // CSV Export
     const handleExportCSV = () => {
@@ -280,6 +298,7 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
         const exportData = filteredTransactions.map((t) => ({
             Date: t.date ? new Date(t.date).toLocaleDateString() : "-",
             Type: t.type?.toUpperCase(),
+            "Order Type": t.orderType === "renew" ? "Renew" : "New",
             Category: t.category,
             Product: product?.name,
             "Amount (BDT)": Number(t.amount || 0),
@@ -306,6 +325,7 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
             accountUser: "",
             type: "income",
             amount: 0,
+            orderType: "new",
             date: new Date().toISOString().split("T")[0],
             description: "",
         },
@@ -318,19 +338,37 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
             : "bg-rose-50 text-rose-700 border-rose-200 focus:ring-rose-500";
 
     const openAddModal = () => {
+        setEditingTransaction(null);
         reset({
             accountId: "",
             accountUser: "",
             type: "income",
             amount: 0,
+            orderType: "new",
             date: new Date().toISOString().split("T")[0],
             description: "",
         });
         setIsAddModalOpen(true);
     };
 
-    // Create transaction mutation
-    const createTransactionMutation = useMutation({
+    const openEditModal = (tx: any) => {
+        setEditingTransaction(tx);
+        reset({
+            accountId: tx.accountId || "",
+            accountUser: tx.accountUser?._id ? tx.accountUser._id.toString() : tx.accountUser?.toString() || "",
+            type: tx.type,
+            amount: Number(tx.amount || 0),
+            orderType: tx.orderType || "new",
+            date: tx.date
+                ? new Date(tx.date).toISOString().split("T")[0]
+                : new Date().toISOString().split("T")[0],
+            description: tx.description,
+        });
+        setIsAddModalOpen(true);
+    };
+
+    // Save transaction mutation (Create or Update)
+    const saveTransactionMutation = useMutation({
         mutationFn: async (formData: any) => {
             const numAmount = parseFloat(formData.amount) || 0;
             if (numAmount <= 0) {
@@ -342,6 +380,9 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
             if (!formData.description?.trim()) {
                 throw new Error("Description is required");
             }
+            if (!formData.orderType) {
+                throw new Error("Please select a Type (New or Renew)");
+            }
 
             const payload = {
                 accountId: formData.accountId,
@@ -351,19 +392,26 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
                 category: "product",
                 productName: product.name,
                 productId: product._id,
+                orderType: formData.orderType || "new",
                 date: formData.date || new Date().toISOString().split("T")[0],
                 description: formData.description.trim(),
             };
 
-            const res = await fetch("/api/finance/transactions", {
-                method: "POST",
+            const isEditing = !!editingTransaction;
+            const url = isEditing
+                ? `/api/finance/transactions/${editingTransaction._id}`
+                : "/api/finance/transactions";
+            const method = isEditing ? "PUT" : "POST";
+
+            const res = await fetch(url, {
+                method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
 
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
-                throw new Error(err.error || "Failed to record transaction");
+                throw new Error(err.error || `Failed to ${isEditing ? "update" : "record"} transaction`);
             }
             return res.json();
         },
@@ -372,36 +420,13 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
             queryClient.invalidateQueries({ queryKey: ["finance-transactions"] });
             queryClient.invalidateQueries({ queryKey: ["finance-summary"] });
             queryClient.invalidateQueries({ queryKey: ["all-finance-accounts"] });
-            toast.success("Transaction recorded successfully!");
+            toast.success(editingTransaction ? "Transaction updated successfully!" : "Transaction recorded successfully!");
             setIsAddModalOpen(false);
+            setEditingTransaction(null);
             reset();
         },
         onError: (err: any) => {
-            toast.error(err.message || "Failed to record transaction");
-        },
-    });
-
-    // Delete transaction mutation
-    const deleteMutation = useMutation({
-        mutationFn: async (id: string) => {
-            const res = await fetch(`/api/finance/transactions/${id}`, {
-                method: "DELETE",
-            });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({}));
-                throw new Error(err.error || "Failed to delete transaction");
-            }
-            return res.json();
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["product-details", productId] });
-            queryClient.invalidateQueries({ queryKey: ["finance-transactions"] });
-            queryClient.invalidateQueries({ queryKey: ["finance-summary"] });
-            queryClient.invalidateQueries({ queryKey: ["all-finance-accounts"] });
-            toast.success("Transaction deleted successfully");
-        },
-        onError: (err: any) => {
-            toast.error(err.message || "Failed to delete transaction");
+            toast.error(err.message || "Failed to save transaction");
         },
     });
 
@@ -578,7 +603,7 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
                             {summary.transactionCount}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                            Financial records logged
+                            {summary.newCount !== undefined ? `${summary.newCount} New • ${summary.renewCount} Renew` : "Financial records logged"}
                         </p>
                     </CardContent>
                 </Card>
@@ -672,6 +697,29 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
                                 </SelectItem>
                                 <SelectItem value="expense" className="h-10!">
                                     Expense Only
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Order Type */}
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-muted-foreground uppercase">
+                            Order Type
+                        </label>
+                        <Select value={tempOrderType} onValueChange={(val: any) => setTempOrderType(val)}>
+                            <SelectTrigger className="w-full h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 rounded-md">
+                                <SelectValue placeholder="All Order Types" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[200]">
+                                <SelectItem value="all" className="h-10!">
+                                    All Order Types
+                                </SelectItem>
+                                <SelectItem value="new" className="h-10!">
+                                    New Only
+                                </SelectItem>
+                                <SelectItem value="renew" className="h-10!">
+                                    Renew Only
                                 </SelectItem>
                             </SelectContent>
                         </Select>
@@ -786,6 +834,7 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
                                 <tr>
                                     <th className="px-6 py-4 font-semibold">Description</th>
                                     <th className="px-6 py-4 font-semibold">Type</th>
+                                    <th className="px-6 py-4 font-semibold">Order Type</th>
                                     <th className="px-6 py-4 font-semibold">Amount (৳)</th>
                                     <th className="px-6 py-4 font-semibold">Date</th>
                                     <th className="px-6 py-4 font-semibold text-right">Actions</th>
@@ -794,7 +843,7 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
                             <tbody>
                                 {filteredTransactions.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
+                                        <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
                                             <div className="h-10 w-10 rounded-xl bg-muted/50 flex items-center justify-center mx-auto text-muted-foreground mb-2">
                                                 <Receipt className="h-5 w-5" />
                                             </div>
@@ -872,6 +921,23 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
                                                             {t.type}
                                                         </Badge>
                                                     </td>
+                                                    <td className="px-6 py-4">
+                                                        {t.orderType === "renew" ? (
+                                                            <Badge
+                                                                className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 border gap-1 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30"
+                                                            >
+                                                                <RefreshCw className="h-3 w-3" />
+                                                                Renew
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge
+                                                                className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 border gap-1 rounded-md bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30"
+                                                            >
+                                                                <Sparkles className="h-3 w-3" />
+                                                                New
+                                                            </Badge>
+                                                        )}
+                                                    </td>
                                                     <td className="px-6 py-4 font-bold">
                                                         {isIncome ? (
                                                             <span className="text-emerald-500 flex items-center gap-1">
@@ -902,11 +968,11 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 cursor-pointer rounded-md"
-                                                            onClick={() => setTransactionToDelete(t._id)}
-                                                            title="Delete Transaction"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-indigo-600 hover:bg-indigo-500/10 cursor-pointer rounded-md"
+                                                            onClick={() => openEditModal(t)}
+                                                            title="Edit Transaction"
                                                         >
-                                                            <Trash2 className="h-4 w-4" />
+                                                            <Pencil className="h-4 w-4" />
                                                         </Button>
                                                     </td>
                                                 </tr>
@@ -987,21 +1053,33 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
                                 >
                                     <div className="flex items-center justify-between p-4 border-b border-border/50 bg-accent/5">
                                         <h3 className="font-bold text-lg flex items-center gap-2">
-                                            <Plus className="h-5 w-5 text-indigo-500" />
-                                            Record Transaction for {product.name}
+                                            {editingTransaction ? (
+                                                <>
+                                                    <Pencil className="h-5 w-5 text-indigo-500" />
+                                                    Edit Transaction for {product.name}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Plus className="h-5 w-5 text-indigo-500" />
+                                                    Record Transaction for {product.name}
+                                                </>
+                                            )}
                                         </h3>
                                         <Button
                                             variant="ghost"
                                             size="icon"
                                             className="h-8 w-8 rounded-md hover:bg-muted"
-                                            onClick={() => setIsAddModalOpen(false)}
+                                            onClick={() => {
+                                                setIsAddModalOpen(false);
+                                                setEditingTransaction(null);
+                                            }}
                                         >
                                             <X className="h-4 w-4" />
                                         </Button>
                                     </div>
 
                                     <form
-                                        onSubmit={handleSubmit((data) => createTransactionMutation.mutate(data))}
+                                        onSubmit={handleSubmit((data) => saveTransactionMutation.mutate(data))}
                                         className="p-6 grid grid-cols-2 gap-4"
                                     >
                                         {/* Row 1: Account (Full Width) */}
@@ -1123,8 +1201,8 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
                                             />
                                         </div>
 
-                                        {/* Row 4: Product Name (Auto-assigned) */}
-                                        <div className="col-span-2 space-y-2">
+                                        {/* Row 4: Product Name & Order Type */}
+                                        <div className="col-span-1 space-y-2">
                                             <label className="text-xs font-semibold text-muted-foreground uppercase">
                                                 Product Name
                                             </label>
@@ -1132,6 +1210,34 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
                                                 value={product.name}
                                                 disabled
                                                 className="h-10 bg-muted/40 font-semibold text-xs cursor-not-allowed rounded-md"
+                                            />
+                                        </div>
+
+                                        <div className="col-span-1 space-y-2">
+                                            <label className="text-xs font-semibold text-muted-foreground uppercase">
+                                                Type <span className="text-rose-500">*</span>
+                                            </label>
+                                            <Controller
+                                                name="orderType"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Select
+                                                        value={field.value || "new"}
+                                                        onValueChange={field.onChange}
+                                                    >
+                                                        <SelectTrigger className="w-full h-10! px-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none rounded-md">
+                                                            <SelectValue placeholder="Select type" />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="z-[150]">
+                                                            <SelectItem value="new" className="h-10!">
+                                                                New
+                                                            </SelectItem>
+                                                            <SelectItem value="renew" className="h-10!">
+                                                                Renew
+                                                            </SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
                                             />
                                         </div>
 
@@ -1153,81 +1259,26 @@ export default function ProductDetailsView({ productId }: ProductDetailsViewProp
                                                 type="button"
                                                 variant="ghost"
                                                 className="rounded-md"
-                                                onClick={() => setIsAddModalOpen(false)}
+                                                onClick={() => {
+                                                    setIsAddModalOpen(false);
+                                                    setEditingTransaction(null);
+                                                }}
                                             >
                                                 Cancel
                                             </Button>
                                             <Button
                                                 type="submit"
-                                                disabled={isSubmitting || createTransactionMutation.isPending}
+                                                disabled={isSubmitting || saveTransactionMutation.isPending}
                                                 className="min-w-[120px] bg-indigo-600 hover:bg-indigo-700 text-white font-semibold cursor-pointer rounded-md"
                                             >
-                                                {isSubmitting || createTransactionMutation.isPending
+                                                {isSubmitting || saveTransactionMutation.isPending
                                                     ? "Saving..."
+                                                    : editingTransaction
+                                                    ? "Update Transaction"
                                                     : "Save Transaction"}
                                             </Button>
                                         </div>
                                     </form>
-                                </motion.div>
-                            </div>
-                        )}
-                    </AnimatePresence>,
-                    document.body
-                )}
-
-            {/* Delete Confirmation Modal */}
-            {mounted &&
-                createPortal(
-                    <AnimatePresence>
-                        {transactionToDelete && (
-                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    onClick={() => setTransactionToDelete(null)}
-                                    className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-                                />
-                                <motion.div
-                                    key={transactionToDelete}
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.95 }}
-                                    transition={{ duration: 0.15, ease: "easeOut" }}
-                                    className="relative w-full max-w-sm border border-border bg-card shadow-2xl rounded-2xl overflow-hidden flex flex-col"
-                                >
-                                    <div className="p-6 text-center space-y-4">
-                                        <div className="mx-auto w-12 h-12 bg-rose-100 dark:bg-rose-900/20 rounded-full flex items-center justify-center">
-                                            <Trash2 className="h-6 w-6 text-rose-600 dark:text-rose-400" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <h3 className="text-xl font-bold text-foreground">
-                                                Confirm Deletion
-                                            </h3>
-                                            <p className="text-sm text-muted-foreground">
-                                                Are you sure you want to delete this transaction? This action will adjust your account balance and cannot be undone.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="bg-muted/30 p-4 border-t border-border/50 flex gap-3">
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => setTransactionToDelete(null)}
-                                            className="flex-1 cursor-pointer rounded-md"
-                                        >
-                                            Cancel
-                                        </Button>
-                                        <Button
-                                            variant="destructive"
-                                            className="flex-1 bg-rose-600 hover:bg-rose-700 text-white cursor-pointer rounded-md"
-                                            onClick={() => {
-                                                deleteMutation.mutate(transactionToDelete);
-                                                setTransactionToDelete(null);
-                                            }}
-                                        >
-                                            Delete
-                                        </Button>
-                                    </div>
                                 </motion.div>
                             </div>
                         )}
